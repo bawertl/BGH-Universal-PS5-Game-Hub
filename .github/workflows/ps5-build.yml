@@ -1,0 +1,72 @@
+name: PS5 Universal Game Launcher - Build aus ZIP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ps5-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: V0.5-Paket pruefen und entpacken
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip='PS5_Universal_Game_Launcher_V0_5_GitHub_Actions_STARTPAKET.zip'
+          test -f "$zip" || { echo 'QUELL-ZIP FEHLT'; exit 1; }
+          echo 'cc3743a2641d22a20ab37e42ffd13d167790af1fa92a7c0c3ba3d7fd02623ff3  PS5_Universal_Game_Launcher_V0_5_GitHub_Actions_STARTPAKET.zip' | sha256sum -c -
+          unzip -qo "$zip" -d .
+          test -f tooling/build_native_ps5.sh
+          test -f tooling/verify_ps5_package.py
+
+      - name: Entwicklungswerkzeuge installieren
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 clang-format-18 clang-tidy-18 lld-18 llvm-18 \
+            make git ninja-build ccache pkg-config python3 python3-pip python3-venv \
+            python3-pytest gcc g++ wget curl unzip zip tar zlib1g-dev
+
+      - name: Bestehende V0.5-Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/usr/lib/llvm-18/bin:$PATH"
+          python3 -m pytest -q tests
+          bash tooling/test_native_gui_syntax.sh
+
+      - name: Natives PS5-Paket bauen und pruefen
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="/usr/lib/llvm-18/bin:$PATH"
+          mkdir -p build
+          BUILD_JOBS=4 bash tooling/build_native_ps5.sh 2>&1 | tee build/native-ps5-build.log
+          python3 tooling/verify_ps5_package.py \
+            build/ps5/PS5_Universal_Game_Launcher_PPSA99079_PS5_TEST.zip PPSA99079
+
+      - name: PS5-Testpaket bereitstellen
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PS5-Universal-Game-Launcher-V0.5-TEST
+          path: build/ps5/PS5_Universal_Game_Launcher_PPSA99079_PS5_TEST.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fehlerprotokoll bereitstellen
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compiler-Fehlerprotokoll
+          path: build/native-ps5-build.log
+          if-no-files-found: warn
+          retention-days: 14
