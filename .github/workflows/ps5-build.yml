@@ -27,7 +27,10 @@ jobs:
           set -euo pipefail
           trap 'echo "BGH V1.1.5 QUELLCODE-CHECK FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
           echo "GitHub branch: $GITHUB_REF_NAME"
-          test "$GITHUB_REF_NAME" = "bgh-v1.1.5"
+          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main" ]]; then
+            echo "Unerwarteter Branch: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
           test -s native_ps5/universal_launcher.cpp
           test -s native_ps5/ftp_readonly.cpp
           test -s native_ps5/root_manager.cpp
