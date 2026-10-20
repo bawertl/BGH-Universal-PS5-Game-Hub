@@ -1,0 +1,1 @@
+window.PS5UL_LIBRARY = {"schema":2,"games":[],"unavailable_paths":[],"errors":[],"scan_source":"not_scanned_on_ps5"};

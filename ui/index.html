@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#090d16" />
+  <meta name="description" content="BGH – BawertL’s Game Hub – plattformübergreifende Spielebibliothek" />
+  <title>BGH – BawertL’s Game Hub</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="library-data.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="shell" id="shell">
+    <header class="topbar">
+      <div class="brand"><img class="brand-symbol" src="/bgh_logo.png" alt="BGH" /><span class="brand-words">BGH<span class="brand-sub">BAWERTL’S GAME HUB</span></span></div>
+      <div class="top-right"><span id="mode-pill" class="mode-pill">LOKALE BIBLIOTHEK</span><span id="clock" class="clock">--:--</span><button id="settings-button" class="icon-button" aria-label="Einstellungen" title="Einstellungen">⚙</button></div>
+    </header>
+    <nav class="tabs" id="tabs" aria-label="Plattform auswählen">
+      <button type="button" data-tab="Alle Spiele" class="tab active">Alle Spiele</button>
+      <button type="button" data-tab="PS5" class="tab">PS5</button>
+      <button type="button" data-tab="PS4" class="tab">PS4</button>
+      <button type="button" data-tab="PS2" class="tab">PS2</button>
+      <button type="button" data-tab="Switch" class="tab">Switch</button>
+      <button type="button" data-tab="Xbox 360" class="tab">Xbox 360</button>
+      <button type="button" data-tab="Homebrew" class="tab">Homebrew</button>
+      <button type="button" data-tab="Favoriten" class="tab">Favoriten</button>
+      <button type="button" data-tab="Zuletzt gespielt" class="tab">Zuletzt gespielt</button>
+    </nav>
+    <main>
+      <section class="hero" id="hero" aria-label="Bibliothek">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="hero-content">
+          <div class="eyebrow"><span class="live-dot"></span> DEINE SPIELE. EINE BIBLIOTHEK.</div>
+          <h1><span id="hero-count">0</span> <span id="hero-label">Spiele an einem Ort.</span></h1>
+          <p id="hero-caption">Alle Plattformen vereint – unabhängig vom Speicherort.</p>
+          <div class="hero-stats">
+            <div class="stat"><b id="stat-available">0</b><span>Verfügbar</span></div>
+            <div class="stat"><b id="stat-platforms">0</b><span>Plattformen</span></div>
+            <div class="stat"><b id="stat-offline">0</b><span>Offline</span></div>
+          </div>
+        </div>
+        <div class="hero-mark" aria-hidden="true"><div class="hero-ring ring-1"></div><div class="hero-ring ring-2"></div><div class="hero-center">◆</div></div>
+      </section>
+      <div class="section-bar">
+        <div class="section-heading"><div class="eyebrow">SAMMLUNG</div><h2 id="section-name">Meine Bibliothek</h2><span class="result-count" id="result-count">0 Spiele</span></div>
+        <div class="actions">
+          <label class="searchbox" for="search"><span aria-hidden="true">⌕</span><input id="search" type="search" autocomplete="off" placeholder="Spiele suchen …" /><kbd>△</kbd></label>
+          <select id="sort" aria-label="Sortierung"><option value="title">Titel A–Z</option><option value="platform">Plattform</option><option value="recent">Zuletzt gespielt</option></select>
+          <button type="button" id="refresh" class="primary-action"><span aria-hidden="true">↻</span> Bibliothek aktualisieren</button>
+        </div>
+      </div>
+      <div id="notice" class="notice" hidden></div>
+      <div id="library" class="library" aria-live="polite"></div>
+      <div id="empty" class="empty" hidden><div class="empty-icon">▣</div><h2 id="empty-title">Noch keine Spiele erkannt</h2><p id="empty-body">Prüfe deine Verzeichnisse in den Einstellungen und aktualisiere die Bibliothek.</p><button id="empty-refresh" type="button" class="primary-action">Bibliothek aktualisieren</button></div>
+    </main>
+    <footer class="footer"><span><b>X</b> Öffnen <b>◯</b> Zurück <b>L1 / R1</b> Plattform <b>△</b> Suche <b>OPTIONS</b> Einstellungen</span><span id="footer-status">BIBLIOTHEK BEREIT</span></footer>
+  </div>
+  <dialog id="game-dialog" class="dialog"><div class="dialog-box"><button class="close" data-close="game-dialog" title="Schließen">✕</button><div id="detail-content"></div></div></dialog>
+  <dialog id="settings-dialog" class="dialog"><div class="dialog-box settings-pane"><button class="close" data-close="settings-dialog" title="Schließen">✕</button><div class="eyebrow">LAUNCHER · EINSTELLUNGEN</div><h2>Meine Bibliothek</h2><p class="settings-intro">Die Spieleordner werden ausschließlich lesend untersucht. Einstellungen und Favoriten bleiben lokal.</p><div id="settings-body"></div><div class="settings-actions"><button id="import" class="subtle-action">Bibliothek importieren</button><button id="export" class="subtle-action">Bibliothek exportieren</button><button id="config-download" class="subtle-action">Pfad-Konfiguration speichern</button></div><input hidden type="file" id="import-file" accept=".json,application/json" /><input hidden type="file" id="cover-file" accept="image/png,image/jpeg,image/webp" /><p class="fineprint">V0.7 · Entwicklungsoberfläche. Direkte PS5-Emulatorstarts sind nicht freigeschaltet, bis sie auf der Konsole verifiziert wurden.</p></div></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
