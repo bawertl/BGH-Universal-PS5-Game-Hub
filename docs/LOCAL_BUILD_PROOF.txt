@@ -1,0 +1,17 @@
+PS5-Toolchain-Check (HOST, keine PS5-Verbindung)
+OK      git           /usr/bin/git
+OK      make          /usr/bin/make
+OK      clang++       /usr/local/swift/usr/bin/clang++
+OK      llvm-ar       /usr/local/swift/usr/bin/llvm-ar
+OK      llvm-ranlib   /usr/local/swift/usr/bin/llvm-ranlib
+OK      ld.lld        /usr/local/swift/usr/bin/ld.lld
+OK      zip           /usr/bin/zip
+OK      unzip         /usr/bin/unzip
+OK      python3       /opt/pyvenv/bin/python3
+FEHLT   vollständiges PS5 Homebrew UI Kit (Quellcode/Build-SDK)
+BLOCKER DNS github.com: in dieser Umgebung nicht auflösbar
+
+--- Reproduced build attempt ---
+Quelle herunterladen: https://github.com/blackbearreloaded/ps5-homebrew-ui
+Cloning into '/mnt/data/work/PS5_Universal_Game_Launcher_V0_5/build/ps5/ps5-homebrew-ui'...
+fatal: unable to access 'https://github.com/blackbearreloaded/ps5-homebrew-ui.git/': Could not resolve host: github.com
