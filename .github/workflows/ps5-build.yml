@@ -2,7 +2,7 @@ name: BGH - BawertLs Game Hub V1.1.5 - Container Cover Fix
 
 on:
   push:
-    branches: [bgh-v1.1.5]
+    branches: [bgh-v1.1.5, main]
   workflow_dispatch:
 
 permissions:
