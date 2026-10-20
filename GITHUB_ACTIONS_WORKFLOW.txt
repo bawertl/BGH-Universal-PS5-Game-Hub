@@ -1,0 +1,7 @@
+BGH V1.1.4 – USB Scan Repair
+Ausgangsbranch: bgh-v1.1.3
+Neuer Branch: bgh-v1.1.4-usb-rebuild
+GitHub-Artefakt: BGH-V1-1-4-USB-R1-PPSA99079-TEST
+PS5-Build-ZIP: BGH_BawertLs_Game_Hub_V1_1_4_PPSA99079_PS5_TEST.zip
+PS5-Ordner: PPSA99079
+GitHub-Workflow-Basis: V1.1.3 (ohne die fehlgeschlagenen V1.1.4-SDK-Hotfixe)

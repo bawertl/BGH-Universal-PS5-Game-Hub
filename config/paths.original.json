@@ -1,0 +1,20 @@
+{
+  "paths": {
+    "PS5": [
+      "/data/etaHEN/games"
+    ],
+    "PS4": [
+      "/data/etaHEN/games"
+    ],
+    "PS2": [
+      "/data/PCSX2/games",
+      "/mnt/usb1/PS5SX2/games"
+    ],
+    "Switch": [
+      "/data/prosperoeden/roms"
+    ],
+    "Xbox 360": [
+      "/data/xbox360"
+    ]
+  }
+}

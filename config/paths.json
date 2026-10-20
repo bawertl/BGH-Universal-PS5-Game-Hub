@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "max_depth": 6,
+  "follow_symlinks": false,
+  "paths": {
+    "PS5": [
+      "/data/homebrew",
+      "/mnt/usb0"
+    ],
+    "PS4": [
+      "/data/homebrew",
+      "/mnt/usb0"
+    ],
+    "PS5/PS4": [
+      "/data/etaHEN/games"
+    ],
+    "PS2": [
+      "/data/PCSX2/games",
+      "/mnt/usb1/PS5SX2/games",
+      "/mnt/usb0/PS5SX2/games",
+      "/mnt/ext0/PS5SX2/games"
+    ],
+    "Switch": [
+      "/data/prosperoeden/roms",
+      "/mnt/usb0/eden/roms",
+      "/mnt/usb1/eden/roms"
+    ],
+    "Xbox 360": [
+      "/data/xbox360",
+      "/data/homebrew/PPSA50011/assets/roms",
+      "/mnt/usb0/xbox360",
+      "/mnt/usb1/xbox360",
+      "/mnt/ext0/xbox360",
+      "/mnt/ext1/xbox360"
+    ]
+  },
+  "custom_paths": [],
+  "cover_paths": [],
+  "launch": {
+    "enabled": false,
+    "forwarder_service": "127.0.0.1:10199",
+    "prosperoeden_title_id": "PPSA99008",
+    "ps5sx2_title_id": "PPSA99203",
+    "ps5x360_title_id": "PPSA50011"
+  }
+}
