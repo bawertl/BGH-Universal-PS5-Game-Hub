@@ -41,7 +41,7 @@ def test_one_heavy_cover_operation_per_update_and_priority():
     assert 'kQuietSeconds = 0.035f' in DEBOUNCE
 
 def test_release_and_previous_startpaths_unchanged():
-    assert 'branches: [bgh-v1.1.5]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.5, main]' in WORKFLOW
     assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WORKFLOW
     assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in CPP
     assert 'release_label="BGH V1.1.5"' in CPP

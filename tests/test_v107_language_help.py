@@ -49,7 +49,7 @@ def test_translation_coverage_version_and_hints():
     assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in CPP
     assert "ui_localization.hpp" in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert 'release_label="BGH V1.1.5"' in CPP
-    assert 'branches: [bgh-v1.1.5]' in WF
+    assert 'branches: [bgh-v1.1.5, main]' in WF
     assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WF
     assert 'V1_1_5_PPSA99079_PS5_TEST.zip' in WF
 

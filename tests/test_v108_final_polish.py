@@ -76,6 +76,6 @@ def test_known_emulator_apps_use_menu_without_rom_or_history():
 def test_release_consistency():
     assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in UI
     assert 'release_label="BGH V1.1.5"' in UI
-    assert 'branches: [bgh-v1.1.5]' in WF
+    assert 'branches: [bgh-v1.1.5, main]' in WF
     assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WF
     assert 'V1_1_5_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

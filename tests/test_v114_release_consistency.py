@@ -8,8 +8,8 @@ def test_release_identity_and_caches():
     wf = (ROOT / '.github/workflows/ps5-build.yml').read_text()
     script = (ROOT / 'tooling/build_native_ps5.sh').read_text()
     ui = (ROOT / 'native_ps5/universal_launcher.cpp').read_text()
-    assert 'branches: [bgh-v1.1.5]' in wf
-    assert 'test "$GITHUB_REF_NAME" = "bgh-v1.1.5"' in wf
+    assert 'branches: [bgh-v1.1.5, main]' in wf
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in wf
     assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in wf
     assert 'BGH_BawertLs_Game_Hub_V1_1_5_PPSA99079_PS5_TEST.zip' in wf
     assert 'BGH_BawertLs_Game_Hub_V1_1_5_${TITLE_ID}_PS5_TEST.zip' in script

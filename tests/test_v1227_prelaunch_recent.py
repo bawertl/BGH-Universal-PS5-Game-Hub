@@ -84,8 +84,8 @@ int main(int argc,char**argv){
 
 
 def test_consistent_release_markers():
-    assert 'branches: [bgh-v1.1.5]' in WORKFLOW
-    assert 'test "$GITHUB_REF_NAME" = "bgh-v1.1.5"' in WORKFLOW
+    assert 'branches: [bgh-v1.1.5, main]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
     assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in SRC
     assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WORKFLOW
     assert 'BGH_BawertLs_Game_Hub_V1_1_5_PPSA99079_PS5_TEST.zip' in WORKFLOW
