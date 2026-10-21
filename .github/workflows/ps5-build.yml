@@ -1,33 +1,33 @@
-name: BGH - BawertLs Game Hub V1.1.7 - Spielzeit-Log Experimental
+name: BGH - BawertLs Game Hub V1.1.8 - Spielzeit-Log Experimental
 
 on:
   push:
-    branches: [bgh-v1.1.7, main]
+    branches: [bgh-v1.1.8, main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v117-container-${{ github.ref }}
+  group: bgh-v118-playtime-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: BGH V1.1.7 - Build and verify
+    name: BGH V1.1.8 - Build and verify
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
-      - name: BGH V1.1.7-Quellcode aus aktuellem Branch laden
+      - name: BGH V1.1.8-Quellcode aus aktuellem Branch laden
         uses: actions/checkout@v4
 
-      - name: Sicherstellen, dass wirklich V1.1.7 gebaut wird
+      - name: Sicherstellen, dass wirklich V1.1.8 gebaut wird
         shell: bash
         run: |
           set -euo pipefail
-          trap 'echo "BGH V1.1.7 QUELLCODE-CHECK FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
+          trap 'echo "BGH V1.1.8 QUELLCODE-CHECK FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
           echo "GitHub branch: $GITHUB_REF_NAME"
-          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main" ]]; then
+          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.8" && "$GITHUB_REF_NAME" != "main" ]]; then
             echo "Unerwarteter Branch: $GITHUB_REF_NAME" >&2
             exit 1
           fi
@@ -122,9 +122,9 @@ jobs:
           grep -Fq 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f' native_ps5/universal_launcher.cpp
           grep -Fq "draw_game_list(list)" native_ps5/universal_launcher.cpp
           grep -Fq "draw_platform_bar(list)" native_ps5/universal_launcher.cpp
-          grep -Fq "BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT" native_ps5/universal_launcher.cpp
+          grep -Fq "BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY" native_ps5/universal_launcher.cpp
           grep -Fq 'clean_title_for_display(game.title)' native_ps5/universal_launcher.cpp
-          grep -Fq 'release_label="BGH V1.1.7"' native_ps5/universal_launcher.cpp
+          grep -Fq 'release_label="BGH V1.1.8"' native_ps5/universal_launcher.cpp
           grep -Fq 'battery.fill(-1);' native_ps5/controller_status.hpp
           grep -Fq 'charging.fill(-1);' native_ps5/controller_status.hpp
           test -s tests/test_v103_ui_controller.py
@@ -170,7 +170,7 @@ jobs:
           grep -Fq 'ui::Button::r2' native_ps5/universal_launcher.cpp
           grep -Fq 'rom_folders' native_ps5/platform_registry.hpp
           grep -Fq 'emulator_expanded_' native_ps5/universal_launcher.cpp
-          echo 'BGH V1.1.7 source verification OK: no V0.6 archive used.'
+          echo 'BGH V1.1.8 source verification OK: no V0.6 archive used.'
 
       - name: PS5-Buildwerkzeuge installieren
         shell: bash
@@ -191,7 +191,7 @@ jobs:
           test -x native_ps5/cover-test-cli
           test -x native_ps5/emulator-cover-test-cli
 
-      - name: V1.1.7-Tests und GUI-Syntaxpruefung
+      - name: V1.1.8-Tests und GUI-Syntaxpruefung
         shell: bash
         run: |
           set -euo pipefail
@@ -276,7 +276,7 @@ jobs:
           path: build/ps5-opengl-sdk-1.0.2
           key: bgh-opengl-1.0.2-a51956162693-llvm21-noble-${{ hashFiles('tooling/build_pinned_opengl_sdk.sh') }}
 
-      - name: Echte native PS5-Anwendung aus V1.1.7 bauen
+      - name: Echte native PS5-Anwendung aus V1.1.8 bauen
         shell: bash
         run: |
           set -euo pipefail
@@ -290,11 +290,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 tooling/verify_ps5_package.py \
-            build/ps5/BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip PPSA99079
+            build/ps5/BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip PPSA99079
           python3 - <<'PY'
           import hashlib, json, pathlib, zipfile
           source = pathlib.Path('sce_sys/icon0.png').read_bytes()
-          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip')
+          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip')
           with zipfile.ZipFile(package) as z:
               prefix = 'PPSA99079/'
               meta = json.loads(z.read(prefix + 'sce_sys/param.json'))
@@ -325,20 +325,20 @@ jobs:
               if b'PS4|/user/app' not in z.read(prefix + 'assets/paths.conf'):
                   raise SystemExit('FEHLER: Der PS4-PKG-Installationspfad fehlt')
               binary = z.read(prefix + 'eboot.bin')
-              if b'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' not in binary:
+              if b'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' not in binary:
                   raise SystemExit('FEHLER: Die BGH-Design-Buildkennung fehlt in eboot.bin')
               if b'@BGH_GIT_COMMIT@' in binary:
                   raise SystemExit('FEHLER: Nicht ersetzter Build-Platzhalter in eboot.bin')
           print('Bestaetigt: BGH-App-Name, freigegebenes Icon und Logo im PS5-Paket.')
           PY
-          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip
+          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip
 
       - name: Fertige PS5-ZIP direkt zum Download anbieten
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-7-PLAYTIME-PPSA99079-TEST
-          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip
+          name: BGH-V1-1-8-PLAYTIME-PPSA99079-TEST
+          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -347,7 +347,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-7-PLAYTIME-Build-Fehler
+          name: BGH-V1-1-8-PLAYTIME-Build-Fehler
           path: build/native-ps5-build.log
           if-no-files-found: warn
           retention-days: 14
