@@ -16,6 +16,14 @@ int main(int argc,char** argv){
     const auto e=analyze("[12:00:00] [GAME] started: PPSA06084 pid=204\n[12:01:00] [SLEEP] entered by x\n[11:00:00] [SLEEP] left by x\n[11:00:00] [GAME] started: PPSA06084 pid=204\n[11:01:27] [GAME] finalizing stopped application: PPSA06084 pid=204\n");
     assert(e.by_title.at("PPSA06084").seconds==147 && e.duplicate_starts==1);
     assert(!valid_id("PSAA06084") && !valid_id("PPSA0608"));
+    assert(is_native_game_id("PS5","PPSA06084"));
+    assert(is_native_game_id("PS4","CUSA11898"));
+    assert(!is_native_game_id("PS2","PPSA99203"));
+    assert(!is_native_game_id("Switch","PPSA99008"));
+    assert(!is_native_game_id("Xbox 360","PPSA50011"));
+    assert(!is_native_game_id("PS5","PPSA99008"));
+    assert(!is_native_game_id("PS5","PPSA99079"));
+
     if(argc==2){
         std::ifstream in(argv[1]);assert(in.good());
         const std::string text((std::istreambuf_iterator<char>(in)),std::istreambuf_iterator<char>());

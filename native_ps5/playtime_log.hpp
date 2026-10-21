@@ -1,4 +1,4 @@
-// BGH V1.1.7: experimental read-only ShadowMountPlus log observation.
+// BGH V1.1.8: experimental read-only ShadowMountPlus log observation.
 // Not a historical/active playtime counter; no writes and no game launch changes.
 // SPDX-License-Identifier: MIT
 #pragma once
@@ -49,6 +49,16 @@ inline bool valid_id(const std::string& id){
     if(id.size()!=9 || (id.compare(0,4,"PPSA")!=0 && id.compare(0,4,"CUSA")!=0))return false;
     for(std::size_t i=4;i<9;++i)if(id[i]<'0'||id[i]>'9')return false;
     return true;
+}
+
+// A PPSA/CUSA application ID can identify an individual *native* title.
+// Emulator applications only identify their processes, not a ROM.
+inline bool is_native_game_id(const std::string& platform,const std::string& id){
+    if(!valid_id(id))return false;
+    if(platform=="PS5")return id.compare(0,4,"PPSA")==0 &&
+        id!="PPSA99203" && id!="PPSA99008" && id!="PPSA50011" && id!="PPSA99079";
+    if(platform=="PS4")return id.compare(0,4,"CUSA")==0;
+    return false;
 }
 
 inline bool event_pair(const std::string& line,const char* marker,std::string& title,std::string& pid){

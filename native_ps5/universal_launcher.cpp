@@ -67,7 +67,7 @@ constexpr std::array<const char *,3> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -421,6 +421,9 @@ public:
             ulg::clean_catalogue(catalogue_,roots_);
             rebuild();}
         }
+        // One bounded, read-only refresh per BGH start. No per-frame FTP reads.
+        // The hero line can show the most recent completed native-game session.
+        refresh_playtime_log();
     }
     const app::ConceptInfo &info() const override {
         static const app::ConceptInfo kInfo{
@@ -639,7 +642,7 @@ public:
         if(path_editor_open_)draw_path_editor(frame);
         if(search_open_)draw_search(frame);
         // Lower-right, inside the TV safe area. Kept in sync with the build branch.
-        const std::string release_label="BGH V1.1.7";
+        const std::string release_label="BGH V1.1.8";
         const std::string release_text=release_label+" Container-Launch-Title-Fix";
         const float release_width=serif_text_width(release_text,17.0f);
         translated_text(list,fonts.regular,release_text,1860.0f-release_width,1045,17,
@@ -1707,6 +1710,14 @@ private:
         // Full platform name as free-standing text, never clipped by a capsule width.
         const std::string platform_text=display_platform_name(g.platform);
         serif_text(list,platform_text,755,698,20,Color::rgb(0xD8E0E9));
+        // Only real PS5/PS4 Title-IDs identify an individual game in the
+        // ShadowMount+ log. An emulator PID is NOT a ROM's playtime.
+        const std::string native_time=native_log_time_label(g);
+        if(!native_time.empty()){
+            const float time_x=755.0f+serif_text_width(platform_text,20.0f)+42.0f;
+            serif_text(list,native_time,time_x,698,24,Color::rgb(0xBDF2DF),
+                       std::max(0.0f,1710.0f-time_x));
+        }
         // Real PlayStation Cross glyph and text form one measured, centred row.
         // Use the UI-kit measurement function, not a guessed fixed X offset.
         const Rect launch_button{755,718,182,49};
@@ -1946,16 +1957,16 @@ private:
         }
         translated_text(list,fonts.display,shorten(g.title,35),710,244,43,kInk);
         translated_text(list,fonts.semibold,"Plattform: "+g.platform,710,309,27,kAccent);
+        const std::string native_detail_time=native_log_time_label(g);
+        if(!native_detail_time.empty())
+            translated_text(list,fonts.semibold,native_detail_time,1060,309,28,kAccent);
+        else if(g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360")
+            translated_text(list,fonts.regular,"ROM-Spielzeit noch nicht messbar",1060,309,21,kMuted);
         translated_text(list,fonts.regular,"Format: "+g.format,710,353,23,kMuted);
         translated_text(list,fonts.regular,"Spielpfad:",710,401,23,kMuted);
         translated_text(list,fonts.regular,shorten(g.path,78),710,436,20,kInk);
         if(g.platform=="PS4")
             translated_text(list,fonts.semibold,"Title-ID: "+(g.title_id.empty()?std::string("FEHLT"):g.title_id),710,466,19,kAccent);
-        // Log-only and explicitly incomplete; no claim of total playtime.
-        if(g.platform=="PS5" || g.platform=="PS4" || g.platform=="PS2" ||
-           g.platform=="Switch" || g.platform=="Xbox 360")
-            translated_text(list,fonts.regular,shorten(playtime_detail_label(g),73),
-                710,g.platform=="PS4"?495:472,18,kAccent);
         const auto plan=ulg::make_launch_plan(g.platform,g.path);
         const bool ps5_container=(g.platform=="PS5" && (g.format=="ffpfsc" || g.format=="exfat"));
         const bool ps5_direct=(g.platform=="PS5" && ulg::make_registered_ps5_launch_plan(g.title_id).supported);
@@ -2014,7 +2025,7 @@ private:
         if(g.platform=="Switch" || g.platform=="Xbox 360")
             translated_text(list,fonts.semibold,"Quadrat: Emulator oeffnen (Test)",720,864,22,kInk);
     }
-    // V1.1.7: on-demand read-only experiment; only invoked when the user
+    // V1.1.8: bounded read-only experiment; invoked on launch and when user
     // opens details. Missing/incomplete logs remain "unknown", never 0 hours.
     void refresh_playtime_log(){
         std::string bytes;
@@ -2029,21 +2040,15 @@ private:
         if(ok)playtime_log_=ulg::playtime::analyze(bytes);
         else playtime_log_={};
     }
-    std::string playtime_detail_label(const ulg::Game &g) const {
-        std::string title=g.title_id;
-        bool emulator=false;
-        if(g.platform=="PS2"){title="PPSA99203";emulator=true;}
-        else if(g.platform=="Switch"){title="PPSA99008";emulator=true;}
-        else if(g.platform=="Xbox 360"){title="PPSA50011";emulator=true;}
-        if(!playtime_log_.readable)return "Log-Spielzeit: Nicht lesbar (ShadowMount+)";
-        if(!ulg::playtime::valid_id(title))return "Log-Spielzeit: Keine gueltige Titel-ID";
-        const auto it=playtime_log_.by_title.find(title);
-        if(it==playtime_log_.by_title.end())return "Log-Spielzeit: Keine Sitzung im aktuellen Log";
-        const auto &v=it->second;
-        if(v.sessions==0)return "Log-Spielzeit: Keine abgeschlossene sichere Sitzung";
-        return std::string(emulator?"Emulator-Laufzeit (Log): ":"Log-Laufzeit: ")+
-            ulg::playtime::duration_label(v.seconds)+" ("+
-            std::to_string(v.sessions)+" Sitz.)";
+    std::string native_log_time_label(const ulg::Game &g) const {
+        // Fail closed for emulator ROMs: ShadowMount+ only exposes the
+        // emulator's PPSA process, not the ROM running inside it. Never use
+        // PPSA99203 / PPSA99008 / PPSA50011 as a game's playtime.
+        if(!ulg::playtime::is_native_game_id(g.platform,g.title_id))return {};
+        if(!playtime_log_.readable)return {};
+        const auto it=playtime_log_.by_title.find(g.title_id);
+        if(it==playtime_log_.by_title.end() || it->second.sessions==0)return {};
+        return "Log-Spielzeit: "+ulg::playtime::duration_label(it->second.seconds);
     }
     void set_message(std::string message){settings_message_=std::move(message);}
     void save_roots_and_rescan(){
@@ -2593,7 +2598,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.7 Playtime-Log-Experimental",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.8 Spielzeit-Anzeige",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
