@@ -43,6 +43,12 @@ Catalogue scan(const std::vector<Root> &roots, int max_depth = 5, std::size_t ma
 void apply_cover_overrides(Catalogue &catalogue, const std::string &config_path);
 // Exact title ID, stable game ID, or absolute path => confirmed display title.
 void apply_title_overrides(Catalogue &catalogue, const std::string &config_path);
+// Display-only normalization for PS5 image filenames; never changes IDs or paths.
+std::string ps5_container_fallback_title(const std::string &title,const std::string &title_id);
+// Bounded PS5 appmeta JSON: prefer locally localized titleName, then fallback.
+std::string ps5_appmeta_title_from_json(const std::string &bytes);
+// Local read-only appmeta lookup; may fail on restricted native POSIX access.
+std::string ps5_appmeta_title_local(const std::string &title_id);
 // Conservative *display* sanitizer; never alters IDs, paths or launch plans.
 std::string clean_title_for_display(const std::string &title);
 Catalogue merge_unavailable(Catalogue fresh, const Catalogue &previous);

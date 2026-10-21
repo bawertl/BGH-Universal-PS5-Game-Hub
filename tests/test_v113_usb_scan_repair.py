@@ -178,7 +178,10 @@ int main(int argc,char**argv){
 }''', "library_core.cpp", "ftp_scan.cpp", "ftp_readonly.cpp")
     commands = run_ftp(unmounted, binary, [unmounted])
     assert any(c == "MLSD" for c in commands)
-    assert not any(c.startswith(("RETR ", "STOR ", "DELE ")) for c in commands)
+    # Title metadata may be fetched, but the scanned container bytes are never read.
+    assert not any(c.startswith(("STOR ", "DELE ", "MKD ", "RMD ")) for c in commands)
+    assert not any((c.endswith((".ffpfsc", ".exfat"))) for c in commands if c.startswith("RETR "))
+    assert all(c.startswith("RETR /user/appmeta/") for c in commands if c.startswith("RETR "))
 
 
 def test_17_existing_usb_icons_do_not_starve_later_titles(tmp_path):
@@ -214,6 +217,6 @@ def test_no_changes_to_registered_launch_and_fresh_private_catalogue():
     ui = (NATIVE / "universal_launcher.cpp").read_text()
     assert 'ulg::send_launch(ps5_plan)' in ui
     assert 'stage_ps5sx2_disc_launch(g.path)' in ui
-    assert 'library_v115_container_cover.bin' in ui
-    assert 'PS5-Container erkannt; erst separat mounten/registrieren' in ui
+    assert 'library_v116_container_start_title.bin' in ui
+    assert 'Container-Startauftrag angenommen; Spielstart nicht verifiziert' in ui
     assert 'missing_usb_ps5_cover' in ui

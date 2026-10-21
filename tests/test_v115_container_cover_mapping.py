@@ -148,7 +148,7 @@ def test_release_does_not_change_launchers_or_image_decoder():
     ftp = (NATIVE / "ftp_scan.cpp").read_text()
     assert 'stage_ps5sx2_disc_launch(g.path)' in code
     assert 'ulg::send_launch(ps5_plan)' in code
-    assert 'library_v115_container_cover.bin' in code
+    assert 'library_v116_container_start_title.bin' in code
     assert 'container_cover_budget=128' in ftp
     assert '"/user/appmeta/"+game.title_id+"/icon0.png"' in ftp
     assert 'const bool container=(game.platform=="PS5"' in ftp

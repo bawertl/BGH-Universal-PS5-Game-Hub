@@ -335,7 +335,13 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
             // pass these file paths to registered-title launch/mount methods.
             if(!c.folder && root.platform!="PS4") {
                 const std::string fmt=format_for(root.platform,c.path);
-                if(!fmt.empty())append_game(out,seen,"PS5",c.path,title_from(c.name),fmt,max_games);
+                if(!fmt.empty()){
+                    const auto id=guess_id(c.path);
+                    const auto appmeta_title=ps5_appmeta_title_local(id);
+                    const auto title=appmeta_title.empty()
+                        ?ps5_container_fallback_title(title_from(c.name),id):appmeta_title;
+                    append_game(out,seen,"PS5",c.path,title,fmt,max_games,id);
+                }
                 continue;
             }
             if(c.folder && (native_candidate(c.path) || ps4_pkg_candidate(c.path,root.platform))) {
@@ -348,7 +354,11 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
                 if((root.platform=="PS4" && platform=="PS5") ||
                    (root.platform=="PS5" && platform=="PS4"))continue;
                 std::string title=meta.title.empty()?title_from(c.name):meta.title;
-                if(meta.title.empty() && !guess_id(c.path).empty())title="Unbekanntes Spiel ("+guess_id(c.path)+")";
+                if(meta.title.empty() && !guess_id(c.path).empty()){
+                    const auto id=meta.title_id.empty()?guess_id(c.path):meta.title_id;
+                    const auto appmeta_title=platform=="PS5"?ps5_appmeta_title_local(id):std::string{};
+                    title=appmeta_title.empty()?"Unbekanntes Spiel ("+guess_id(c.path)+")":appmeta_title;
+                }
                 if(platform=="Homebrew"){
                     const std::string id=meta.title_id.empty()?guess_id(c.path):meta.title_id;
                     if(id=="PPSA99203")title="PS5SX2";
@@ -380,6 +390,53 @@ std::string escaped(const std::string &v){
     }return out+'"';
 }
 } // namespace
+
+// Resolve titles from read-only PS5 app metadata, keeping the file-based
+// game ID and PPSA title ID unchanged for covers and start dispatch.
+std::string ps5_appmeta_title_from_json(const std::string &bytes){
+    if(bytes.empty() || bytes.size()>262144)return {};
+    const auto localized=bytes.find("\"localizedParameters\"");
+    if(localized!=std::string::npos){
+        for(const char *locale:{"de-DE","en-US","en-GB"}){
+            const auto locale_pos=bytes.find("\""+std::string(locale)+"\"",localized);
+            if(locale_pos==std::string::npos)continue;
+            const auto start=bytes.find('{',locale_pos);
+            if(start==std::string::npos)continue;
+            const auto end=bytes.find('}',start);
+            if(end==std::string::npos || end-start>4096)continue;
+            const auto title=json_field(bytes.substr(start,end-start+1),"titleName");
+            if(!title.empty())return title;
+        }
+    }
+    return json_field(bytes,"titleName");
+}
+std::string ps5_appmeta_title_local(const std::string &id){
+    if(!valid_native_id(id,"PPSA"))return {};
+    return ps5_appmeta_title_from_json(small_file("/user/appmeta/"+id+"/param.json"));
+}
+std::string ps5_container_fallback_title(const std::string &title,const std::string &id){
+    if(!valid_native_id(id,"PPSA"))return title;
+    std::string cleaned=title;
+    const std::string lowered=lowercase(cleaned);
+    const std::string needle=lowercase(id);
+    const auto pos=lowered.find(needle);
+    if(pos==std::string::npos)return title;
+    // Only strip complete PPSA tokens; never damage an unrelated title word.
+    const auto token_char=[](char c){return std::isalnum(static_cast<unsigned char>(c))!=0;};
+    if((pos>0 && token_char(cleaned[pos-1])) ||
+       (pos+id.size()<cleaned.size() && token_char(cleaned[pos+id.size()])))return title;
+    cleaned.erase(pos,id.size());
+    auto trim=[](std::string &s){
+        while(!s.empty() && (std::isspace(static_cast<unsigned char>(s.front())) ||
+              s.front()=='_' || s.front()=='-' || s.front()==':'))s.erase(s.begin());
+        while(!s.empty() && (std::isspace(static_cast<unsigned char>(s.back())) ||
+              s.back()=='_' || s.back()=='-' || s.back()==':'))s.pop_back();
+    };
+    trim(cleaned);
+    cleaned=collapse_title_spaces(cleaned);
+    // An all-ID filename has no confirmed title; preserve it for diagnostics.
+    return cleaned.empty()?title:cleaned;
+}
 
 NativeMetadata native_metadata_from_bytes(const std::string &json,const std::string &sfo){
     NativeMetadata result{json_field(json,"titleName"),json_field(json,"titleId")};

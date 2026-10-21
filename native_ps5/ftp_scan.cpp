@@ -238,6 +238,12 @@ void hydrate_game(FtpReadonly &ftp,Game &game,const std::string &cover_dir,
         if(!meta.title_id.empty())game.title_id=meta.title_id;
         else if(game.title_id.empty())game.title_id=title_id_from_name(game.path);
         if(!meta.title.empty())game.title=meta.title;
+        else if(game.platform=="PS5" && valid_native_id(game.title_id,"PPSA")){
+            std::string appmeta;
+            if(ftp.retrieve("/user/appmeta/"+game.title_id+"/param.json",appmeta,262144))
+                game.title=ps5_appmeta_title_from_json(appmeta);
+            if(game.title.empty())game.title="Unbekanntes Spiel ("+game.title_id+")";
+        }
         else if(!game.title_id.empty())game.title="Unbekanntes Spiel ("+game.title_id+")";
         if(game.platform=="Homebrew"){
             if(game.title_id=="PPSA99203")game.title="PS5SX2";
@@ -296,8 +302,12 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
             if(!entry.folder){
                 if(root.platform!="PS4"){
                     const std::string format=format_for_file(root.platform,entry.name);
-                    if(!format.empty())append_game(catalogue,seen,"PS5",child,
-                        title_from_name(entry.name),format,max_games);
+                    if(!format.empty()){
+                        const auto id=title_id_from_name(entry.name);
+                        append_game(catalogue,seen,"PS5",child,
+                            ps5_container_fallback_title(title_from_name(entry.name),id),
+                            format,max_games,id);
+                    }
                 }
                 continue;
             }
@@ -343,14 +353,16 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
 void supplement_from_local_ftp(Catalogue &catalogue,const std::vector<Root> &roots,
                                int max_depth,std::size_t max_games,int port,
                                const std::string &cover_dir){
-    bool need=false,ps4_root=false,native_cover_missing=false;
+    bool need=false,ps4_root=false,native_cover_missing=false,ps5_container_found=false;
     for(const auto &r:catalogue.roots)if(r.status!="ok"&&r.status!="deaktiviert"){need=true;break;}
     for(const auto &r:roots)if(r.enabled && r.platform=="PS4" && r.path=="/user/app")ps4_root=true;
     for(const auto &g:catalogue.games)
         if((g.platform=="PS4" && valid_native_id(g.title_id,"CUSA")) ||
            (g.platform=="PS5" && valid_native_id(g.title_id,"PPSA")))
             if(recovery_needed(g))native_cover_missing=true;
-    if(!need && !ps4_root && !native_cover_missing)return;
+    for(const auto &g:catalogue.games)if(g.platform=="PS5" &&
+       (g.format=="ffpfsc" || g.format=="exfat"))ps5_container_found=true;
+    if(!need && !ps4_root && !native_cover_missing && !ps5_container_found)return;
     FtpReadonly ftp(port);
     if(!ftp.connect_local())return;
     std::set<std::string> seen;for(const auto &g:catalogue.games)seen.insert(g.id);
@@ -441,6 +453,23 @@ void supplement_from_local_ftp(Catalogue &catalogue,const std::vector<Root> &roo
             ++catalogue.failed_operations;
             if(catalogue.errors.size()<256)catalogue.errors.push_back(
                 "FTP COVER-SUCHE AUSSTEHEND (BUDGET) "+game.path);
+        }
+    }
+    // Read-only appmeta pass is independent of the cover budget. This works
+    // when native POSIX denies appmeta but localhost FTP can read it, and
+    // also when the container already has its PNG cover in BGH's cache.
+    std::size_t container_title_budget=64;
+    for(auto &game:catalogue.games){
+        if(game.platform!="PS5" ||
+           (game.format!="ffpfsc" && game.format!="exfat") ||
+           !valid_native_id(game.title_id,"PPSA"))continue;
+        game.title=ps5_container_fallback_title(game.title,game.title_id);
+        if(container_title_budget==0)continue;
+        --container_title_budget;
+        std::string json;
+        if(ftp.retrieve("/user/appmeta/"+game.title_id+"/param.json",json,262144)){
+            const auto title=ps5_appmeta_title_from_json(json);
+            if(!title.empty())game.title=title;
         }
     }
     std::sort(catalogue.games.begin(),catalogue.games.end(),[](const Game &a,const Game &b){

@@ -43,6 +43,7 @@ Catalogue scan(const std::vector<Root> &roots, int max_depth = 5, std::size_t ma
 void apply_cover_overrides(Catalogue &catalogue, const std::string &config_path);
 // Exact title ID, stable game ID, or absolute path => confirmed display title.
 void apply_title_overrides(Catalogue &catalogue, const std::string &config_path);
+std::string ps5_container_fallback_title(const std::string &title,const std::string &title_id);
 std::string clean_title_for_display(const std::string &title);
 Catalogue merge_unavailable(Catalogue fresh, const Catalogue &previous);
 // Library-only policy: hide non-emulator apps, drop disabled-root entries and
