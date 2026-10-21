@@ -19,7 +19,8 @@ def test_log_only_on_details_and_no_start_route_changes():
     assert 'refresh_playtime_log();detail_=true' in text
     assert 'ulg::playtime::read_local_log("/data/shadowmount/debug.log",bytes)' in text
     assert 'ftp.retrieve(' in text
-    assert 'Log-Spielzeit:' in text
+    assert 'Spielzeit:' in text
+    assert 'Log-Spielzeit:' not in text
     assert 'Emulator-Laufzeit (Log):' not in text
     assert 'ROM-Spielzeit noch nicht messbar' in text
     assert 'native_log_time_label(g)' in text

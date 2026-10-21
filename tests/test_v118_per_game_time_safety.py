@@ -30,7 +30,8 @@ def test_playtime_label_next_to_platform_no_detail_path_reflow():
     detail = UI[UI.index('void draw_detail('):UI.index('void refresh_playtime_log(')]
     assert 'translated_text(list,fonts.semibold,native_detail_time,1060,309,28' in detail
     assert 'shorten(playtime_detail_label(g),73)' not in detail
-    assert 'Log-Spielzeit:' in UI
+    assert 'Spielzeit:' in UI
+    assert 'Log-Spielzeit:' not in UI
 
 
 def test_shadowmount_log_is_bounded_and_not_scanned_per_frame():

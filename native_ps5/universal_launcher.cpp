@@ -2048,7 +2048,7 @@ private:
         if(!playtime_log_.readable)return {};
         const auto it=playtime_log_.by_title.find(g.title_id);
         if(it==playtime_log_.by_title.end() || it->second.sessions==0)return {};
-        return "Log-Spielzeit: "+ulg::playtime::duration_label(it->second.seconds);
+        return "Spielzeit: "+ulg::playtime::duration_label(it->second.seconds);
     }
     void set_message(std::string message){settings_message_=std::move(message);}
     void save_roots_and_rescan(){
