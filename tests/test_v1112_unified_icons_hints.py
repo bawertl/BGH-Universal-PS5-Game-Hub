@@ -40,6 +40,6 @@ def test_folder_browser_and_editor_use_glyphs():
 
 def test_version_and_branch():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'branches: [bgh-v1.1.7, main]' in wf
-    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in wf
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in SRC
+    assert 'branches: [bgh-v1.1.8, main]' in wf
+    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in wf
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in SRC

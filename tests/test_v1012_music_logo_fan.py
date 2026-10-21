@@ -23,12 +23,12 @@ def test_logo_real_files_and_gui_branding():
 
 def test_center_and_release_updated_without_touching_scroll_debounce():
     assert 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f' in CPP
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in CPP
-    assert 'release_label="BGH V1.1.7"' in CPP
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
+    assert 'release_label="BGH V1.1.8"' in CPP
     assert 'kQuietSeconds = 0.035f' in (ROOT/'native_ps5/cover_load_debounce.hpp').read_text()
     assert 'if(order_.size()>=256)' in CPP
-    assert 'branches: [bgh-v1.1.7, main]' in WF
-    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WF
+    assert 'branches: [bgh-v1.1.8, main]' in WF
+    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WF
 
 
 def test_audio_ogg_is_decodable_48k_stereo():

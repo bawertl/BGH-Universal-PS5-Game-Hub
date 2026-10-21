@@ -56,11 +56,11 @@ def test_menu_ui_and_version_in_sync():
     assert 'Spiele direkt starten' in panel
     assert 'Emulator-Startverhalten' in panel
     assert 'English' in panel and 'Deutsch' in panel
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in CPP
-    assert 'release_label="BGH V1.1.7"' in CPP
-    assert 'branches: [bgh-v1.1.7, main]' in WF
-    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WF
-    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in WF
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
+    assert 'release_label="BGH V1.1.8"' in CPP
+    assert 'branches: [bgh-v1.1.8, main]' in WF
+    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WF
+    assert 'V1_1_8_PPSA99079_PS5_TEST.zip' in WF
 
 
 def test_native_state_roundtrip_and_corruption(tmp_path):

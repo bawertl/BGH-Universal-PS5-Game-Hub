@@ -44,9 +44,9 @@ def test_safe_fan_and_recent_geometry():
 def test_workflow_and_asset_version_consistent():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
     sh=(ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'bgh-v1.1.7' in wf
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in wf
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in CPP
-    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in wf
-    assert 'V1_1_7_' in sh
+    assert 'bgh-v1.1.8' in wf
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in wf
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
+    assert 'V1_1_8_PPSA99079_PS5_TEST.zip' in wf
+    assert 'V1_1_8_' in sh
     assert 'serif_atlas.png' in wf

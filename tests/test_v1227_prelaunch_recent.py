@@ -84,9 +84,9 @@ int main(int argc,char**argv){
 
 
 def test_consistent_release_markers():
-    assert 'branches: [bgh-v1.1.7, main]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in SRC
-    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WORKFLOW
-    assert 'BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_7_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.8, main]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.8" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in SRC
+    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WORKFLOW
+    assert 'BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_8_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

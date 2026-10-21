@@ -1,4 +1,4 @@
-"""V1.1.7: log-only PS5 experiment; never modify proven launch paths."""
+"""V1.1.8: log-only PS5 experiment; never modify proven launch paths."""
 from pathlib import Path
 import subprocess
 
@@ -19,8 +19,11 @@ def test_log_only_on_details_and_no_start_route_changes():
     assert 'refresh_playtime_log();detail_=true' in text
     assert 'ulg::playtime::read_local_log("/data/shadowmount/debug.log",bytes)' in text
     assert 'ftp.retrieve(' in text
-    assert 'Log-Laufzeit:' in text
-    assert 'Emulator-Laufzeit (Log):' in text
+    assert 'Log-Spielzeit:' in text
+    assert 'Emulator-Laufzeit (Log):' not in text
+    assert 'ROM-Spielzeit noch nicht messbar' in text
+    assert 'native_log_time_label(g)' in text
+    assert 'is_native_game_id(g.platform,g.title_id)' in text
     assert 'make_registered_ps5_launch_plan(g.title_id)' in text
     assert 'stage_ps5sx2_disc_launch(g.path)' in text
     assert 'sys::quit()' in text

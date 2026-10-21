@@ -1,4 +1,4 @@
-"""V1.1.7 container launch and appmeta title regression checks (host only)."""
+"""V1.1.8 container launch and appmeta title regression checks (host only)."""
 import subprocess
 from pathlib import Path
 
@@ -62,9 +62,9 @@ def test_release_branch_and_cache():
     ui = (CPP/'universal_launcher.cpp').read_text()
     workflow = (ROOT/'.github/workflows/ps5-build.yml').read_text()
     script = (ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in ui
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in ui
     assert 'library_v116_container_start_title.bin' in ui
-    assert 'branches: [bgh-v1.1.7, main]' in workflow
-    assert 'bgh-v1.1.7' in workflow
-    assert 'BGH_BawertLs_Game_Hub_V1_1_7' in workflow
-    assert 'V1_1_7_${TITLE_ID}_PS5_TEST.zip' in script
+    assert 'branches: [bgh-v1.1.8, main]' in workflow
+    assert 'bgh-v1.1.8' in workflow
+    assert 'BGH_BawertLs_Game_Hub_V1_1_8' in workflow
+    assert 'V1_1_8_${TITLE_ID}_PS5_TEST.zip' in script

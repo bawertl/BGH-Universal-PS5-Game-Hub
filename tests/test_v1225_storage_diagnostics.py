@@ -87,11 +87,11 @@ def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
 
 
 def test_workflow_is_v126_and_legacy_launch_checks_remain():
-    assert 'branches: [bgh-v1.1.7, main]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
-    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WORKFLOW
-    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in SOURCE
+    assert 'branches: [bgh-v1.1.8, main]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.8" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WORKFLOW
+    assert 'V1_1_8_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in SOURCE
     for token in ('stage_ps5sx2_disc_launch(g.path)',
                   'make_registered_ps5_launch_plan(g.title_id)',
                   'make_registered_ps4_launch_plan(g.title_id)',

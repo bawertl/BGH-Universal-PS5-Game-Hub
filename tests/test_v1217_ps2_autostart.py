@@ -224,9 +224,9 @@ def test_ps5_ps4_launch_protocol_unchanged_except_v127_prelaunch_history():
     assert 'ulg::send_launch(ps2_plan)' in ps2
     assert 'ulg::cancel_ps5sx2_disc_launch(request)' in ps2
     assert 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' in ps2
-    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in src
+    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in src
     assert 'ftp_stage_ps2_request' in (NATIVE/'ps2_autostart.hpp').read_text()
     assert 'O_CREAT' not in (NATIVE/'ps2_autostart.hpp').read_text()
     overlay=(ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert "project/'native_ps5'/'ftp_ps2_writer.cpp'" in overlay
-    assert 'bgh-v1.1.7' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
+    assert 'bgh-v1.1.8' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
