@@ -80,7 +80,7 @@ def test_package_sources_keep_audio_logo_path_and_workflow():
     assert "make -C \"$KIT\"" in script
     assert "ps5-homebrew-ui" in script
     assert "PPSA99079" in script
-    assert "V1_1_5" in script
+    assert "V1_1_7" in script
     workflow=(ROOT/".github/workflows/ps5-build.yml").read_text()
-    assert "bgh-v1.1.5" in workflow
-    assert "BGH-V1-1-5" in workflow
+    assert "bgh-v1.1.7" in workflow
+    assert "BGH-V1-1-7" in workflow

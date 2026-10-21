@@ -80,7 +80,7 @@ rev = os.environ['BGH_BUILD_REV'][:12]
 if not rev or not all(c in '0123456789abcdefABCDEF' for c in rev) and rev!='LOCAL':
     raise SystemExit('BLOCKER: ungueltige Buildkennung')
 p.write_text(s.replace(marker, rev))
-print('BGH V1.1.5 Buildkennung:', rev)
+print('BGH V1.1.7 Buildkennung:', rev)
 PY_BUILD_ID
 make -C "$KIT" init TITLE_ID="$TITLE_ID" APP_NAME="BGH - BawertL's Game Hub"
 # PS5-Home icon comes directly from Stefan's approved BGH logo.
@@ -103,7 +103,7 @@ fi
 # 0777 permissions with zip-open-modes.py (required by ShadowMountPlus/native loader).
 # A second generic zip -r silently loses that guarantee.
 SOURCE_ZIP="$KIT/dist/$TITLE_ID.zip"
-DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_5_${TITLE_ID}_PS5_TEST.zip"
+DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_7_${TITLE_ID}_PS5_TEST.zip"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$SOURCE_ZIP" "$TITLE_ID"
 cp -f -- "$SOURCE_ZIP" "$DEST"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$DEST" "$TITLE_ID"

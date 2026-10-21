@@ -94,11 +94,11 @@ def test_only_manual_noninvasive_loopback_diagnostic():
     assert 'format_port("2121 FTP",local_services_.ftp)' in gui
     assert 'local_services_=ulg::probe_local_launch_services();' in gui
     assert 'if(input.is_pressed(Action::west) && !indices_.empty())' in gui
-    assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in gui
+    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in gui
     assert "bool local_services_checked_=false" in gui
     assert 'PortProbeStage stage' in header
-    assert 'bgh-v1.1.5' in workflow
-    assert 'V1_1_5_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'bgh-v1.1.7' in workflow
+    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in workflow
 
 
 def test_all_original_ps5_launch_paths_remain():

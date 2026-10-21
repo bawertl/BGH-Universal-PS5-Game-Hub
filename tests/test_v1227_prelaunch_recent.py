@@ -7,12 +7,12 @@ SRC=(ROOT/'native_ps5/universal_launcher.cpp').read_text()
 WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 
 
-def test_staging_precedes_all_four_external_handoffs():
+def test_staging_precedes_all_registered_external_handoffs():
     function=SRC.split('void request_selected_launch(app::Feedback &feedback){',1)[1].split('    // V1.0.5 diagnostics:',1)[0]
     # Native fallback for PS5 shares the first staged history entry.
-    assert function.count('record_recent(g.id);') == 4
-    assert function.count('rollback_recent(previous_recent);') == 6
-    assert function.count('launch_request_accepted_=true;') == 5
+    assert function.count('record_recent(g.id);') == 5
+    assert function.count('rollback_recent(previous_recent);') == 7
+    assert function.count('launch_request_accepted_=true;') == 6
     for target in ('ps5_plan','ps4_plan','ps2_plan','plan'):
         send=f'ulg::send_launch({target})'
         pos=function.find(send)
@@ -84,9 +84,9 @@ int main(int argc,char**argv){
 
 
 def test_consistent_release_markers():
-    assert 'branches: [bgh-v1.1.5, main]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
-    assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in SRC
-    assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WORKFLOW
-    assert 'BGH_BawertLs_Game_Hub_V1_1_5_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_5_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.7, main]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in SRC
+    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WORKFLOW
+    assert 'BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_7_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

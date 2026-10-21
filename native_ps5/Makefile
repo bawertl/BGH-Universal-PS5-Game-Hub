@@ -1,6 +1,6 @@
 CXX ?= c++
 CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic
-all: scanner-host launch-test-cli state-test-cli cover-test-cli roots-test-cli ftp-test-cli emulator-cover-test-cli
+all: playtime-test-cli scanner-host launch-test-cli state-test-cli cover-test-cli roots-test-cli ftp-test-cli emulator-cover-test-cli
 scanner-host: host_main.cpp library_core.cpp library_core.hpp
 	$(CXX) $(CXXFLAGS) host_main.cpp library_core.cpp -o scanner-host
 launch-test-cli: launch_test_cli.cpp launcher_client.cpp launcher_client.hpp
@@ -11,8 +11,10 @@ roots-test-cli: root_test_cli.cpp library_core.cpp root_manager.cpp ftp_readonly
 	$(CXX) $(CXXFLAGS) root_test_cli.cpp library_core.cpp root_manager.cpp ftp_readonly.cpp -o roots-test-cli
 ftp-test-cli: ftp_test_cli.cpp ftp_readonly.cpp ftp_scan.cpp library_core.cpp
 	$(CXX) $(CXXFLAGS) ftp_test_cli.cpp ftp_readonly.cpp ftp_scan.cpp library_core.cpp -o ftp-test-cli
+playtime-test-cli: playtime_test_cli.cpp playtime_log.hpp
+	$(CXX) $(CXXFLAGS) playtime_test_cli.cpp -o playtime-test-cli
 clean:
-	rm -f scanner-host launch-test-cli state-test-cli cover-test-cli roots-test-cli ftp-test-cli emulator-cover-test-cli
+	rm -f playtime-test-cli scanner-host launch-test-cli state-test-cli cover-test-cli roots-test-cli ftp-test-cli emulator-cover-test-cli
 cover-test-cli: cover_test_cli.cpp cover_png.cpp cover_png.hpp
 	$(CXX) $(CXXFLAGS) cover_test_cli.cpp cover_png.cpp -lz -o cover-test-cli
 

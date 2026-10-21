@@ -26,6 +26,7 @@ def apply(project: Path, toolkit: Path) -> None:
     shutil.copy2(project/'native_ps5'/'ui_localization.hpp', concepts/'ui_localization.hpp')
     shutil.copy2(project/'native_ps5'/'serif_atlas_metrics.hpp', concepts/'serif_atlas_metrics.hpp')
     shutil.copy2(project/'native_ps5'/'controller_status.hpp', concepts/'controller_status.hpp')
+    shutil.copy2(project/'native_ps5'/'playtime_log.hpp', concepts/'playtime_log.hpp')
     shutil.copy2(project/'native_ps5'/'platform_registry.hpp', concepts/'platform_registry.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.hpp', concepts/'library_core.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.cpp', concepts/'library_core.cpp')

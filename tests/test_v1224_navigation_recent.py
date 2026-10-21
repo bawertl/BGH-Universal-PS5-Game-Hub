@@ -21,7 +21,7 @@ def test_direct_launch_and_l3_details_keep_existing_start_paths():
     assert 'request_selected_launch(feedback)' in update
     assert 'if(indices_.empty() || launch_in_progress_ || clock_<launch_retry_after_)return;' in launch
     assert 'if(!launch_request_accepted_)launch_in_progress_=false;' in launch
-    assert launch.count('record_recent(g.id);') == 4
+    assert launch.count('record_recent(g.id);') == 5
     for api in ('make_registered_ps5_launch_plan(g.title_id)',
                 'make_registered_ps4_launch_plan(g.title_id)',
                 'stage_ps5sx2_disc_launch(g.path)',
@@ -87,11 +87,11 @@ int main(int argc,char **argv){
 
 def test_workflow_branch_artifact_and_native_package_paths():
     build = (ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'branches: [bgh-v1.1.5, main]' in WORKFLOW
-    assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WORKFLOW
-    assert 'V1_1_5_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_5_${TITLE_ID}_PS5_TEST.zip' in build
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'branches: [bgh-v1.1.7, main]' in WORKFLOW
+    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WORKFLOW
+    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_7_${TITLE_ID}_PS5_TEST.zip' in build
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
 
 
 def test_real_ui_kit_l3_action_uses_supported_left_stick_glyph():

@@ -13,6 +13,8 @@
 #include "concepts/launcher_client.hpp"
 #include "concepts/ps2_autostart.hpp"
 #include "concepts/ps5_launch.hpp"
+#include "concepts/playtime_log.hpp"
+#include "concepts/ftp_readonly.hpp"
 #include "controller_status.hpp"
 #include "ui/glyphs.hpp"
 #include "platform/ps5/system.hpp"
@@ -65,7 +67,7 @@ constexpr std::array<const char *,3> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.5-CONTAINER-COVER-FIX [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -532,7 +534,7 @@ public:
             if(input.is_pressed(Action::l3) || input.is_pressed(Action::confirm)){
                 const bool details=input.is_pressed(Action::l3);
                 if(recent[recent_selected_]>=0 && focus_recent_game(recent[recent_selected_])){
-                    if(details){detail_=true;feedback.play(audio::Cue::open);}
+                    if(details){refresh_playtime_log();detail_=true;feedback.play(audio::Cue::open);}
                     else request_selected_launch(feedback);
                 }
             }
@@ -540,7 +542,7 @@ public:
         }
         // L3 opens details. L1/R1 return to pure platform cycling.
         if(input.is_pressed(Action::l3) && !sidebar_focus_ && !indices_.empty()){
-            detail_=true;launch_message_.clear();local_services_checked_=false;
+            refresh_playtime_log();detail_=true;launch_message_.clear();local_services_checked_=false;
             feedback.play(audio::Cue::open);return;
         }
         if(input.nav==Direction::left && !sidebar_focus_){
@@ -637,8 +639,8 @@ public:
         if(path_editor_open_)draw_path_editor(frame);
         if(search_open_)draw_search(frame);
         // Lower-right, inside the TV safe area. Kept in sync with the build branch.
-        const std::string release_label="BGH V1.1.5";
-        const std::string release_text=release_label+" USB-Scan-Fix";
+        const std::string release_label="BGH V1.1.7";
+        const std::string release_text=release_label+" Container-Launch-Title-Fix";
         const float release_width=serif_text_width(release_text,17.0f);
         translated_text(list,fonts.regular,release_text,1860.0f-release_width,1045,17,
             Color::rgb(0xFFFFFF,0.58f));
@@ -655,7 +657,7 @@ private:
     // snapshot forces one fresh FTP cover probe after installing this fix.
     // A new BGH-owned snapshot forces a complete first scan after this repair.
     // Existing V1.1.3 cache library_v113_ps5_cover.bin remains untouched for rollback.
-    static constexpr const char *kCacheFile="/download0/hui/ulg_v04/library_v115_container_cover.bin";
+    static constexpr const char *kCacheFile="/download0/hui/ulg_v04/library_v116_container_start_title.bin";
     static constexpr const char *kUserPathsFile="/download0/hui/ulg_v04/paths.user.conf";
     static constexpr const char *kPrimaryEmulatorSettingsFile="/download0/hui/ulg_v04/emulator_boot.bin";
     static constexpr const char *kFallbackEmulatorSettingsFile="/data/bgh/emulator_boot.bin";
@@ -677,8 +679,11 @@ private:
         ulg::apply_title_overrides(catalogue_,"/download0/hui/ulg_v04/titles.user.conf");
         // Presentation-only: keep stable game IDs, paths and start arguments unchanged.
         // Also cleans existing cached/metadata titles, not only fresh filenames.
-        for(auto &game:catalogue_.games)
+        for(auto &game:catalogue_.games){
+            if(game.platform=="PS5" && (game.format=="ffpfsc" || game.format=="exfat"))
+                game.title=ulg::ps5_container_fallback_title(game.title,game.title_id);
             game.title=ulg::clean_title_for_display(game.title);
+        }
         ulg::apply_cover_overrides(catalogue_,"/app0/assets/cover_overrides.conf");
         ulg::apply_cover_overrides(catalogue_,"/download0/hui/ulg_v04/covers.user.conf");
     }
@@ -755,10 +760,32 @@ private:
                 const auto plan=ulg::make_launch_plan(g.platform,g.path);
                 if(!g.available){launch_message_="USB-Laufwerk / Spiel nicht verfügbar";feedback.play(audio::Cue::error);}
                 else if(g.platform=="PS5" && (g.format=="ffpfsc" || g.format=="exfat")){
-                    // These are container files, NOT proof of an installed app.
-                    // Keep the proven registered-title start path unchanged.
-                    launch_message_="PS5-Container erkannt; erst separat mounten/registrieren";
-                    feedback.play(audio::Cue::error);
+                    // Controlled experiment: system-menu launch was confirmed
+                    // for registered PPSA06084 on FW 13.60. This does NOT
+                    // imply other images are mounted or registered. Dispatch
+                    // the TITLE ID only, never the image path or mount command.
+                    const auto ps5_plan=ulg::make_registered_ps5_launch_plan(g.title_id);
+                    if(!ps5_plan.supported){
+                        launch_message_="Container: ungueltige/ausgeschlossene PPSA-ID";
+                        feedback.play(audio::Cue::error);
+                    }else{
+                        const auto previous_recent=recent_list_;
+                        record_recent(g.id); // Tentative; rollback on refusal.
+                        const auto bridge=ulg::send_launch(ps5_plan);
+                        if(bridge.status==ulg::LaunchStatus::queued ||
+                           bridge.status==ulg::LaunchStatus::started){
+                            launch_message_="Container-Startauftrag angenommen; Spielstart nicht verifiziert";
+                            launch_request_accepted_=true;
+                            feedback.play(audio::Cue::launch);
+                            if(bridge.status==ulg::LaunchStatus::queued)sys::quit();
+                        }else{
+                            rollback_recent(previous_recent);
+                            launch_message_=bridge.status==ulg::LaunchStatus::no_launcher
+                                ?"Launcher-ELF auf Port 10199 nicht erreichbar"
+                                :"Container-Start abgelehnt: "+bridge.message;
+                            feedback.play(audio::Cue::error);
+                        }
+                    }
                 }
                 else if(g.platform=="PS5"){
                     // Prefer an ALREADY RUNNING, user-provided PS5 forwarder
@@ -1924,12 +1951,17 @@ private:
         translated_text(list,fonts.regular,shorten(g.path,78),710,436,20,kInk);
         if(g.platform=="PS4")
             translated_text(list,fonts.semibold,"Title-ID: "+(g.title_id.empty()?std::string("FEHLT"):g.title_id),710,466,19,kAccent);
+        // Log-only and explicitly incomplete; no claim of total playtime.
+        if(g.platform=="PS5" || g.platform=="PS4" || g.platform=="PS2" ||
+           g.platform=="Switch" || g.platform=="Xbox 360")
+            translated_text(list,fonts.regular,shorten(playtime_detail_label(g),73),
+                710,g.platform=="PS4"?495:472,18,kAccent);
         const auto plan=ulg::make_launch_plan(g.platform,g.path);
         const bool ps5_container=(g.platform=="PS5" && (g.format=="ffpfsc" || g.format=="exfat"));
-        const bool ps5_direct=(!ps5_container && g.platform=="PS5" && ulg::valid_native_ps5_title_id(g.platform,g.title_id));
+        const bool ps5_direct=(g.platform=="PS5" && ulg::make_registered_ps5_launch_plan(g.title_id).supported);
         const bool ps4_direct=(g.platform=="PS4" && ulg::make_registered_ps4_launch_plan(g.title_id).supported);
         const bool ps2_menu=(g.platform=="PS2" && ulg::make_ps5sx2_menu_launch_plan().supported);
-        const bool can_start=g.available && !ps5_container && (plan.supported || ps5_direct || ps4_direct || ps2_menu);
+        const bool can_start=g.available && (plan.supported || ps5_direct || ps4_direct || ps2_menu);
         list.rounded_rect({711,506,800,125},20,can_start?Color::rgb(0x3D527C,0.70f):Color::rgb(0x2C3044,0.70f));
         if(can_start){
             const bool menu_mode=!emulator_boot_settings_.direct_boot &&
@@ -1942,9 +1974,9 @@ private:
             g.available?"DIREKTSTART NICHT VERFUEGBAR":"SPIEL NICHT VERFUEGBAR",740,559,27,kMuted);
         const bool only_menu=!emulator_boot_settings_.direct_boot &&
             (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360");
-        translated_text(list,fonts.regular,can_start?(only_menu?"Startet Emulator-Menue ohne ROM-Startauftrag":(ps5_direct?"Systemstart ueber den vorhandenen Forwarder":
+        translated_text(list,fonts.regular,can_start?(only_menu?"Startet Emulator-Menue ohne ROM-Startauftrag":(ps5_direct?(ps5_container?"Container-Teststart via PPSA-ID/Launcher-ELF 10199":"Systemstart ueber den vorhandenen Forwarder"):
             (ps4_direct?"PS4: aktiver Forwarder auf Port 10199 erforderlich":
-            (ps2_menu?"PS2-Spielpfad via disc-launch.txt; Quadrat: Menue":"Vorhandener Startdienst erforderlich")))):(g.available?(ps5_container?"PS5-Container: vor Start separat mounten/registrieren":plan.reason):"Datentraeger erneut anschliessen"),740,599,20,Color::rgb(0xFFB982));
+            (ps2_menu?"PS2-Spielpfad via disc-launch.txt; Quadrat: Menue":"Vorhandener Startdienst erforderlich")))):(g.available?(ps5_container?"Container: gueltige PPSA-ID und Launcher-ELF erforderlich":plan.reason):"Datentraeger erneut anschliessen"),740,599,20,Color::rgb(0xFFB982));
         if(!launch_message_.empty())translated_text(list,fonts.regular,shorten(launch_message_,90),714,
             (g.platform=="PS5" && local_services_checked_)?659:684,22,kAccent);
         const bool ps5_network_diag=((g.platform=="PS5" || g.platform=="PS4") && local_services_checked_);
@@ -1981,6 +2013,37 @@ private:
             translated_text(list,fonts.semibold,"Quadrat: PS5SX2-Menue (Forwarder ohne Autostart)",720,864,22,kInk);
         if(g.platform=="Switch" || g.platform=="Xbox 360")
             translated_text(list,fonts.semibold,"Quadrat: Emulator oeffnen (Test)",720,864,22,kInk);
+    }
+    // V1.1.7: on-demand read-only experiment; only invoked when the user
+    // opens details. Missing/incomplete logs remain "unknown", never 0 hours.
+    void refresh_playtime_log(){
+        std::string bytes;
+        bool ok=ulg::playtime::read_local_log("/data/shadowmount/debug.log",bytes);
+        if(!ok){
+            // The fakeLib mount may not expose /data to this sandbox. Try the
+            // existing READ-ONLY loopback ftpsrv, never any mutating FTP verb.
+            ulg::FtpReadonly ftp;
+            if(ftp.connect_local())ok=ftp.retrieve(
+                "/data/shadowmount/debug.log",bytes,ulg::playtime::kMaxLogBytes);
+        }
+        if(ok)playtime_log_=ulg::playtime::analyze(bytes);
+        else playtime_log_={};
+    }
+    std::string playtime_detail_label(const ulg::Game &g) const {
+        std::string title=g.title_id;
+        bool emulator=false;
+        if(g.platform=="PS2"){title="PPSA99203";emulator=true;}
+        else if(g.platform=="Switch"){title="PPSA99008";emulator=true;}
+        else if(g.platform=="Xbox 360"){title="PPSA50011";emulator=true;}
+        if(!playtime_log_.readable)return "Log-Spielzeit: Nicht lesbar (ShadowMount+)";
+        if(!ulg::playtime::valid_id(title))return "Log-Spielzeit: Keine gueltige Titel-ID";
+        const auto it=playtime_log_.by_title.find(title);
+        if(it==playtime_log_.by_title.end())return "Log-Spielzeit: Keine Sitzung im aktuellen Log";
+        const auto &v=it->second;
+        if(v.sessions==0)return "Log-Spielzeit: Keine abgeschlossene sichere Sitzung";
+        return std::string(emulator?"Emulator-Laufzeit (Log): ":"Log-Laufzeit: ")+
+            ulg::playtime::duration_label(v.seconds)+" ("+
+            std::to_string(v.sessions)+" Sitz.)";
     }
     void set_message(std::string message){settings_message_=std::move(message);}
     void save_roots_and_rescan(){
@@ -2530,7 +2593,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.5 Container-Cover-Fix",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.7 Playtime-Log-Experimental",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -2707,6 +2770,7 @@ private:
     std::string launch_message_;
     bool local_services_checked_=false;
     ulg::LocalLaunchServices local_services_{};
+    ulg::playtime::Summary playtime_log_{};
 };
 } // namespace
 std::unique_ptr<app::Concept> make_universal_launcher(app::Context &context) {

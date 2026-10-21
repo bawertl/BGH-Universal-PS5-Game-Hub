@@ -72,7 +72,7 @@ def test_storage_fix_uses_dual_read_dual_write_and_direct_probes():
 
 def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
     launch = SOURCE.split('void request_selected_launch(app::Feedback &feedback){',1)[1].split('    // V1.0.5 diagnostics:',1)[0]
-    assert launch.count('record_recent(g.id);') == 4
+    assert launch.count('record_recent(g.id);') == 5
     for token in (
         'make_registered_ps5_launch_plan(g.title_id)',
         'make_registered_ps4_launch_plan(g.title_id)',
@@ -87,11 +87,11 @@ def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
 
 
 def test_workflow_is_v126_and_legacy_launch_checks_remain():
-    assert 'branches: [bgh-v1.1.5, main]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
-    assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in WORKFLOW
-    assert 'V1_1_5_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in SOURCE
+    assert 'branches: [bgh-v1.1.7, main]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in WORKFLOW
+    assert 'V1_1_7_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in SOURCE
     for token in ('stage_ps5sx2_disc_launch(g.path)',
                   'make_registered_ps5_launch_plan(g.title_id)',
                   'make_registered_ps4_launch_plan(g.title_id)',

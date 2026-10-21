@@ -8,15 +8,15 @@ def test_release_identity_and_caches():
     wf = (ROOT / '.github/workflows/ps5-build.yml').read_text()
     script = (ROOT / 'tooling/build_native_ps5.sh').read_text()
     ui = (ROOT / 'native_ps5/universal_launcher.cpp').read_text()
-    assert 'branches: [bgh-v1.1.5, main]' in wf
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.5" && "$GITHUB_REF_NAME" != "main"' in wf
-    assert 'BGH-V1-1-5-COVER-PPSA99079-TEST' in wf
-    assert 'BGH_BawertLs_Game_Hub_V1_1_5_PPSA99079_PS5_TEST.zip' in wf
-    assert 'BGH_BawertLs_Game_Hub_V1_1_5_${TITLE_ID}_PS5_TEST.zip' in script
-    assert 'BGH V1.1.5-CONTAINER-COVER-FIX' in ui
-    assert 'release_label="BGH V1.1.5"' in ui
-    assert 'Version: BGH V1.1.5 Container-Cover-Fix' in ui
-    assert 'library_v115_container_cover.bin' in ui
+    assert 'branches: [bgh-v1.1.7, main]' in wf
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.7" && "$GITHUB_REF_NAME" != "main"' in wf
+    assert 'BGH-V1-1-7-PLAYTIME-PPSA99079-TEST' in wf
+    assert 'BGH_BawertLs_Game_Hub_V1_1_7_PPSA99079_PS5_TEST.zip' in wf
+    assert 'BGH_BawertLs_Game_Hub_V1_1_7_${TITLE_ID}_PS5_TEST.zip' in script
+    assert 'BGH V1.1.7-PLAYTIME-LOG-EXPERIMENT' in ui
+    assert 'release_label="BGH V1.1.7"' in ui
+    assert 'Version: BGH V1.1.7 Playtime-Log-Experimental' in ui
+    assert 'library_v116_container_start_title.bin' in ui
     assert 'library_v113_ps5_cover.bin' in ui
     assert 'PPSA99079' in script
 
