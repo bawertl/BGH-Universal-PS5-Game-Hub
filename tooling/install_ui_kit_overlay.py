@@ -28,6 +28,7 @@ def apply(project: Path, toolkit: Path) -> None:
     shutil.copy2(project/'native_ps5'/'controller_status.hpp', concepts/'controller_status.hpp')
     shutil.copy2(project/'native_ps5'/'playtime_log.hpp', concepts/'playtime_log.hpp')
     shutil.copy2(project/'native_ps5'/'platform_registry.hpp', concepts/'platform_registry.hpp')
+    shutil.copy2(project/'native_ps5'/'emulator_detection.hpp', concepts/'emulator_detection.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.hpp', concepts/'library_core.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.cpp', concepts/'library_core.cpp')
     shutil.copy2(project/'native_ps5'/'launcher_client.cpp', concepts/'launcher_client.cpp')
@@ -83,6 +84,7 @@ std::span<const ConceptFactory> concept_registry() {
             shell.write_text(original_shell,encoding='utf8')
     destination=toolkit/'assets'/'paths.conf'
     shutil.copy2(project/'assets'/'paths.conf',destination)
+    shutil.copy2(project/'assets'/'emulator_profiles.json', toolkit/'assets'/'emulator_profiles.json')
     shutil.copy2(project/'assets'/'cover_overrides.conf', toolkit/'assets'/'cover_overrides.conf')
     shutil.copy2(project/'assets'/'titles.conf', toolkit/'assets'/'titles.conf')
     shutil.copy2(project/'assets'/'bgh_logo.png', toolkit/'assets'/'bgh_logo.png')

@@ -24,6 +24,7 @@
 #include "ui_localization.hpp"
 #include "serif_atlas_metrics.hpp"
 #include "platform_registry.hpp"
+#include "emulator_detection.hpp"
 #include <algorithm>
 #include <cmath>
 #include <array>
@@ -67,7 +68,7 @@ constexpr std::array<const char *,3> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.9-EMULATOR-AUTODETECTION [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -383,6 +384,7 @@ public:
                     (void)ulg::add_profile_folder(profile,root.path);
             }
         }
+        refresh_emulator_detections();
         rebuild_sidebar();
         for(const auto &id:recent_list_)recent_.insert(id);
         if(!ulg::read_catalogue_cache(kCacheFile,catalogue_))refresh();
@@ -642,7 +644,7 @@ public:
         if(path_editor_open_)draw_path_editor(frame);
         if(search_open_)draw_search(frame);
         // Lower-right, inside the TV safe area. Kept in sync with the build branch.
-        const std::string release_label="BGH V1.1.8";
+        const std::string release_label="BGH V1.1.9";
         const std::string release_text=release_label+" Container-Launch-Title-Fix";
         const float release_width=serif_text_width(release_text,17.0f);
         translated_text(list,fonts.regular,release_text,1860.0f-release_width,1045,17,
@@ -1307,13 +1309,46 @@ private:
     std::vector<std::size_t> emulator_profile_indices() const {
         return ulg::platform_order(platform_registry_);
     }
-    static std::string application_name(const ulg::PlatformEntry &p){
+    // Read metadata only on startup or when user saves an app path, not once
+    // per video frame. Existing verified launch backends are unaffected.
+    void refresh_emulator_detections(){
+        emulator_profiles_=ulg::emulator_detection::load_profiles();
+        detected_emulators_.clear();
+        for(const auto &p:platform_registry_.entries)if(p.is_emulator)
+            detected_emulators_[p.id]=ulg::emulator_detection::detect(
+                p.app_path,p.id,emulator_profiles_);
+    }
+    const ulg::emulator_detection::Detection &emulator_detection_for(const std::string &platform) const {
+        static const ulg::emulator_detection::Detection missing{};
+        const auto it=detected_emulators_.find(platform);
+        return it==detected_emulators_.end()?missing:it->second;
+    }
+    std::string application_name(const ulg::PlatformEntry &p) const {
+        const auto &d=emulator_detection_for(p.id);
+        if(!p.app_path.empty())return ulg::emulator_detection::description(d);
         if(p.id=="PS2")return "PS5SX2";
         if(p.id=="Switch")return "ProsperoEden";
         if(p.id=="Xbox 360")return "PS5X360";
         if(p.id=="PS5" || p.id=="PS4")return "Installierte Systemanwendung";
         if(p.scan_supported)return "Scanner ja / Start offen";
         return "Vorlage / kein Backend";
+    }
+    void test_emulator_menu(const ulg::PlatformEntry &p,app::Feedback &feedback){
+        const auto &d=emulator_detection_for(p.id);
+        if(d.status!=ulg::emulator_detection::Detection::Status::known_emulator){
+            platform_settings_message_="Kein bekanntes Emulatorprofil / Menue nicht freigegeben";
+            feedback.play(audio::Cue::error);return;
+        }
+        // Explicit Square key: no ROM arguments and no helper ELF execution.
+        // A queued launch is an experiment, not proof of PS5 compatibility.
+        ulg::LaunchPlan plan{};
+        plan.target=d.title_id;plan.supported=true;
+        const auto result=ulg::send_launch(plan);
+        platform_settings_message_=result.message;
+        if(result.status==ulg::LaunchStatus::started || result.status==ulg::LaunchStatus::queued){
+            feedback.play(audio::Cue::launch);
+            if(result.status==ulg::LaunchStatus::queued)sys::quit();
+        }else feedback.play(audio::Cue::error);
     }
     void begin_emulator_path_editor(bool app_path,std::size_t folder,bool manual){
         emulator_path_edit_=true;
@@ -1384,6 +1419,9 @@ private:
         emulator_selected_=std::clamp(emulator_selected_,0,static_cast<int>(profiles.size())-1);
         const auto index=profiles[static_cast<std::size_t>(emulator_selected_)];
         const auto &profile=platform_registry_.entries[index];
+        if(emulator_expanded_ && emulator_subselected_==0 && input.is_pressed(Action::west)){
+            test_emulator_menu(profile,feedback);return;
+        }
         if(input.is_pressed(Action::west)){
             emulator_expanded_=!emulator_expanded_;
             emulator_subselected_=-1;
@@ -1492,6 +1530,11 @@ private:
             }
         }
         if(persist_platform_registry(std::move(candidate))){
+            if(emulator_edit_app_){
+                refresh_emulator_detections();
+                platform_settings_message_=ulg::emulator_detection::description(
+                    emulator_detection_for(platform_registry_.entries[index].id));
+            }
             if(!emulator_edit_app_ && platform_registry_.entries[index].scan_supported)refresh();
             else if(!emulator_edit_app_)
                 platform_settings_message_="Pfad vorgemerkt; fuer diese Plattform noch kein Scanner";
@@ -2406,7 +2449,7 @@ private:
                    platform_registry_.entries[profiles[static_cast<std::size_t>(emulator_selected_)]].scan_supported)
                     hints[count++]={ui::Button::left_stick,hint("Scan AN/AUS")};
             }
-            hints[count++]={ui::Button::square,hint("Einklappen")};
+            hints[count++]={ui::Button::square,hint(app?"Menue testen":"Einklappen")};
         }else{
             hints[count++]={ui::Button::cross,hint("AN/AUS")};
             hints[count++]={ui::Button::square,hint(emulator_expanded_?"Einklappen":"Aufklappen")};
@@ -2470,7 +2513,9 @@ private:
                 if(sub==0){
                     translated_text(list,fonts.semibold,"Emulator-Anwendung: "+application_name(p),249,y+29,20,kInk);
                     translated_text(list,fonts.regular,
-                        "Titel-ID: "+(p.title_id.empty()?std::string("Nicht eingerichtet"):p.title_id)+
+                        "Titel-ID: "+(!emulator_detection_for(p.id).title_id.empty()?
+                            emulator_detection_for(p.id).title_id:
+                            (p.title_id.empty()?std::string("Nicht eingerichtet"):p.title_id))+
                         "    | Installationsordner: "+shorten(p.app_path.empty()?"nicht erforderlich / optional":p.app_path,43),
                         249,y+56,17,kMuted);
                 }else if(sub==sub_count-1){
@@ -2598,7 +2643,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.8 Spielzeit-Anzeige",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.9 Emulator-Erkennung",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -2720,6 +2765,8 @@ private:
     std::string browser_path_="/",input_path_="/",settings_message_;
     int settings_tab_=0; // Settings tab navigation remains transient
     ulg::PlatformRegistry platform_registry_=ulg::default_platform_registry();
+    std::vector<ulg::emulator_detection::Profile> emulator_profiles_;
+    std::map<std::string,ulg::emulator_detection::Detection> detected_emulators_;
     std::vector<SidebarItem> sidebar_items_;
     std::string platform_settings_message_;
     int emulator_selected_=0;

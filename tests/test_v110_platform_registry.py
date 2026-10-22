@@ -22,10 +22,10 @@ def test_four_tabs_dynamic_sidebar_and_preserved_launch_paths():
 
 
 def test_disabled_new_emulators_do_not_claim_support():
-    assert 'add("PS3"' in REG and 'true,false,false,false' in REG
+    assert 'add("PS3"' in REG and 'true,true,false,false' in REG
     assert 'add("PS1"' in REG and 'true,true,false,false' in REG
-    assert 'add("Xbox"' in REG and 'true,false,false,false' in REG
-    assert '"Vorlage / kein Backend"' in CPP
+    assert 'add("Xbox"' in REG and 'true,true,false,false' in REG
+    assert '"Vorlage / kein Backend"' in CPP or '"Vorlage / kein Backend"' in (ROOT/"native_ps5/emulator_detection.hpp").read_text()
     assert '"Scanner ja / Start offen"' in CPP
 
 
@@ -74,8 +74,8 @@ int main(int argc,char**argv){
 
 
 def test_workflow_version_and_overlay():
-    assert 'branches: [bgh-v1.1.8, main]' in WF
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WF
+    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
     assert "platform_registry.hpp'" in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()
 
 

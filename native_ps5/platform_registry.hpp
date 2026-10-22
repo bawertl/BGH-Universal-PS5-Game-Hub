@@ -48,11 +48,11 @@ inline PlatformRegistry default_platform_registry(){
     add("Xbox 360","Xbox 360","xbox360.png",true,true,true,true,"PPSA50011",".iso,.xex,STFS");
     add("PS1","PlayStation 1","ps1.png",true,true,false,false,"",".cue,.chd");
     add("PSP","PlayStation Portable","psp.png",true,true,false,false,"",".iso,.cso,.chd,.pbp");
-    add("PS3","PlayStation 3","ps3.png",true,false,false,false,"","");
-    add("Xbox","Original Xbox","xbox.png",true,false,false,false,"","");
-    add("Dreamcast","Sega Dreamcast","dreamcast.png",true,false,false,false,"","");
-    add("GameCube","Nintendo GameCube","gamecube.png",true,false,false,false,"","");
-    add("Wii","Nintendo Wii","wii.png",true,false,false,false,"","");
+    add("PS3","PlayStation 3","ps3.png",true,true,false,false,"",".iso,.pkg");
+    add("Xbox","Original Xbox","xbox.png",true,true,false,false,"",".xbe,.iso");
+    add("Dreamcast","Sega Dreamcast","dreamcast.png",true,true,false,false,"",".gdi,.cdi,.chd");
+    add("GameCube","Nintendo GameCube","gamecube.png",true,true,false,false,"",".iso,.gcm,.rvz");
+    add("Wii","Nintendo Wii","wii.png",true,true,false,false,"",".iso,.wbfs,.rvz");
     return out;
 }
 inline bool safe_platform_path(const std::string &value){

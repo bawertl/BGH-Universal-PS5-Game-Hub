@@ -133,6 +133,11 @@ std::string format_for_file(const std::string &platform,const std::string &name)
     }
     if(platform=="PS1")for(const char *e:{".cue",".chd"})if(ends_ci(name,e))return e+1;
     if(platform=="PSP")for(const char *e:{".iso",".cso",".chd",".pbp"})if(ends_ci(name,e))return e+1;
+    if(platform=="PS3")for(const char *e:{".iso",".pkg"})if(ends_ci(name,e))return e+1;
+    if(platform=="Xbox")for(const char *e:{".xbe",".iso"})if(ends_ci(name,e))return e+1;
+    if(platform=="Dreamcast")for(const char *e:{".gdi",".cdi",".chd"})if(ends_ci(name,e))return e+1;
+    if(platform=="GameCube")for(const char *e:{".iso",".gcm",".rvz"})if(ends_ci(name,e))return e+1;
+    if(platform=="Wii")for(const char *e:{".iso",".wbfs",".rvz"})if(ends_ci(name,e))return e+1;
     return {};
 }
 std::string stable_id(const std::string &platform,const std::string &path){

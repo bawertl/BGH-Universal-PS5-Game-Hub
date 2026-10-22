@@ -14,7 +14,9 @@ namespace ulg {
 namespace {
 bool platform_ok(const std::string &platform) {
     return platform=="PS5/PS4" || platform=="PS5" || platform=="PS4" || platform=="PS2" ||
-           platform=="Switch" || platform=="Xbox 360" || platform=="PS1" || platform=="PSP";
+           platform=="Switch" || platform=="Xbox 360" || platform=="PS1" || platform=="PSP" ||
+           platform=="PS3" || platform=="Xbox" || platform=="Dreamcast" ||
+           platform=="GameCube" || platform=="Wii";
 }
 bool child_path(const std::string &p,const std::string &name,std::string &out) {
     if(p.empty() || p.size()+name.size()+2>4096 || name.empty() || name=="." || name=="..")return false;

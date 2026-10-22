@@ -64,11 +64,11 @@ int main(){
 def test_bundle_contains_new_native_launch_and_preserves_other_components():
     src = (CPP/'universal_launcher.cpp').read_text()
     assert 'launch_registered_ps5(g.title_id)' in src
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in src
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in src
     assert 'ulg_v08/covers' in src
     assert 'kTabs' in src
     assert 'save_user_roots(roots_,kUserPathsFile)' in src
     workflow=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.8' in workflow
+    assert 'bgh-v1.1.9' in workflow
     assert 'ps5_launch.cpp' in workflow
-    assert 'V1_1_8_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in workflow

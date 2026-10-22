@@ -8,14 +8,14 @@ def test_release_identity_and_caches():
     wf = (ROOT / '.github/workflows/ps5-build.yml').read_text()
     script = (ROOT / 'tooling/build_native_ps5.sh').read_text()
     ui = (ROOT / 'native_ps5/universal_launcher.cpp').read_text()
-    assert 'branches: [bgh-v1.1.8, main]' in wf
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.8" && "$GITHUB_REF_NAME" != "main"' in wf
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in wf
-    assert 'BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip' in wf
-    assert 'BGH_BawertLs_Game_Hub_V1_1_8_${TITLE_ID}_PS5_TEST.zip' in script
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in ui
-    assert 'release_label="BGH V1.1.8"' in ui
-    assert 'Version: BGH V1.1.8 Spielzeit-Anzeige' in ui
+    assert 'branches: [bgh-v1.1.9, main]' in wf
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.9" && "$GITHUB_REF_NAME" != "main"' in wf
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in wf
+    assert 'BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip' in wf
+    assert 'BGH_BawertLs_Game_Hub_V1_1_9_${TITLE_ID}_PS5_TEST.zip' in script
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in ui
+    assert 'release_label="BGH V1.1.9"' in ui
+    assert 'Version: BGH V1.1.9 Emulator-Erkennung' in ui
     assert 'library_v116_container_start_title.bin' in ui
     assert 'library_v113_ps5_cover.bin' in ui
     assert 'PPSA99079' in script

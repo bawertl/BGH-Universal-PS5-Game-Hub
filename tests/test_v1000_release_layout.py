@@ -9,11 +9,11 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 BUILD=(ROOT/'tooling/build_native_ps5.sh').read_text()
 
 def test_release_branding_and_branch():
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
-    assert 'bgh-v1.1.8' in WORKFLOW
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WORKFLOW
-    assert 'BGH_BawertLs_Game_Hub_V1_1_8_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_8_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in CPP
+    assert 'bgh-v1.1.9' in WORKFLOW
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
+    assert 'BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in BUILD
 
 def test_five_cover_fan_and_clock():
     assert 'std::array<int,5> candidates{};' in CPP

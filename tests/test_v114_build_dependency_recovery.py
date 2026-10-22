@@ -24,7 +24,7 @@ def test_opengl_sdk_is_actually_built_not_copied():
     assert 'actions/cache/restore@v4' in workflow
     assert 'actions/cache/save@v4' in workflow
     assert '/usr/bin/python3 -m pytest -q tests' in workflow
-    assert 'Sicherstellen, dass wirklich V1.1.8 gebaut wird' in workflow
+    assert 'Sicherstellen, dass wirklich V1.1.9 gebaut wird' in workflow
 
 
 def test_shell_syntax():

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "emulators": [
+    {"platform":"PS2","id":"ps5sx2","title_id":"PPSA99203","name":"PS5SX2","required_files":["eboot.bin"]},
+    {"platform":"Switch","id":"prosperoeden","title_id":"PPSA99008","name":"ProsperoEden","required_files":["eboot.bin"]},
+    {"platform":"Xbox 360","id":"ps5x360","title_id":"PPSA50011","name":"PS5X360","required_files":["eboot.bin"]},
+    {"platform":"PS3","id":"rpcs3ps5","title_id":"PPSA99303","name":"RPCS3 PS5","required_files":["eboot.bin","rpcs3ps5-launch.elf"]}
+  ]
+}

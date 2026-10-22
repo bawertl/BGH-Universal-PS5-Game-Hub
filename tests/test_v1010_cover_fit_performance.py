@@ -41,10 +41,10 @@ def test_one_heavy_cover_operation_per_update_and_priority():
     assert 'kQuietSeconds = 0.035f' in DEBOUNCE
 
 def test_release_and_previous_startpaths_unchanged():
-    assert 'branches: [bgh-v1.1.8, main]' in WORKFLOW
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WORKFLOW
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
-    assert 'release_label="BGH V1.1.8"' in CPP
+    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in CPP
+    assert 'release_label="BGH V1.1.9"' in CPP
     for key in ('stage_ps5sx2_disc_launch(g.path)', 'make_registered_ps4_launch_plan(g.title_id)',
                 'make_registered_ps5_launch_plan(g.title_id)', 'make_prosperoeden_menu_launch_plan()',
                 'make_ps5x360_menu_launch_plan()'):

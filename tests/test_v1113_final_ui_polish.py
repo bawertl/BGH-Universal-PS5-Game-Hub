@@ -72,7 +72,7 @@ def test_console_icons_have_no_distant_isolated_alpha_fragment():
         assert all(v<=2 for v in sizes[1:])
 
 def test_version_and_workflow():
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in CPP
-    assert 'release_label="BGH V1.1.8"' in CPP
-    assert 'branches: [bgh-v1.1.8, main]' in WF
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WF
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in CPP
+    assert 'release_label="BGH V1.1.9"' in CPP
+    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF

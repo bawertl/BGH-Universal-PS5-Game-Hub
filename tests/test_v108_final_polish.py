@@ -74,8 +74,8 @@ def test_known_emulator_apps_use_menu_without_rom_or_history():
 
 
 def test_release_consistency():
-    assert 'BGH V1.1.8-PLAYTIME-PER-GAME-SAFETY' in UI
-    assert 'release_label="BGH V1.1.8"' in UI
-    assert 'branches: [bgh-v1.1.8, main]' in WF
-    assert 'BGH-V1-1-8-PLAYTIME-PPSA99079-TEST' in WF
-    assert 'V1_1_8_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
+    assert 'release_label="BGH V1.1.9"' in UI
+    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
+    assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

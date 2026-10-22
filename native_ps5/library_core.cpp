@@ -123,6 +123,11 @@ std::string format_for(const std::string &platform,const std::string &path) {
     if(platform=="Xbox 360" && (e==".iso" || (e==".xex" && lowercase(basename(path))=="default.xex"))) return e.substr(1);
     if(platform=="PS1" && (e==".cue" || e==".chd")) return e.substr(1);
     if(platform=="PSP" && (e==".iso" || e==".cso" || e==".chd" || e==".pbp"))return e.substr(1);
+    if(platform=="PS3" && (e==".iso" || e==".pkg"))return e.substr(1);
+    if(platform=="Xbox" && (e==".xbe" || e==".iso"))return e.substr(1);
+    if(platform=="Dreamcast" && (e==".gdi" || e==".cdi" || e==".chd"))return e.substr(1);
+    if(platform=="GameCube" && (e==".iso" || e==".gcm" || e==".rvz"))return e.substr(1);
+    if(platform=="Wii" && (e==".iso" || e==".wbfs" || e==".rvz"))return e.substr(1);
     return "";
 }
 bool is_file(const std::string &p) {struct stat st{};return lstat(p.c_str(),&st)==0 && S_ISREG(st.st_mode);}
@@ -513,7 +518,8 @@ std::vector<Root> load_roots(const std::string &config_path) {
         while(!entry.empty() && (entry.back()=='\n'||entry.back()=='\r'))entry.pop_back();
         const auto split=entry.find('|');if(split==std::string::npos)continue;
         Root r{entry.substr(0,split),entry.substr(split+1)};
-        if(r.platform!="PS5/PS4"&&r.platform!="PS5"&&r.platform!="PS4"&&r.platform!="Homebrew"&&r.platform!="PS2"&&r.platform!="Switch"&&r.platform!="Xbox 360"&&r.platform!="PS1"&&r.platform!="PSP")continue;
+        if(r.platform!="PS5/PS4"&&r.platform!="PS5"&&r.platform!="PS4"&&r.platform!="Homebrew"&&r.platform!="PS2"&&r.platform!="Switch"&&r.platform!="Xbox 360"&&r.platform!="PS1"&&r.platform!="PSP"&&r.platform!="PS3"&&r.platform!="Xbox"&&
+           r.platform!="Dreamcast"&&r.platform!="GameCube"&&r.platform!="Wii")continue;
         if(r.path.empty() || r.path[0]!='/' || r.path=="/" || r.path.find("/../")!=std::string::npos || ends(r.path,"/..") || r.path.size()>4096)continue;
         roots.push_back(std::move(r));
         if(roots.size()==128)break;
