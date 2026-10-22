@@ -20,7 +20,10 @@ def test_unambiguous_emulator_hints_by_context():
     assert 'draw_emulator_button_legend(list)' in SRC
     assert 'ui::Button::touchpad,hint("Pfad eingeben")' in SRC
     assert 'ui::Button::triangle,hint("Entfernen")' in SRC
-    assert 'ui::Button::square,hint("Einklappen")' in SRC
+    # V1.1.9: Square offers a menu-start test on the emulator app row,
+    # but still folds/unfolds the settings accordion elsewhere.
+    assert 'ui::Button::square,hint(app?"Menue testen":"Einklappen")' in SRC
+    assert 'ui::Button::square,hint(emulator_expanded_?"Einklappen":"Aufklappen")' in SRC
     assert 'ui::Button::l2,hint("Reihenfolge"),ui::Button::r2' in SRC
     assert 'ui::Button::cross,hint("AN/AUS")' in SRC
     assert 'ui::Button::cross,hint(app?"Anwendung bearbeiten"' in SRC
