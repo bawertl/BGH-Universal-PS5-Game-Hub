@@ -29,6 +29,7 @@ def apply(project: Path, toolkit: Path) -> None:
     shutil.copy2(project/'native_ps5'/'playtime_log.hpp', concepts/'playtime_log.hpp')
     shutil.copy2(project/'native_ps5'/'platform_registry.hpp', concepts/'platform_registry.hpp')
     shutil.copy2(project/'native_ps5'/'emulator_detection.hpp', concepts/'emulator_detection.hpp')
+    shutil.copy2(project/'native_ps5'/'emulator_cards.hpp', concepts/'emulator_cards.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.hpp', concepts/'library_core.hpp')
     shutil.copy2(project/'native_ps5'/'library_core.cpp', concepts/'library_core.cpp')
     shutil.copy2(project/'native_ps5'/'launcher_client.cpp', concepts/'launcher_client.cpp')
