@@ -1314,9 +1314,28 @@ private:
     void refresh_emulator_detections(){
         emulator_profiles_=ulg::emulator_detection::load_profiles();
         detected_emulators_.clear();
-        for(const auto &p:platform_registry_.entries)if(p.is_emulator)
-            detected_emulators_[p.id]=ulg::emulator_detection::detect(
-                p.app_path,p.id,emulator_profiles_);
+        // POSIX lstat on a different title's /data/homebrew/ directory can be
+        // blocked by the PS5 app sandbox although an existing FTP daemon sees it.
+        // Reuse only the same read-only loopback FTP service as the game scanner.
+        ulg::FtpReadonly ftp;
+        for(const auto &p:platform_registry_.entries)if(p.is_emulator){
+            auto detected=ulg::emulator_detection::detect(p.app_path,p.id,emulator_profiles_);
+            if(!p.app_path.empty() &&
+               (detected.status==ulg::emulator_detection::Detection::Status::invalid_path ||
+                detected.status==ulg::emulator_detection::Detection::Status::incomplete) &&
+               ulg::safe_platform_path(p.app_path)){
+                const auto from_ftp=ulg::emulator_detection::detect_via_ftp(
+                    p.app_path,p.id,emulator_profiles_,ftp);
+                // Prefer actual FTP status for sandbox-inaccessible folders.
+                // Incomplete local metadata can still be more informative than
+                // an unreachable FTP service.
+                if(detected.status==ulg::emulator_detection::Detection::Status::invalid_path ||
+                   (from_ftp.status!=ulg::emulator_detection::Detection::Status::invalid_path &&
+                    from_ftp.status!=ulg::emulator_detection::Detection::Status::ftp_unavailable))
+                    detected=from_ftp;
+            }
+            detected_emulators_[p.id]=std::move(detected);
+        }
     }
     const ulg::emulator_detection::Detection &emulator_detection_for(const std::string &platform) const {
         static const ulg::emulator_detection::Detection missing{};

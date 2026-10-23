@@ -162,9 +162,56 @@ inline std::vector<Profile> load_profiles(const std::string &bundled="/app0/asse
     return profiles;
 }
 struct Detection {
-    enum class Status { no_path, invalid_path, incomplete, mismatch, unidentified_app, known_emulator } status=Status::no_path;
+    enum class Status { no_path, invalid_path, ftp_unavailable, incomplete, mismatch, unidentified_app, known_emulator } status=Status::no_path;
     std::string title_id, name, profile_id;
+    bool via_ftp=false; // Detected by pre-existing read-only loopback FTP, not by app sandbox POSIX.
 };
+// Shared validator for local POSIX and the already-running read-only FTP view.
+// Both sources must independently confirm eboot.bin and all profile files.
+template <typename HasFile>
+inline Detection detect_from_metadata(const std::string &path,const std::string &platform,
+                                      const std::vector<Profile> &profiles,
+                                      const std::string &bytes,HasFile has_file){
+    Detection result;result.status=Detection::Status::incomplete;
+    if(!has_file("eboot.bin"))return result;
+    Json meta;
+    if(!Parser(bytes).parse(meta) || meta.type!=Json::Type::object)return result;
+    const auto &id=meta.get("titleId");
+    if(id.type!=Json::Type::text || !ps5_title_id(id.text))return result;
+    const auto slash=path.find_last_of('/');
+    const auto basename=path.substr(slash==std::string::npos?0:slash+1);
+    if(ps5_title_id(basename) && basename!=id.text){
+        result.status=Detection::Status::mismatch;return result;
+    }
+    result.title_id=id.text;
+    const auto &localized=meta.get("localizedParameters");
+    // Real PS5 param.json has defaultLanguage: "en-US" and an "en-US" object.
+    const auto &lang_id=localized.get("defaultLanguage");
+    const Json *lang=nullptr;
+    if(lang_id.type==Json::Type::text)lang=&localized.get(lang_id.text);
+    else if(lang_id.type==Json::Type::object)lang=&lang_id; // backward-compatible fixtures
+    if(lang && lang->get("titleName").type==Json::Type::text)
+        result.name=lang->get("titleName").text;
+    if(result.name.empty() && localized.get("en-US").get("titleName").type==Json::Type::text)
+        result.name=localized.get("en-US").get("titleName").text;
+    if(result.name.empty() && meta.get("titleName").type==Json::Type::text)
+        result.name=meta.get("titleName").text;
+    if(result.name.empty())result.name="PS5-Anwendung";
+    if(result.name.size()>100)result.name.resize(100);
+    result.status=Detection::Status::unidentified_app;
+    for(const auto &profile:profiles){
+        if(profile.platform!=platform||profile.title_id!=id.text)continue;
+        bool matched=true;
+        for(const auto &file:profile.required_files)
+            if(!has_file(file)){matched=false;break;}
+        if(!matched)continue;
+        result.status=Detection::Status::known_emulator;
+        result.profile_id=profile.id;
+        if(result.name=="PS5-Anwendung" && !profile.name.empty())result.name=profile.name;
+        break;
+    }
+    return result;
+}
 inline Detection detect(const std::string &path,const std::string &platform,
                         const std::vector<Profile> &profiles){
     Detection result;
@@ -174,47 +221,50 @@ inline Detection detect(const std::string &path,const std::string &platform,
     struct stat st{};
     if(lstat(path.c_str(),&st)!=0 || !S_ISDIR(st.st_mode))return result;
     result.status=Detection::Status::incomplete;
-    if(!ordinary_file(path+"/eboot.bin"))return result;
-    std::string bytes;Json meta;
-    if(!file_bytes(path+"/sce_sys/param.json",bytes) || !Parser(bytes).parse(meta) ||
-       meta.type!=Json::Type::object)return result;
-    const auto &id=meta.get("titleId");
-    if(id.type!=Json::Type::text || !ps5_title_id(id.text))return result;
-    // Reject a contradicting installed-app folder ID (never silently trust it).
-    const auto slash=path.find_last_of('/');
-    const auto basename=path.substr(slash==std::string::npos?0:slash+1);
-    if(ps5_title_id(basename) && basename!=id.text){result.status=Detection::Status::mismatch;return result;}
-    result.title_id=id.text;
-    const auto &localized=meta.get("localizedParameters");
-    const auto &default_lang=localized.get("defaultLanguage");
-    const auto &title=default_lang.get("titleName");
-    if(title.type==Json::Type::text)result.name=title.text;
-    if(result.name.empty() && meta.get("titleName").type==Json::Type::text)
-        result.name=meta.get("titleName").text;
-    if(result.name.empty())result.name="PS5-Anwendung";
-    if(result.name.size()>100)result.name.resize(100);
-    result.status=Detection::Status::unidentified_app;
-    for(const auto &p:profiles){
-        if(p.platform!=platform||p.title_id!=id.text)continue;
-        bool matched=true;
-        for(const auto &file:p.required_files)
-            if(!ordinary_file(path+"/"+file)){matched=false;break;}
-        if(!matched)continue;
-        result.status=Detection::Status::known_emulator;
-        result.profile_id=p.id;
-        if(!p.name.empty())result.name=p.name;
-        break;
+    std::string bytes;
+    if(!file_bytes(path+"/sce_sys/param.json",bytes))return result;
+    return detect_from_metadata(path,platform,profiles,bytes,[&](const std::string &file){
+        return ordinary_file(path+"/"+file);
+    });
+}
+// A PS5 sandbox cannot necessarily lstat() a different homebrew title,
+// even though the user's already-running FTP service sees the installation.
+// This path never opens a socket to anything but 127.0.0.1:2121 and uses
+// exclusively CWD/MLSD/RETR. No writes or helper ELF execution.
+template <typename ReadonlyFtp>
+inline Detection detect_via_ftp(const std::string &path,const std::string &platform,
+                                 const std::vector<Profile> &profiles,ReadonlyFtp &ftp){
+    Detection result;
+    if(path.empty())return result;
+    result.status=Detection::Status::invalid_path;
+    if(!safe_platform_path(path))return result;
+    result.status=Detection::Status::incomplete;
+    if(!ftp.connect_local()){result.status=Detection::Status::ftp_unavailable;return result;}
+    const auto listing=ftp.list(path,200);
+    if(!listing.ok){
+        result.status=listing.operation=="FTP CWD" && listing.reply==550
+            ? Detection::Status::invalid_path:Detection::Status::ftp_unavailable;
+        return result;
     }
-    return result;
+    std::string bytes;
+    if(!ftp.retrieve(path+"/sce_sys/param.json",bytes,65536))return result;
+    auto found=detect_from_metadata(path,platform,profiles,bytes,[&](const std::string &name){
+        return std::any_of(listing.entries.begin(),listing.entries.end(),[&](const auto &e){
+            return !e.folder && e.name==name;
+        });
+    });
+    found.via_ftp=true;
+    return found;
 }
 inline std::string description(const Detection &d){
     switch(d.status){
     case Detection::Status::no_path:return "Vorlage / kein Backend";
     case Detection::Status::invalid_path:return "Installationsordner nicht gefunden";
+    case Detection::Status::ftp_unavailable:return "FTP-Erkennung nicht erreichbar (2121)";
     case Detection::Status::incomplete:return "App-Metadaten fehlen / nicht lesbar";
     case Detection::Status::mismatch:return "Titel-ID stimmt nicht mit Ordner ueberein";
     case Detection::Status::unidentified_app:return "PS5-App erkannt / Emulator-Typ offen";
-    case Detection::Status::known_emulator:return d.name+" erkannt / Menue-Start ungetestet";
+    case Detection::Status::known_emulator:return d.name+(d.via_ftp?" (FTP) erkannt / Menue-Start ungetestet":" erkannt / Menue-Start ungetestet");
     }
     return "Nicht erkannt";
 }
