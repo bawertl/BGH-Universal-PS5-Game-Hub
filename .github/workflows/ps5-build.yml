@@ -1,15 +1,15 @@
-name: BGH - BawertLs Game Hub V1.1.9 - Emulator Auto-Detection
+name: BGH - BawertLs Game Hub V1.1.9 - NextGen UI Test
 
 on:
   push:
-    branches: [bgh-v1.1.9, main]
+    branches: [bgh-v1.1.9-nextgen-ui]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v119-emulators-${{ github.ref }}
+  group: bgh-v119-nextgen-ui-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           trap 'echo "BGH V1.1.9 QUELLCODE-CHECK FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
           echo "GitHub branch: $GITHUB_REF_NAME"
-          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.9" && "$GITHUB_REF_NAME" != "main" ]]; then
+          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.9-nextgen-ui" ]]; then
             echo "Unerwarteter Branch: $GITHUB_REF_NAME" >&2
             exit 1
           fi
