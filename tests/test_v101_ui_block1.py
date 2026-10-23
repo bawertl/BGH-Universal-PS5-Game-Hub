@@ -32,12 +32,12 @@ def test_recent_cover_loading_precedes_regular_visible_list():
 def test_platform_badge_uses_actual_serif_metrics():
     fn=SRC.split('void draw_game_info(gfx::DrawList &list) const {',1)[1].split('    std::array<int,3> recent_indices()',1)[0]
     # V1.0.8 intentionally removes the platform capsule; text remains uncut.
-    assert 'serif_text(list,platform_text,755,698,20' in fn
+    assert 'serif_text(list,label,platform_x,803,19' in fn
     assert 'chip_padding' not in fn and 'chip_w' not in fn
     assert 'kSerifAtlasGlyphs' in SRC and 'glyph->advance*scale' in SRC
 
 def test_branch_build_and_version_consistency():
-    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in SRC
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
     assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW

@@ -87,8 +87,8 @@ def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
 
 
 def test_workflow_is_v126_and_legacy_launch_checks_remain():
-    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.9" && "$GITHUB_REF_NAME" != "main"' in WORKFLOW
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.9-nextgen-ui"' in WORKFLOW
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
     assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in SOURCE

@@ -77,7 +77,7 @@ def test_recent_cover_priority_and_refresh_unchanged():
 def test_new_header_is_shipped_and_version_consistent():
     assert '"cover_load_debounce.hpp"' in UI
     assert "'cover_load_debounce.hpp'" in (ROOT / 'tooling/install_ui_kit_overlay.py').read_text()
-    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
     assert 'release_label="BGH V1.1.9"' in UI
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW

@@ -24,9 +24,9 @@ def test_each_emulated_game_is_not_assigned_emulator_process_total():
 
 def test_playtime_label_next_to_platform_no_detail_path_reflow():
     hero = UI[UI.index('void draw_game_info('):UI.index('void draw_cover_fan(', UI.index('void draw_game_info('))] if 'void draw_cover_fan(' in UI[UI.index('void draw_game_info('):] else UI[UI.index('void draw_game_info('):UI.index('void draw_detail(')]
-    assert 'serif_text(list,platform_text,755,698,20' in hero
-    assert 'const float time_x=755.0f+serif_text_width(platform_text,20.0f)+42.0f;' in hero
-    assert 'serif_text(list,native_time,time_x,698,24' in hero
+    assert 'serif_text(list,label,platform_x,803,19' in hero
+    assert 'platform_x+serif_text_width(label,19.0f)+28.0f' in hero
+    assert 'serif_text(list,native_time,platform_x+serif_text_width(label,19.0f)+28.0f' in hero
     detail = UI[UI.index('void draw_detail('):UI.index('void refresh_playtime_log(')]
     assert 'translated_text(list,fonts.semibold,native_detail_time,1060,309,28' in detail
     assert 'shorten(playtime_detail_label(g),73)' not in detail

@@ -64,7 +64,7 @@ def test_release_branch_and_cache():
     script = (ROOT/'tooling/build_native_ps5.sh').read_text()
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in ui
     assert 'library_v116_container_start_title.bin' in ui
-    assert 'branches: [bgh-v1.1.9, main]' in workflow
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in workflow
     assert 'bgh-v1.1.9' in workflow
     assert 'BGH_BawertLs_Game_Hub_V1_1_9' in workflow
     assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in script

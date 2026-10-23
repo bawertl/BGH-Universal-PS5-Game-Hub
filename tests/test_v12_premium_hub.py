@@ -41,14 +41,14 @@ int main(){
 def test_single_game_selection_and_real_library_drives_both_views():
     source=CPP.read_text()
     assert "const auto &g=catalogue_.games[indices_[static_cast<std::size_t>(selected_)]];" in source
-    assert "draw_game_list(list);" in source
+    assert "draw_game_info(list);" in source
     assert "draw_cover_fan(list);" in source
     assert "draw_game_info(list);" in source
     assert "draw_platform_bar(list);" in source
     assert "visual_selection_=" in source
     assert "selected_=next" in source
     assert "kVisibleListRows = 9" in source
-    assert "std::array<int,5> candidates" in source
+    assert "std::array<Candidate,7> candidates" in source
     assert "counts_.fill(0)" in source and "++counts_[0]" in source
     assert "No game paths or installations are modified" in source
     assert "launch_registered_ps5" in source

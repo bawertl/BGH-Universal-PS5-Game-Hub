@@ -14,7 +14,7 @@ def test_four_tabs_dynamic_sidebar_and_preserved_launch_paths():
     assert 'rebuild_sidebar()' in CPP
     assert 'platform_registry_.entries' in CPP
     assert 'sidebar_items_.size()' in CPP
-    assert 'platform_count>visible' in CPP
+    assert 'first+visible<n' in CPP
     assert 'ulg::send_launch(emulator_menu_plan(' in CPP
     assert 'stage_ps5sx2_disc_launch(g.path)' in CPP
     assert 'make_registered_ps5_launch_plan(g.title_id)' in CPP
@@ -74,7 +74,7 @@ int main(int argc,char**argv){
 
 
 def test_workflow_version_and_overlay():
-    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
     assert "platform_registry.hpp'" in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()
 

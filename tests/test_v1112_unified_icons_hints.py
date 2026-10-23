@@ -43,6 +43,6 @@ def test_folder_browser_and_editor_use_glyphs():
 
 def test_version_and_branch():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'branches: [bgh-v1.1.9, main]' in wf
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in wf
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in wf
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in SRC

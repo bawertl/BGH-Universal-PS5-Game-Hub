@@ -32,8 +32,8 @@ def test_recent_history_dual_storage_and_no_game_write():
 
 def test_safe_fan_and_recent_geometry():
     assert 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f' in CPP
-    assert 'depth-1.0f)*194.0f' in CPP
-    assert 'const Rect card{x,872,363,108}' in CPP
+    assert 'depth-1.0f)*145.0f' in CPP
+    assert 'const Rect card{x,915,380,95}' in CPP
     assert 'start_layout.cy=launch_button.y+launch_button.h*0.5f' in CPP
     center=(704+(1920-54))/2
     distance=222+2.2*100

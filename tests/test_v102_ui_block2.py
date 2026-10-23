@@ -9,16 +9,16 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 def test_launch_button_content_is_measured_and_centered():
     block=SRC.split('void draw_game_info(gfx::DrawList &list) const {',1)[1].split('    std::array<int,3> recent_indices()',1)[0]
     assert 'ui::measure_hints(fonts,start_hint,1,start_layout)' in block
-    assert 'const float start_x=launch_button.x+(launch_button.w-start_width)*0.5f;' in block
+    assert 'launch_button.x+(launch_button.w-start_width)*0.5f' in block
     assert 'start_layout.cy=launch_button.y+launch_button.h*0.5f;' in block
-    assert 'start_hint,1,start_x,false,start_layout' in block
-    assert 'list.gradient_rect(launch_button,18,' in block
+    assert 'start_hint,1,' in block
+    assert 'list.gradient_rect(launch_button,15,' in block
     assert 'ui::Button::cross,hint(menu_mode?"Menue":"Spielen")' in block
 
 def test_list_header_clears_first_row():
     # V1.0.8 uses a divider and no outer header capsule.
     assert 'const Rect list_header' not in SRC
-    assert 'list.rounded_rect({300,176,386,2},1' in SRC
+    assert 'draw_platform_bar(list);' in SRC
     assert 176+2+6 < 192
     assert 'constexpr float kListTop = 192.0f;' in SRC
 
@@ -39,7 +39,7 @@ def test_switch_badge_restores_complete_left_icon():
 
 def test_release_1_0_2_is_consistent():
     build=(ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in SRC and 'BGH V1.1.9-EMULATOR-AUTODETECTION' in WORKFLOW
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
     assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW

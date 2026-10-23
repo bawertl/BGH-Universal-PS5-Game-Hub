@@ -12,19 +12,19 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 def test_version_consistency():
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.9, main]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
     assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
 
 
-def test_5_cover_fan_and_bolder_title():
+def test_7_cover_fan_and_bolder_title():
     section=UI.split('void draw_cover_fan(gfx::DrawList &list) const {',1)[1].split('void draw_game_info(',1)[0]
-    assert 'std::array<int,5> candidates' in section
-    assert 'i=center-2;i<=center+2' in section
-    assert 'depth*24.0f' in UI
-    assert 'min(depth,1.0f)*270.0f' in UI
-    assert 'depth-1.0f)*194.0f' in UI
-    assert 'serif_text(list,title,755,664,43,kInk,1090);' in UI
+    assert 'std::array<Candidate,7> candidates' in section
+    assert 'offset=-3;offset<=3' in section
+    assert 'depth*18.0f' in UI
+    assert 'min(depth,1.0f)*215.0f' in UI
+    assert 'depth-1.0f)*145.0f' in UI
+    assert 'serif_text(list,title,title_x,778,size,Color::rgb(0xF0F8FF),1320);' in UI
 
 
 def test_real_connected_glow_and_unverified_battery():

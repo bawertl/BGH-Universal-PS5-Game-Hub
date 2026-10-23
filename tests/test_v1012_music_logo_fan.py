@@ -27,7 +27,7 @@ def test_center_and_release_updated_without_touching_scroll_debounce():
     assert 'release_label="BGH V1.1.9"' in CPP
     assert 'kQuietSeconds = 0.035f' in (ROOT/'native_ps5/cover_load_debounce.hpp').read_text()
     assert 'if(order_.size()>=256)' in CPP
-    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
 
 

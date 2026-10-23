@@ -14,18 +14,18 @@ def between(source, a, b):
 def test_list_header_is_free_standing_and_separated():
     header = between(UI, 'void draw(app::Frame &frame) const', 'void request_selected_launch(')
     assert 'const Rect list_header' not in header
-    assert 'active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":"Meine Spiele"' in header
-    assert 'const Rect count_chip' in header
-    assert 'serif_text_width(count_text,count_size)' in header
-    assert 'list.rounded_rect({300,176,386,2},1' in header
+    assert 'draw_platform_bar(list);' in header
+    assert 'draw_storage_widgets(list);' in header
+    assert 'draw_cover_fan(list);' in header
+    assert 'draw_platform_bar(list);' in header
     assert 'constexpr float kListTop = 192.0f;' in UI
 
 
 def test_platform_as_text_and_real_source_ids():
     game = between(UI, 'void draw_game_info(', 'std::array<int,3> recent_indices()')
     assert 'chip_w' not in game and 'chip_padding' not in game
-    assert 'serif_text(list,platform_text,755,698,20' in game
-    assert 'const Rect launch_button{755,718,182,49};' in game
+    assert 'serif_text(list,label,platform_x,803,19' in game
+    assert 'const Rect launch_button{870,819,180,45};' in game
     for platform in ('PS2','PS4','PS5','Switch','Xbox 360','Homebrew'):
         assert 'platform=="'+platform+'"' in UI
     assert 'if(platform=="PS2" || platform=="PlayStation")' not in UI
@@ -33,8 +33,8 @@ def test_platform_as_text_and_real_source_ids():
 
 def test_only_hero_glows_and_unverified_battery_is_hidden():
     fan = between(UI, 'void draw_fan_cover(', 'void draw_cover_fan(')
-    assert 'if(depth<0.15f)' in fan
-    assert '0xFAF4E8,0.22f' in fan
+    assert 'if(depth<0.18f)' in fan
+    assert '0x00E5FF,0.49f*pulse' in fan
     assert 'if(depth<0.55f)\n            list.glow(' not in fan
     controller = between(UI, 'void draw_controllers(', 'void draw_platform_bar(')
     assert 'const int battery=controllers_.battery[i];' in controller
@@ -78,6 +78,6 @@ def test_known_emulator_apps_use_menu_without_rom_or_history():
 def test_release_consistency():
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
     assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

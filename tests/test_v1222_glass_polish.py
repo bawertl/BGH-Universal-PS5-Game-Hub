@@ -8,7 +8,7 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text(encoding='utf-8')
 
 def test_fan_moves_left_and_selected_cover_is_emphasised():
     assert 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f' in SRC
-    assert 'hero_boost=0.20f*std::max(0.0f,1.0f-depth*0.88f)' in SRC
+    assert 'hero_boost=0.19f*std::max(0.0f,1.0f-depth*0.88f)' in SRC
     assert 'draw_cover_fan(list)' in SRC
     assert 'fan_cover_header_asset(g.platform)' in SRC
 
@@ -22,7 +22,7 @@ def test_info_is_free_standing_and_uses_ps_glyph():
     assert 'Start testen' not in main
     assert 'X  ' not in main
     # V1.0.8 intentionally removes the platform capsule while keeping the label.
-    assert 'serif_text(list,platform_text,755,698,20' in main
+    assert 'serif_text(list,label,platform_x,803,19' in main
     assert 'chip_w' not in main and 'chip_padding' not in main
 
 def test_launch_paths_remain_present():

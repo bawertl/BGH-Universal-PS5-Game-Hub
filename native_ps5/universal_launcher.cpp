@@ -16,6 +16,7 @@
 #include "concepts/playtime_log.hpp"
 #include "concepts/ftp_readonly.hpp"
 #include "controller_status.hpp"
+#include "storage_widgets.hpp"
 #include "ui/glyphs.hpp"
 #include "platform/ps5/system.hpp"
 #include "ui/motion.hpp"
@@ -69,15 +70,15 @@ constexpr std::array<const char *,3> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.9-EMULATOR-AUTODETECTION [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.9-EMULATOR-AUTODETECTION UI-NEXTGEN-TEST [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
 constexpr float kGameListRight = 704.0f;
 constexpr float kScreenRight = 1920.0f;
 constexpr float kFanRightMargin = 54.0f;
-constexpr float kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f;
-constexpr float kFanCentreY = 365.0f;
+constexpr float kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f - 312.0f;
+constexpr float kFanCentreY = 455.0f;
 constexpr float kFanHeaderHeightRatio = 0.162f;
 constexpr std::array<const char *, 9> kTabs = {
     "Alle Spiele", "PS5", "PS4", "PS2", "Switch", "Xbox 360", "Emulatoren", "Favoriten", "Zuletzt"
@@ -136,6 +137,23 @@ std::string current_time_label(){
 #endif
     char buffer[6]{};
     return std::strftime(buffer,sizeof(buffer),"%H:%M",&local_time)>0?std::string(buffer):std::string("--:--");
+}
+std::string current_date_label(){
+    const std::time_t now=std::time(nullptr);
+    std::tm local_time{};
+#if defined(_WIN32)
+    if(localtime_s(&local_time,&now)!=0)return "--";
+#elif defined(__linux__) || defined(__APPLE__)
+    if(localtime_r(&now,&local_time)==nullptr)return "--";
+#else
+    if(localtime_s(&now,&local_time)==nullptr)return "--";
+#endif
+    static constexpr const char* weekdays[]={"So","Mo","Di","Mi","Do","Fr","Sa"};
+    static constexpr const char* months[]={"Jan","Feb","Maer","Apr","Mai","Jun",
+                                           "Jul","Aug","Sep","Okt","Nov","Dez"};
+    if(local_time.tm_wday<0||local_time.tm_wday>6||local_time.tm_mon<0||local_time.tm_mon>11)return "--";
+    return std::string(weekdays[local_time.tm_wday])+", "+
+        std::to_string(local_time.tm_mday)+". "+months[local_time.tm_mon];
 }
 Color platform_color(const std::string &p){
     if(p=="PS5")return Color::rgb(0xB7C8FF);
@@ -436,10 +454,11 @@ public:
         };
         return kInfo;
     }
-    void enter() override { clock_=0.0f; visual_selection_=static_cast<float>(selected_);
+    void enter() override { clock_=0.0f; next_storage_poll_=30.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
+        if(clock_>=next_storage_poll_){storage_widgets_=ulg::storage_widgets::detect();next_storage_poll_=clock_+30.0f;}
         // Debounce new, synchronous cover decodes during fast navigation.
         // Bundled assets and the three recent cards are always serviced first.
         const bool browsing_screen=!settings_ && !detail_ && !search_open_ &&
@@ -551,14 +570,16 @@ public:
             refresh_playtime_log();detail_=true;launch_message_.clear();local_services_checked_=false;
             feedback.play(audio::Cue::open);return;
         }
-        if(input.nav==Direction::left && !sidebar_focus_){
+        // NextGen tabs: Up enters the horizontal platform bar; Left/Right
+        // navigate its active, configured entries; Down returns to the covers.
+        if(input.nav==Direction::up && !sidebar_focus_){
             sidebar_focus_=true;launch_in_progress_=false;
             feedback.play(audio::Cue::focus);return;
         }
         if(sidebar_focus_){
-            if(input.nav==Direction::right){sidebar_focus_=false;feedback.play(audio::Cue::focus);return;}
-            if(input.nav==Direction::up){switch_tab((tab_+static_cast<int>(sidebar_items_.size())-1)%static_cast<int>(sidebar_items_.size()));feedback.play(audio::Cue::tab);return;}
-            if(input.nav==Direction::down){switch_tab((tab_+1)%static_cast<int>(sidebar_items_.size()));feedback.play(audio::Cue::tab);return;}
+            if(input.nav==Direction::down){sidebar_focus_=false;feedback.play(audio::Cue::focus);return;}
+            if(input.nav==Direction::left){switch_tab((tab_+static_cast<int>(sidebar_items_.size())-1)%static_cast<int>(sidebar_items_.size()));feedback.play(audio::Cue::tab);return;}
+            if(input.nav==Direction::right){switch_tab((tab_+1)%static_cast<int>(sidebar_items_.size()));feedback.play(audio::Cue::tab);return;}
             if(input.is_pressed(Action::confirm)){sidebar_focus_=false;feedback.play(audio::Cue::select);return;}
         }
         if(input.is_pressed(Action::page_prev)){
@@ -576,58 +597,53 @@ public:
         if(input.nav!=Direction::none && !indices_.empty()){
             const int delta=(input.nav==Direction::left || input.nav==Direction::up)?-1:1;
             const int next=ulg::premium::step(selected_,delta,indices_.size());
-            if(next!=selected_){selected_=next;launch_in_progress_=false;feedback.play(audio::Cue::focus);}
+            if(next!=selected_){
+                if(std::abs(next-selected_)>1)visual_selection_=static_cast<float>(next);
+                selected_=next;launch_in_progress_=false;feedback.play(audio::Cue::focus);
+            }
         }
         // One X starts the currently selected actual game without any detail overlay.
         if(input.is_pressed(Action::confirm) && !sidebar_focus_)request_selected_launch(feedback);
     }
     void draw(app::Frame &frame) const override {
         frame.backdrop.mode=gfx::BackdropMode::aurora;
-        frame.backdrop.colors[0]=Color::rgb(0x101722);
-        frame.backdrop.colors[1]=Color::rgb(0x1D2430);
-        frame.backdrop.colors[2]=Color::rgb(0x1A2431);
-        frame.backdrop.colors[3]=Color::rgb(0x101722);
+        frame.backdrop.colors[0]=Color::rgb(0x090F1B);
+        frame.backdrop.colors[1]=Color::rgb(0x101C30);
+        frame.backdrop.colors[2]=Color::rgb(0x0D1930);
+        frame.backdrop.colors[3]=Color::rgb(0x090F1B);
         frame.backdrop.time=0.0f;
         auto &list=frame.scene;
         const auto &fonts=context_.fonts;
+        // Existing landscape and saved artwork stay intact. No replacement wallpaper.
         const auto background=covers_.get("/app0/assets/premium_lake_background.png");
         if(background)list.image(background,{0,0,1920,1080},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-        else list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x152233));
-        list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x05080C,0.10f));
-        glass_card(list,{12,113,247,823},28);
-        glass_card(list,{272,113,432,823},28);
-        // The fan floats above the scenery; no static panel behind moving covers.
-        // The title, platform badge and start hint below are free-standing too.
+        else list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x102033));
+        list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x030815,0.33f));
+        list.gradient_rect({0,0,1920,194},0,Color::rgb(0x080F1D,0.88f),Color::rgb(0x0A1B29,0.11f));
         const auto brand=covers_.get("/app0/assets/bgh_logo.png");
-        if(brand)list.image(brand,{30,16,73,73},gfx::kFullUv,Color::rgb(0xFFFFFF),12);
+        if(brand)list.image(brand,{30,18,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
         const auto wordmark=covers_.get("/app0/assets/bgh_wordmark.png");
-        if(wordmark)list.image(wordmark,{103,24,432,71},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-        else serif_text(list,"BawertL's Game Hub",112,60,31,kInk,423);
-        // Open header: no large outer capsule, just the count chip and matching divider.
-        // Keep their visual centres aligned, with breathing room above the first row.
-        serif_text(list,active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":"Meine Spiele",
-            312,158,30,kInk,298);
-        const Rect count_chip{612,131,60,31};
-        list.rounded_rect(count_chip,15,Color::rgb(0xF2E3C2,0.16f));
-        list.bordered_rect(count_chip,15,Color::rgb(0xFFFFFF,0),1.0f,Color::rgb(0xF6E5C4,0.35f));
-        const std::string count_text=std::to_string(indices_.size());
-        const float count_size=18.0f;
-        const float count_x=count_chip.x+(count_chip.w-serif_text_width(count_text,count_size))*0.5f;
-        serif_text(list,count_text,count_x,153,count_size,Color::rgb(0xF2D7A1));
-        list.rounded_rect({300,176,386,2},1,Color::rgb(0xE6D6B4,0.32f));
+        if(wordmark)list.image(wordmark,{109,33,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+        else serif_text(list,"BawertL's Game Hub",113,68,27,kInk,320);
+        // Reserved crest/crown asset slot; do not fabricate an official logo.
         draw_controllers(list);
-        const std::string time_text=current_time_label();
-        serif_text(list,time_text,1660,58,24,kInk,90);
+        serif_text(list,current_time_label(),1681,49,23,Color::rgb(0xF3F8FF));
+        serif_text(list,current_date_label(),1680,74,16,Color::rgb(0xCAD6E7));
         const auto search_icon=covers_.get("/app0/assets/ui/search.png");
-        if(search_icon)list.image(search_icon,{1766,29,34,34},gfx::kFullUv,Color::rgb(0xF8EEDB),0);
+        if(search_icon)list.image(search_icon,{1814,22,30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
         const auto settings_icon=covers_.get("/app0/assets/ui/settings.png");
-        if(settings_icon)list.image(settings_icon,{1822,29,34,34},gfx::kFullUv,Color::rgb(0xF8EEDB),0);
-        draw_platform_bar(list);
-        draw_game_list(list);
+        if(settings_icon)list.image(settings_icon,{1861,22,30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
+        draw_platform_bar(list); // dynamic, horizontal NextGen capsule row
+        draw_storage_widgets(list);
+        // Compact section label retains category clarity without the old sidebar.
+        const std::string section_title=active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":
+            (active_sidebar_id()=="Apps"?"Meine Apps":"Meine Spiele");
+        serif_text(list,section_title,72,229,23,Color::rgb(0xECF7FF),282);
+        serif_text(list,std::to_string(indices_.size()),72,254,15,Color::rgb(0x90DFFE));
         if(indices_.empty()){
-            serif_text(list,"Keine Spiele in dieser Kategorie",792,460,37,kInk,700);
+            serif_text(list,"Keine Eintraege in dieser Kategorie",616,531,36,kInk,1100);
         }else{
-            draw_cover_fan(list);
+            draw_cover_fan(list); // seven covers: 3 left + focus + 3 right
             draw_game_info(list);
         }
         draw_recent_cards(list);
@@ -637,20 +653,18 @@ public:
             {ui::Button::left_stick,hint("Details")},{ui::Button::square,hint("Aktualisieren")},
             {ui::Button::triangle,hint("Suche")},{ui::Button::options,hint("Einstellungen")}
         };
-        ui::HintLayout hint_layout;hint_layout.cy=1044;hint_layout.size=24;
-        hint_layout.text_size=17;hint_layout.item_gap=24;
-        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,43,false,hint_layout);
+        ui::HintLayout hint_layout;hint_layout.cy=1042;hint_layout.size=23;
+        hint_layout.text_size=16;hint_layout.item_gap=20;
+        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
+        serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
+            Color::rgb(0xCBF4FF));
+        const std::string release_label="BGH V1.1.9";
+        serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
         if(browser_open_)draw_browser(frame);
         if(path_editor_open_)draw_path_editor(frame);
         if(search_open_)draw_search(frame);
-        // Lower-right, inside the TV safe area. Kept in sync with the build branch.
-        const std::string release_label="BGH V1.1.9";
-        const std::string release_text=release_label+" Container-Launch-Title-Fix";
-        const float release_width=serif_text_width(release_text,17.0f);
-        translated_text(list,fonts.regular,release_text,1860.0f-release_width,1045,17,
-            Color::rgb(0xFFFFFF,0.58f));
     }
 
 private:
@@ -1194,7 +1208,11 @@ private:
         // unconditional chance to load, but still do no more than ONE costly
         // import/decode/upload per frame. Recent cards and UI assets stay first.
         for(const int offset:{0,-1,1}){
-            const int position=selected_+offset;
+            int position=selected_+offset;
+            if(indices_.size()>=7){
+                const int n=static_cast<int>(indices_.size());
+                position=(position%n+n)%n;
+            }
             if(position<0 || position>=static_cast<int>(indices_.size()))continue;
             auto &g=catalogue_.games[indices_[static_cast<std::size_t>(position)]];
             if(load_cover_for_game(g))return;
@@ -1206,6 +1224,10 @@ private:
         std::array<std::size_t,24> priorities{};
         std::size_t priority_count=0;
         const auto enqueue=[&](int idx){
+            if(indices_.size()>=7){
+                const int n=static_cast<int>(indices_.size());
+                idx=(idx%n+n)%n;
+            }
             if(idx<0 || idx>=static_cast<int>(indices_.size()))return;
             const auto id=static_cast<std::size_t>(idx);
             for(std::size_t n=0;n<priority_count;++n)if(priorities[n]==id)return;
@@ -1310,6 +1332,7 @@ private:
             items.push_back({p.id,p.short_label,p.icon_path,legacy_icon,true});
         }
         items.push_back({"Emulatoren","Emulatoren","",6,false});
+        items.push_back({"Apps","Apps","",6,false});
         items.push_back({"Favoriten","Favoriten","",7,false});
         items.push_back({"Zuletzt","Zuletzt","",8,false});
         sidebar_items_=std::move(items);
@@ -1628,6 +1651,14 @@ private:
         visual_selection_=static_cast<float>(selected_);
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows);
     }
+    bool is_emulator_app(const ulg::Game &game) const {
+        if(game.platform!="Homebrew")return false;
+        if(emulator_platform_for_title(game.title_id))return true;
+        for(const auto &entry:detected_emulators_)
+            if(entry.second.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+               entry.second.title_id==game.title_id)return true;
+        return false;
+    }
     void rebuild(){
         const std::string keep=(!indices_.empty() && selected_>=0 &&
             selected_<static_cast<int>(indices_.size()) && indices_[selected_]<catalogue_.games.size())
@@ -1647,7 +1678,8 @@ private:
             if(game_in_recent(g))++counts_[8];
             const std::string view=active_sidebar_id();
             bool show=(view=="Alle Spiele" && g.platform!="Homebrew") ||
-                (view=="Emulatoren" && g.platform=="Homebrew") ||
+                (view=="Emulatoren" && g.platform=="Homebrew" && is_emulator_app(g)) ||
+                (view=="Apps" && g.platform=="Homebrew" && !is_emulator_app(g)) ||
                 (view==g.platform && view!="Homebrew") ||
                 (view=="Favoriten" && favorites_.count(g.id)>0) ||
                 (view=="Zuletzt" && game_in_recent(g));
@@ -1707,15 +1739,20 @@ private:
     void draw_fan_cover(gfx::DrawList &list,int index) const {
         if(index<0 || index>=static_cast<int>(indices_.size()))return;
         const auto &g=catalogue_.games[indices_[static_cast<std::size_t>(index)]];
-        const float relative=static_cast<float>(index)-visual_selection_;
+        float relative=static_cast<float>(index)-visual_selection_;
+        if(indices_.size()>=7){
+            const float n=static_cast<float>(indices_.size());
+            if(relative>n*0.5f)relative-=n;
+            if(relative<-n*0.5f)relative+=n;
+        }
         const float depth=std::abs(relative);
         if(depth>3.2f)return;
         // Front cover has a stronger hero emphasis; all sizes animate with selection.
-        const float base_scale=std::max(0.50f,1.0f-depth*0.20f);
-        const float hero_boost=0.20f*std::max(0.0f,1.0f-depth*0.88f);
+        const float base_scale=std::max(0.46f,1.0f-depth*0.15f);
+        const float hero_boost=0.19f*std::max(0.0f,1.0f-depth*0.88f);
         const float scale=base_scale+hero_boost;
-        const float w=308*scale;
-        float h=421*scale;
+        const float w=307*scale;
+        float h=410*scale;
         // The decoded source determines the aspect ratio of PS2/Xbox art.
         // Synthetic PS4/PS5/Switch cases keep their validated fixed layout.
         const bool with_case_header=fan_cover_uses_case_header(g.platform);
@@ -1723,11 +1760,11 @@ private:
         if(!with_case_header && covers_.has(g.cover_path))
             h=fan_native_card_height(cover_dimensions.first,cover_dimensions.second,w,h);
         // V1.0.0 uses a tighter five-cover hero fan: larger main cover, wider wings.
-        const float near_distance=std::min(depth,1.0f)*270.0f;
-        const float far_distance=std::max(0.0f,depth-1.0f)*194.0f;
+        const float near_distance=std::min(depth,1.0f)*215.0f;
+        const float far_distance=std::max(0.0f,depth-1.0f)*145.0f;
         const float distance=near_distance+far_distance;
         const float cx=kFanCentreX+std::copysign(distance,relative);
-        const float cy=kFanCentreY+depth*24.0f;
+        const float cy=kFanCentreY+depth*18.0f;
         const gfx::Rect card{cx-w*0.5f,cy-h*0.5f,w,h};
         // Studio contrast boost: a soft local dimmer behind the hero artwork.
         // Applied before the cover so it never darkens the actual cover pixels.
@@ -1752,9 +1789,14 @@ private:
         else if(depth<0.55f)list.shadow({card.x-4,card.y-5,w+8,h+10},28,19,Color::rgb(0x000000,0.65f));
         else list.shadow(card,13,13,Color::rgb(0x000000,0.43f));
         // Focus halo belongs to the single selected cover, not neighbouring cases.
-        if(depth<0.15f)
-            list.glow({card.x-6,card.y-6,card.w+12,card.h+12},26,12,
-                Color::rgb(0xFAF4E8,0.22f));
+        // Multi-pass DrawList glow: SDF-like soft cyan focus without extra GLSL.
+        if(depth<0.18f){
+            const float pulse=0.78f+0.18f*std::sin(clock_*2.0f);
+            list.glow({card.x-20,card.y-20,card.w+40,card.h+40},31,23,
+                Color::rgb(0x007BFF,0.24f*pulse));
+            list.glow({card.x-8,card.y-8,card.w+16,card.h+16},24,15,
+                Color::rgb(0x00E5FF,0.49f*pulse));
+        }
         list.rounded_rect(card,18,Color::rgb(0x060B12,depth>1.2f?0.82f:0.98f));
         const float inset=with_case_header?10.0f:0.0f;
         const float header_h=with_case_header?std::max(28.0f,card.h*kFanHeaderHeightRatio):0.0f;
@@ -1800,72 +1842,85 @@ private:
             Color::rgb(0xFFFFFF,depth<0.55f?0.50f:0.63f),0);
         else list.bordered_rect(card,17,Color::rgb(0xFFFFFF,0.0f),depth<0.55f?3.3f:1.2f,
             depth<0.55f?Color::rgb(0xF5E4C4):Color::rgb(0x7487AC,0.38f));
-        if(depth<0.55f)list.bordered_rect(card,18,Color::rgb(0xFFFFFF,0),1.4f,
-            Color::rgb(0xF6E7C7,0.78f*(1.0f-depth)));
-    }
-    void draw_cover_fan(gfx::DrawList &list) const {
-        const int center=static_cast<int>(std::lround(visual_selection_));
-        std::array<int,5> candidates{};
-        std::size_t size=0;
-        for(int i=center-2;i<=center+2;++i)
-            if(i>=0 && i<static_cast<int>(indices_.size()) &&
-               std::abs(static_cast<float>(i)-visual_selection_)<=2.45f)candidates[size++]=i;
-        // Fixed-size stack array: no heap allocations while drawing each frame.
-        for(std::size_t i=0;i<size;++i){
-            for(std::size_t j=i+1;j<size;++j){
-                const float da=std::abs(static_cast<float>(candidates[i])-visual_selection_);
-                const float db=std::abs(static_cast<float>(candidates[j])-visual_selection_);
-                if(db>da)std::swap(candidates[i],candidates[j]);
+        if(depth<0.55f)list.bordered_rect(card,18,Color::rgb(0xFFFFFF,0),2.4f,
+            Color::rgb(0x00E5FF,0.96f*(1.0f-depth)));
+        // Reversed UV in shallow bands forms a light reflection in the lake.
+        // Draw after the cover (and before titles); alpha diminishes per band.
+        if(image && g.available){
+            const float reflection_y=card.y+card.h+7.0f;
+            const float max_reflection=std::min(78.0f,card.h*0.24f);
+            for(int strip=0;strip<3;++strip){
+                const float segment=max_reflection/3.0f;
+                const float a=(depth<0.5f?0.23f:0.10f)*(1.0f-static_cast<float>(strip)*0.35f);
+                const gfx::Rect mirrored_uv{0.0f,1.0f-static_cast<float>(strip)*0.095f,1.0f,-0.095f};
+                list.image(image,{card.x,reflection_y+strip*segment,card.w,segment},
+                    mirrored_uv,Color::rgb(0xD4F1FF,a),0);
             }
         }
-        for(std::size_t i=0;i<size;++i)draw_fan_cover(list,candidates[i]);
+    }
+    void draw_cover_fan(gfx::DrawList &list) const {
+        if(indices_.empty())return;
+        const int n=static_cast<int>(indices_.size());
+        const int center=static_cast<int>(std::lround(visual_selection_));
+        struct Candidate {int index;float distance;};
+        std::array<Candidate,7> candidates{};
+        std::size_t count=0;
+        for(int offset=-3;offset<=3;++offset){
+            const int logical=center+offset;
+            if(n<7 && (logical<0 || logical>=n))continue;
+            const int wrapped=(logical%n+n)%n;
+            bool duplicate=false;
+            for(std::size_t i=0;i<count;++i)if(candidates[i].index==wrapped)duplicate=true;
+            if(!duplicate)candidates[count++]={wrapped,std::abs(static_cast<float>(offset))};
+        }
+        // Draw distant covers first, the selected hero last. Fixed stack size.
+        for(std::size_t i=0;i<count;++i)
+            for(std::size_t j=i+1;j<count;++j)
+                if(candidates[j].distance>candidates[i].distance)
+                    std::swap(candidates[i],candidates[j]);
+        for(std::size_t i=0;i<count;++i)draw_fan_cover(list,candidates[i].index);
+        // Discrete carousel indicators; cap dots for large libraries.
+        const int dots=std::min(n,11);
+        const float x0=960.0f-(dots-1)*15.0f;
+        const int active_dot=std::min(dots-1,static_cast<int>(
+            static_cast<float>(selected_)*dots/std::max(1,n)));
+        for(int d=0;d<dots;++d)
+            list.rounded_rect({x0+d*30.0f,737,12,5},2.5f,
+                Color::rgb(d==active_dot?0x00E5FF:0xD9E9F4,d==active_dot?0.92f:0.35f));
     }
     void draw_game_info(gfx::DrawList &list) const {
         const auto &g=catalogue_.games[indices_[static_cast<std::size_t>(selected_)]];
         const auto &fonts=context_.fonts;
-        // Free-standing reference-style title (no fixed dark information tile).
-        // Subtle lettering shadow preserves contrast on the bright lake background.
-        const std::string title=shorten(g.title,46);
-        serif_text(list,title,758,668,43,Color::rgb(0x07111C,0.78f),1090);
-        serif_text(list,title,756.2f,665.8f,43,kInk,1090);
-        serif_text(list,title,755,664,43,kInk,1090);
-        // Full platform name as free-standing text, never clipped by a capsule width.
-        const std::string platform_text=display_platform_name(g.platform);
-        serif_text(list,platform_text,755,698,20,Color::rgb(0xD8E0E9));
-        // Only real PS5/PS4 Title-IDs identify an individual game in the
-        // ShadowMount+ log. An emulator PID is NOT a ROM's playtime.
+        const std::string title=shorten(g.title,49);
+        const float size=36.0f;
+        const float text_width=serif_text_width(title,size);
+        const float title_x=std::max(300.0f,960.0f-text_width*0.5f);
+        serif_text(list,title,title_x+1.5f,780,size,Color::rgb(0x000000,0.82f),1320);
+        serif_text(list,title,title_x,778,size,Color::rgb(0xF0F8FF),1320);
+        const std::string label=display_platform_name(g.platform);
+        const float platform_x=960.0f-serif_text_width(label,19.0f)*0.5f;
+        serif_text(list,label,platform_x,803,19,Color::rgb(0xCDE5F4));
         const std::string native_time=native_log_time_label(g);
-        if(!native_time.empty()){
-            const float time_x=755.0f+serif_text_width(platform_text,20.0f)+42.0f;
-            serif_text(list,native_time,time_x,698,24,Color::rgb(0xBDF2DF),
-                       std::max(0.0f,1710.0f-time_x));
-        }
-        // Real PlayStation Cross glyph and text form one measured, centred row.
-        // Use the UI-kit measurement function, not a guessed fixed X offset.
-        const Rect launch_button{755,718,182,49};
-        list.glow({launch_button.x-6,launch_button.y-6,launch_button.w+12,launch_button.h+12},
-            20,12,Color::rgb(0xF4D8AC,0.25f));
-        list.gradient_rect(launch_button,18,Color::rgb(0x718097,0.58f),
-            Color::rgb(0x24364F,0.70f));
-        list.rounded_rect({launch_button.x+14,launch_button.y+3,launch_button.w-28,3},2,
-            Color::rgb(0xFFF0D7,0.29f));
-        list.bordered_rect(launch_button,18,Color::rgb(0xFFFFFF,0),1.5f,
-            Color::rgb(0xF4E7D3,0.81f));
+        if(!native_time.empty())serif_text(list,native_time,platform_x+serif_text_width(label,19.0f)+28.0f,
+            803,20,Color::rgb(0xB2F5FB),430);
         const bool menu_mode=homebrew_menu_available(g) ||
             (!emulator_boot_settings_.direct_boot &&
              (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360"));
+        const Rect launch_button{870,819,180,45};
+        list.glow({launch_button.x-6,launch_button.y-6,launch_button.w+12,launch_button.h+12},
+            18,12,Color::rgb(0x00CFFF,0.25f));
+        list.gradient_rect(launch_button,15,Color::rgb(0x005C88,0.85f),Color::rgb(0x102D50,0.88f));
+        list.bordered_rect(launch_button,15,Color::rgb(0xFFFFFF,0),1.4f,Color::rgb(0x7AEAFF));
         const ui::Hint start_hint[]={{ui::Button::cross,hint(menu_mode?"Menue":"Spielen")}};
         ui::HintLayout start_layout;
         start_layout.cy=launch_button.y+launch_button.h*0.5f;
-        start_layout.size=24;
-        start_layout.text_size=20;
-        start_layout.item_gap=10;
+        start_layout.size=22;start_layout.text_size=19;start_layout.item_gap=9;
         const float start_width=ui::measure_hints(fonts,start_hint,1,start_layout);
-        const float start_x=launch_button.x+(launch_button.w-start_width)*0.5f;
-        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),start_hint,1,start_x,false,start_layout);
-        if(!launch_message_.empty())serif_text(list,shorten(launch_message_,93),755,802,18,
-            launch_in_progress_?kMuted:Color::rgb(0xFFE0B0),1080);
-        if(favorites_.count(g.id)>0)list.star(1177,652,13,Color::rgb(0xFFDCA1));
+        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),start_hint,1,
+            launch_button.x+(launch_button.w-start_width)*0.5f,false,start_layout);
+        if(!launch_message_.empty())serif_text(list,shorten(launch_message_,92),1065,846,15,
+            launch_in_progress_?kMuted:Color::rgb(0xFFE1AD),725);
+        if(favorites_.count(g.id)>0)list.star(1140,773,13,Color::rgb(0x00DFFF));
     }
     std::array<int,3> recent_indices() const {
         std::array<int,3> out{{-1,-1,-1}};
@@ -1909,32 +1964,34 @@ private:
         }
     }
     void draw_recent_cards(gfx::DrawList &list) const {
-        serif_text(list,"Zuletzt gespielt",754,847,22,kInk);
-        serif_text(list,"Startaufträge – kein Nachweis der Spiel-Laufzeit",960,845,14,kMuted,700);
+        serif_text(list,"Zuletzt gespielt",369,898,21,Color::rgb(0xF0F8FF));
+        serif_text(list,"Letzte Startauftraege",578,896,14,Color::rgb(0xC6D8E6),600);
         const auto recent=recent_indices();
-        if(recent_save_error_)serif_text(list,"Verlauf konnte nicht gespeichert werden",1040,846,17,Color::rgb(0xFFD3A3));
+        if(recent_save_error_)serif_text(list,"Verlauf konnte nicht gespeichert werden",1035,895,17,Color::rgb(0xFFD3A3));
         for(int i=0;i<3;++i){
-            const float x=744+i*379.0f;
-            const Rect card{x,872,363,108};
+            const float x=364+i*397.0f;
+            const Rect card{x,915,380,95};
             glass_card(list,card,18);
             if(recent_focus_ && recent_selected_==i)
                 list.bordered_rect(card,18,Color::rgb(0xFFFFFF,0),2,Color::rgb(0xF0DFC0,0.70f));
             if(recent[i]<0){
-                serif_text(list,"Deine gestarteten Spiele erscheinen hier",x+18,933,16,kMuted,328);
+                serif_text(list,"Deine gestarteten Spiele erscheinen hier",x+18,966,16,kMuted,332);
                 continue;
             }
             const auto &g=catalogue_.games[static_cast<std::size_t>(recent[i])];
             const auto cover=covers_.get(g.cover_path);
-            if(cover)list.image(cover,{x+14,886,78,78},gfx::kFullUv,Color::rgb(0xFFFFFF),11);
-            else list.rounded_rect({x+14,886,78,78},11,platform_color(g.platform).with_alpha(0.24f));
-            serif_text(list,shorten(g.title,27),x+106,922,19,kInk,244);
-            serif_text(list,display_platform_name(g.platform)+" · Startauftrag",x+106,950,16,kMuted,240);
+            if(cover)list.image(cover,{x+14,924,73,73},gfx::kFullUv,Color::rgb(0xFFFFFF),11);
+            else list.rounded_rect({x+14,924,73,73},11,platform_color(g.platform).with_alpha(0.24f));
+            serif_text(list,shorten(g.title,27),x+102,955,18,kInk,262);
+            const std::string native_recent=native_log_time_label(g);
+            serif_text(list,native_recent.empty()?display_platform_name(g.platform):
+                display_platform_name(g.platform)+" | "+native_recent,x+102,982,14,kMuted,268);
         }
     }
     void draw_controllers(gfx::DrawList &list) const {
         // The same four positions as before; never mark an unverified pad active.
         for(unsigned i=0;i<4;++i){
-            const float x=1298+i*82.0f,y=26;
+            const float x=1318+i*78.0f,y=22;
             const int status=controllers_.state[i];
             const bool connected=(status==1);
             const auto color=connected?Color::rgb(0xFDFBF7,0.98f):
@@ -2021,46 +2078,65 @@ private:
         list.rounded_rect({x+9,y+23,6,2},1,Color::rgb(0x0F2340));
     }
     void draw_platform_bar(gfx::DrawList &list) const {
-        // Navigation/footer remain fixed; only the platform strip scrolls.
-        const int platform_count=std::max(0,static_cast<int>(sidebar_items_.size())-4);
-        constexpr int visible=5;
-        int active_platform=tab_-1;
-        int first=0;
-        if(active_platform>=0 && active_platform<platform_count){first=std::clamp(active_platform-visible+1,0,
-                                             std::max(0,platform_count-visible));}
-        const auto item_at=[&](int index,float y){
-            if(index<0 || index>=static_cast<int>(sidebar_items_.size()))return;
-            const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
-            const bool selected=tab_==index;
-            if(selected){
-                list.glow({38,y-29,208,60},15,10,Color::rgb(0x3B887B,0.22f));
-                list.rounded_rect({38,y-29,208,60},13,Color::rgb(0x173E3E,0.38f));
-                list.bordered_rect({38,y-29,208,60},13,Color::rgb(0xFFFFFF,0),1.5f,
-                    sidebar_focus_?Color::rgb(0x7CE0C8,0.70f):Color::rgb(0x56B3A0,0.45f));
-            }
-            // New platforms may have icons later; never invent image paths.
-            if(entry.is_platform && !entry.icon.empty()){
-                const auto path=std::string("/app0/assets/platforms/")+entry.icon;
-                const auto texture=covers_.get(path);
-                if(texture)list.image(texture,{46,y-19,35,38},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-                else draw_platform_icon(list,entry.legacy_icon,51,y-13,Color::rgb(0xEEE4D6));
-            }else draw_platform_icon(list,entry.legacy_icon,51,y-13,Color::rgb(0xEEE4D6));
-            serif_text(list,entry.label,92,y+7,24,selected?kInk:Color::rgb(0xEEE4D7),154);
-        };
-        item_at(0,165);
-        for(int i=first;i<platform_count && i<first+visible;++i){
-            item_at(i+1,250.0f+static_cast<float>(i-first)*85.0f);
-        }
-        if(platform_count>visible){
-            list.rounded_rect({255,220,2,393},1,Color::rgb(0xC5D2DF,0.20f));
-            const float thumb=std::max(35.0f,393.0f*static_cast<float>(visible)/platform_count);
-            const float y=220.0f+(393.0f-thumb)*static_cast<float>(first)/
-                          std::max(1,platform_count-visible);
-            list.rounded_rect({254,y,4,thumb},2,Color::rgb(0xA7E7D9,0.80f));
-        }
-        list.rounded_rect({46,645,200,2},1,Color::rgb(0xE6D6B4,0.32f));
+        if(sidebar_items_.empty())return;
+        // Build only from the saved active/configured platform registry.
+        // Favoriten and Zuletzt remain available; platform ordering is preserved.
+        constexpr int visible=7;
         const int n=static_cast<int>(sidebar_items_.size());
-        item_at(n-3,703);item_at(n-2,788);item_at(n-1,871);
+        const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
+        glass_card(list,{450,106,972,58},22);
+        for(int slot=0;slot<visible;++slot){
+            const int index=first+slot;
+            if(index>=n)break;
+            const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
+            const bool active=index==tab_;
+            const float x=461+slot*137.0f;
+            const Rect pill{x,115,127,40};
+            if(active){
+                list.glow({x-2,113,131,44},17,12,Color::rgb(0x00A2FF,0.38f));
+                list.gradient_rect(pill,17,Color::rgb(0x005EBD,0.88f),Color::rgb(0x007BD5,0.91f));
+                list.bordered_rect(pill,17,Color::rgb(0xFFFFFF,0),1.1f,Color::rgb(0x7DEAFF));
+            }
+            if(entry.is_platform && !entry.icon.empty()){
+                const auto tex=covers_.get(std::string("/app0/assets/platforms/")+entry.icon);
+                if(tex)list.image(tex,{x+7,120,27,29},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
+            }else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
+            const std::string label=entry.id=="Alle Spiele"?"Spiele":entry.label;
+            serif_text(list,shorten(label,10),x+43,140,17,
+                active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB),84);
+        }
+        if(first>0)serif_text(list,"<",438,142,20,Color::rgb(0x8CDFFF));
+        if(first+visible<n)serif_text(list,">",1425,142,20,Color::rgb(0x8CDFFF));
+    }
+    void draw_storage_widgets(gfx::DrawList &list) const {
+        const auto one=[&](const ulg::storage_widgets::Device &dev,const char* title,float x){
+            const Rect panel{x,177,216,91};
+            glass_card(list,panel,15);
+            serif_text(list,title,x+13,201,16,Color::rgb(0xF1F9FF),190);
+            if(!dev.valid){
+                serif_text(list,"Nicht verfuegbar",x+13,229,14,Color::rgb(0xD3DCEB),190);
+                list.rounded_rect({x+13,244,190,6},3,Color::rgb(0x29374D,0.83f));
+                return;
+            }
+            const std::string amount=ulg::storage_widgets::format_gib(dev.used_bytes)+" / "+
+                ulg::storage_widgets::format_gib(dev.total_bytes);
+            serif_text(list,amount,x+13,228,14,Color::rgb(0xCFEBFA),190);
+            const float pct=dev.total_bytes?
+                std::min(1.0f,static_cast<float>(dev.used_bytes)/static_cast<float>(dev.total_bytes)):0.0f;
+            list.rounded_rect({x+13,244,190,7},3.5f,Color::rgb(0x24354C,0.88f));
+            if(pct>0){
+                list.glow({x+13,243,std::max(1.0f,190*pct),9},4,7,Color::rgb(0x00B5FF,0.28f));
+                list.gradient_rect({x+13,244,std::max(1.0f,190*pct),7},3.5f,
+                    Color::rgb(0x0055FF),Color::rgb(0x00D5FF));
+            }
+            serif_text(list,std::to_string(static_cast<int>(pct*100+0.5f))+"%",x+164,201,15,
+                Color::rgb(0x9DDEFF));
+        };
+        one(storage_widgets_.internal,"Interner Speicher",1441);
+        const std::string usb_title=storage_widgets_.usb_count>1?
+            std::string("USB (")+std::to_string(storage_widgets_.usb_count)+")":"Externer USB";
+        one(storage_widgets_.external,usb_title.c_str(),1665);
     }
     void draw_detail(app::Frame &frame) const {
         auto &list=frame.overlay;const auto &fonts=context_.fonts;
@@ -2876,6 +2952,8 @@ private:
     std::vector<std::size_t> indices_;
     std::set<std::string> favorites_;
     ulg::ControllerStatus controllers_;
+    ulg::storage_widgets::Snapshot storage_widgets_{};
+    float next_storage_poll_=0.0f;
     float next_controller_poll_=0.0f;
     bool recent_focus_=false;
     int recent_selected_=0;

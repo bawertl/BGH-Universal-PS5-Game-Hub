@@ -91,9 +91,9 @@ def test_oled_shadows_and_teal_glass_have_selected_only_glow():
     fan=segment('void draw_fan_cover(', 'void draw_cover_fan(')
     for marker in ('0x02060C,0.55f','water_y=card.y+card.h-6.0f',
                    '0x010307,shadow_alpha','0x020509,shadow_alpha*0.75f',
-                   '0x060B12','if(depth<0.15f)'):
+                   '0x060B12','if(depth<0.18f)'):
         assert marker in fan
-    assert fan.count('list.glow(')==1
+    assert fan.count('list.glow(')==2
     glass=segment('void glass_card(', 'void draw_recent_cards(')
     assert '0x0D1F2A,0.36f' in glass
     assert '0x08151E,0.46f' in glass
@@ -101,12 +101,12 @@ def test_oled_shadows_and_teal_glass_have_selected_only_glow():
     game_list=segment('void draw_game_list(', 'void draw_fan_cover(')
     assert '0x7CE0C8,0.65f' in game_list
     nav=segment('void draw_platform_bar(', 'void draw_detail(')
-    assert '0x7CE0C8,0.70f' in nav
+    assert '0x7DEAFF' in nav
 
 
 def test_version_ci_identity_is_consistent():
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
     assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

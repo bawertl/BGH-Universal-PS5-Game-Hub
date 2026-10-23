@@ -15,10 +15,10 @@ def test_release_branding_and_branch():
     assert 'BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in BUILD
 
-def test_five_cover_fan_and_clock():
-    assert 'std::array<int,5> candidates{};' in CPP
-    assert 'for(int i=center-2;i<=center+2;++i)' in CPP
-    assert 'const std::string time_text=current_time_label();' in CPP
+def test_seven_cover_fan_and_clock():
+    assert 'std::array<Candidate,7> candidates{};' in CPP
+    assert 'for(int offset=-3;offset<=3;++offset)' in CPP
+    assert 'serif_text(list,current_time_label()' in CPP
     assert 'display_platform_name(g.platform)' in CPP
     assert 'ui::Button::cross,hint(menu_mode?"Menue":"Spielen")' in CPP
 

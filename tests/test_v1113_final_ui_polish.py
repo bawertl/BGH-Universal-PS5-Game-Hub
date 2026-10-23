@@ -74,5 +74,5 @@ def test_console_icons_have_no_distant_isolated_alpha_fragment():
 def test_version_and_workflow():
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.9, main]' in WF
+    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
