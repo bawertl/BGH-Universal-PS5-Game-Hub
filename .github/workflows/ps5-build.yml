@@ -111,7 +111,7 @@ jobs:
           grep -Fq 'VERLAUF-DIAG' native_ps5/universal_launcher.cpp
           grep -Fq 'Action::l3' native_ps5/universal_launcher.cpp
           grep -Fq 'ui::Button::left_stick' native_ps5/universal_launcher.cpp
-          grep -Fq 'hero_boost=0.20f' native_ps5/universal_launcher.cpp
+          grep -Fq 'const float hero_boost=' native_ps5/universal_launcher.cpp
           grep -Fq 'ui::Button::cross,hint(menu_mode?"Menue":"Spielen")' native_ps5/universal_launcher.cpp
           test -s tests/test_v122_cover_recovery.py
           test -s tooling/test_host_cover_decode.py
@@ -122,7 +122,8 @@ jobs:
           grep -Fq "draw_cover_fan(list)" native_ps5/universal_launcher.cpp
           grep -Fq 'request_selected_launch(feedback)' native_ps5/universal_launcher.cpp
           grep -Fq 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f' native_ps5/universal_launcher.cpp
-          grep -Fq "draw_game_list(list)" native_ps5/universal_launcher.cpp
+          grep -Fq "draw_storage_widgets(list)" native_ps5/universal_launcher.cpp
+          grep -Fq "draw_recent_cards(list)" native_ps5/universal_launcher.cpp
           grep -Fq "draw_platform_bar(list)" native_ps5/universal_launcher.cpp
           grep -Fq "BGH V1.1.9-EMULATOR-AUTODETECTION" native_ps5/universal_launcher.cpp
           grep -Fq 'clean_title_for_display(game.title)' native_ps5/universal_launcher.cpp
