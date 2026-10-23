@@ -743,12 +743,21 @@ private:
         // or marks a game as played. Native PS5/PS4 requests are unaffected.
         if(!emulator_boot_settings_.direct_boot &&
            (selected_game.platform=="PS2" || selected_game.platform=="Switch" ||
-            selected_game.platform=="Xbox 360")){
+            selected_game.platform=="Xbox 360" ||
+            emulator_detection_for(selected_game.platform).status==
+                ulg::emulator_detection::Detection::Status::known_emulator)){
             launch_retry_after_=clock_+1.0f;
             launch_request_accepted_=false;
             // Menu-only start must not require the chosen ROM/USB to be present:
             // this request carries a registered app ID and zero arguments.
-            const auto result=ulg::send_launch(emulator_menu_plan(selected_game.platform));
+            auto menu_plan=emulator_menu_plan(selected_game.platform);
+            if(!menu_plan.supported){
+                const auto &d=emulator_detection_for(selected_game.platform);
+                if(d.status==ulg::emulator_detection::Detection::Status::known_emulator){
+                    menu_plan.target=d.title_id;menu_plan.supported=true;
+                }
+            }
+            const auto result=ulg::send_launch(menu_plan);
             launch_message_=result.message;
             if(result.status==ulg::LaunchStatus::queued ||
                result.status==ulg::LaunchStatus::started){
@@ -762,7 +771,7 @@ private:
         launch_message_.clear();
         launch_request_accepted_=false;
                 const auto &g=catalogue_.games[indices_[static_cast<std::size_t>(selected_)]];
-                const auto plan=ulg::make_launch_plan(g.platform,g.path);
+                const auto plan=configured_rom_launch(g);
                 if(!g.available){launch_message_="USB-Laufwerk / Spiel nicht verfügbar";feedback.play(audio::Cue::error);}
                 else if(g.platform=="PS5" && (g.format=="ffpfsc" || g.format=="exfat")){
                     // Controlled experiment: system-menu launch was confirmed
@@ -1341,6 +1350,26 @@ private:
         static const ulg::emulator_detection::Detection missing{};
         const auto it=detected_emulators_.find(platform);
         return it==detected_emulators_.end()?missing:it->second;
+    }
+    ulg::LaunchPlan configured_rom_launch(const ulg::Game &game) const {
+        auto plan=ulg::make_launch_plan(game.platform,game.path);
+        // Preserve all previously proven PS2/Switch/Xbox360 paths verbatim.
+        if(plan.supported)return plan;
+        const auto &d=emulator_detection_for(game.platform);
+        if(d.status!=ulg::emulator_detection::Detection::Status::known_emulator)return plan;
+        for(const auto &p:platform_registry_.entries)if(p.id==game.platform){
+            auto configured=ulg::emulator_detection::profile_rom_launch_plan(
+                game.platform,game.path,game.format,p.app_path,d,emulator_profiles_);
+            if(configured.supported){
+                ulg::LaunchPlan result;
+                result.target=configured.target;
+                result.argv=std::move(configured.argv);
+                result.supported=true;
+                return result;
+            }
+            break;
+        }
+        return plan;
     }
     std::string application_name(const ulg::PlatformEntry &p) const {
         const auto &d=emulator_detection_for(p.id);
@@ -2029,7 +2058,7 @@ private:
         translated_text(list,fonts.regular,shorten(g.path,78),710,436,20,kInk);
         if(g.platform=="PS4")
             translated_text(list,fonts.semibold,"Title-ID: "+(g.title_id.empty()?std::string("FEHLT"):g.title_id),710,466,19,kAccent);
-        const auto plan=ulg::make_launch_plan(g.platform,g.path);
+        const auto plan=configured_rom_launch(g);
         const bool ps5_container=(g.platform=="PS5" && (g.format=="ffpfsc" || g.format=="exfat"));
         const bool ps5_direct=(g.platform=="PS5" && ulg::make_registered_ps5_launch_plan(g.title_id).supported);
         const bool ps4_direct=(g.platform=="PS4" && ulg::make_registered_ps4_launch_plan(g.title_id).supported);
@@ -2038,7 +2067,9 @@ private:
         list.rounded_rect({711,506,800,125},20,can_start?Color::rgb(0x3D527C,0.70f):Color::rgb(0x2C3044,0.70f));
         if(can_start){
             const bool menu_mode=!emulator_boot_settings_.direct_boot &&
-                (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360");
+                (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
+                 emulator_detection_for(g.platform).status==
+                     ulg::emulator_detection::Detection::Status::known_emulator);
             const ui::Hint detail_start[]={{ui::Button::cross,hint(menu_mode?"Emulator-Menue":"Spielen")}};
             ui::HintLayout detail_layout;
             detail_layout.cy=557;detail_layout.size=28;detail_layout.text_size=27;detail_layout.item_gap=16;
@@ -2046,10 +2077,14 @@ private:
         } else translated_text(list,fonts.semibold,
             g.available?"DIREKTSTART NICHT VERFUEGBAR":"SPIEL NICHT VERFUEGBAR",740,559,27,kMuted);
         const bool only_menu=!emulator_boot_settings_.direct_boot &&
-            (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360");
+            (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
+             emulator_detection_for(g.platform).status==
+                 ulg::emulator_detection::Detection::Status::known_emulator);
         translated_text(list,fonts.regular,can_start?(only_menu?"Startet Emulator-Menue ohne ROM-Startauftrag":(ps5_direct?(ps5_container?"Container-Teststart via PPSA-ID/Launcher-ELF 10199":"Systemstart ueber den vorhandenen Forwarder"):
             (ps4_direct?"PS4: aktiver Forwarder auf Port 10199 erforderlich":
-            (ps2_menu?"PS2-Spielpfad via disc-launch.txt; Quadrat: Menue":"Vorhandener Startdienst erforderlich")))):(g.available?(ps5_container?"Container: gueltige PPSA-ID und Launcher-ELF erforderlich":plan.reason):"Datentraeger erneut anschliessen"),740,599,20,Color::rgb(0xFFB982));
+            (ps2_menu?"PS2-Spielpfad via disc-launch.txt; Quadrat: Menue":
+            (g.platform=="PS3"?"RPCS3-Start: --boot ueber Forwarder 10199 (PS5-Test offen)":
+             "Vorhandener Startdienst erforderlich"))))):(g.available?(ps5_container?"Container: gueltige PPSA-ID und Launcher-ELF erforderlich":plan.reason):"Datentraeger erneut anschliessen"),740,599,20,Color::rgb(0xFFB982));
         if(!launch_message_.empty())translated_text(list,fonts.regular,shorten(launch_message_,90),714,
             (g.platform=="PS5" && local_services_checked_)?659:684,22,kAccent);
         const bool ps5_network_diag=((g.platform=="PS5" || g.platform=="PS4") && local_services_checked_);

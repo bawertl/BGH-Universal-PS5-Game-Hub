@@ -16,7 +16,9 @@ def test_new_menu_mode_scoped_and_recent_safe():
     for platform in ('"PS2"', '"Switch"', '"Xbox 360"'):
         assert platform in branch
     assert 'emulator_menu_plan(selected_game.platform)' in branch
-    assert 'ulg::send_launch(emulator_menu_plan(selected_game.platform))' in branch
+    assert 'menu_plan=emulator_menu_plan(selected_game.platform)' in branch
+    assert 'ulg::send_launch(menu_plan)' in branch
+    assert 'emulator_detection_for(selected_game.platform)' in branch
     assert 'stage_ps5sx2_disc_launch' not in branch
     assert 'record_recent(' not in branch
     assert 'sys::quit()' in branch

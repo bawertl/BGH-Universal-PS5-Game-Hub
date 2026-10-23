@@ -102,7 +102,10 @@ inline bool ps5_title_id(const std::string &id){
 struct Profile {
     std::string platform, id, title_id, name;
     std::vector<std::string> required_files;
-    // No arbitrary executable path, command or ROM argument templates are accepted.
+    // Explicit, per-emulator arguments. Never a command line/shell, ELF path,
+    // arbitrary executable or guessed launch protocol. Empty means menu only.
+    std::vector<std::string> rom_argv{};
+    std::vector<std::string> rom_formats{};
 };
 inline bool parse_profiles(const std::string &bytes,std::vector<Profile> &out){
     if(bytes.empty()||bytes.size()>65536)return false;
@@ -132,6 +135,32 @@ inline bool parse_profiles(const std::string &bytes,std::vector<Profile> &out){
             p.required_files.push_back(item.text);
         }
         if(p.required_files.empty()||p.required_files.size()>12)return false;
+        const auto &rom=node.get("rom_launch");
+        if(rom.type!=Json::Type::null_value){
+            if(rom.type!=Json::Type::object ||
+               rom.get("method").type!=Json::Type::text ||
+               rom.get("method").text!="forwarder_argv" ||
+               rom.get("args").type!=Json::Type::list ||
+               rom.get("formats").type!=Json::Type::list)return false;
+            for(const auto &a:rom.get("args").list){
+                if(a.type!=Json::Type::text || a.text.empty() || a.text.size()>128 ||
+                   a.text.find('\0')!=std::string::npos ||
+                   a.text.find('\n')!=std::string::npos ||
+                   a.text.find('\r')!=std::string::npos ||
+                   (a.text.find('{')!=std::string::npos &&
+                    a.text!="{game_path}" && a.text!="{game_app0}"))return false;
+                p.rom_argv.push_back(a.text);
+            }
+            for(const auto &f:rom.get("formats").list){
+                if(f.type!=Json::Type::text || f.text.empty() || f.text.size()>30 ||
+                   f.text.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789_")!=std::string::npos)return false;
+                p.rom_formats.push_back(f.text);
+            }
+            if(p.rom_argv.size()<2 || p.rom_argv.size()>8 ||
+               p.rom_formats.empty() || p.rom_formats.size()>16 ||
+               std::none_of(p.rom_argv.begin(),p.rom_argv.end(),[](const std::string &a){
+                   return a=="{game_app0}" || a=="{game_path}";}))return false;
+        }
         result.push_back(std::move(p));
     }
     if(result.size()>32)return false;
@@ -142,7 +171,8 @@ inline std::vector<Profile> built_in_profiles(){
         {"PS2","ps5sx2","PPSA99203","PS5SX2",{"eboot.bin"}},
         {"Switch","prosperoeden","PPSA99008","ProsperoEden",{"eboot.bin"}},
         {"Xbox 360","ps5x360","PPSA50011","PS5X360",{"eboot.bin"}},
-        {"PS3","rpcs3ps5","PPSA99303","RPCS3 PS5",{"eboot.bin","rpcs3ps5-launch.elf"}}
+        {"PS3","rpcs3ps5","PPSA99303","RPCS3 PS5",{"eboot.bin","rpcs3ps5-launch.elf"},
+         {"--boot","{game_app0}"},{"ps3_ordner","iso"}}
     };
 }
 inline std::vector<Profile> load_profiles(const std::string &bundled="/app0/assets/emulator_profiles.json",
@@ -255,6 +285,58 @@ inline Detection detect_via_ftp(const std::string &path,const std::string &platf
     });
     found.via_ftp=true;
     return found;
+}
+// A ROM launch is enabled only after the app's on-console metadata and required
+// files were matched to an explicit profile. New profiles can declare argv
+// protocols, but unknown applications NEVER inherit arguments by platform name.
+// This produces a normal PFWL request for the already-running forwarder; no ELF
+// injection, arbitrary process execution, shell, or game-file writes are used.
+struct RomLaunchRequest {
+    std::string target;
+    std::vector<std::string> argv;
+    std::string reason;
+    bool supported=false;
+};
+inline RomLaunchRequest profile_rom_launch_plan(const std::string &platform,
+                                          const std::string &game_path,
+                                          const std::string &game_format,
+                                          const std::string &install_path,
+                                          const Detection &detected,
+                                          const std::vector<Profile> &profiles){
+    RomLaunchRequest plan;
+    plan.reason="Fuer diesen Emulator keine bestaetigte ROM-Startmethode";
+    if(detected.status!=Detection::Status::known_emulator ||
+       !ps5_title_id(detected.title_id) || !safe_platform_path(install_path))return plan;
+    if(game_path.empty() || game_path.size()>2000 || game_path.front()!='/' ||
+       game_path.find("/../")!=std::string::npos ||
+       game_path.find("/./")!=std::string::npos ||
+       game_path.find('\0')!=std::string::npos ||
+       game_path.find('\n')!=std::string::npos ||
+       game_path.find('\r')!=std::string::npos ||
+       game_path.find('\\')!=std::string::npos ||
+       game_path.back()=='/' || game_path.find("//")!=std::string::npos)return plan;
+    const auto selected=std::find_if(profiles.begin(),profiles.end(),[&](const Profile &profile){
+        return profile.platform==platform && profile.title_id==detected.title_id &&
+               profile.id==detected.profile_id;
+    });
+    if(selected==profiles.end() || selected->rom_argv.empty() ||
+       std::find(selected->rom_formats.begin(),selected->rom_formats.end(),game_format)==
+               selected->rom_formats.end())return plan;
+    const std::string root=install_path.back()=='/' ? install_path.substr(0,install_path.size()-1) : install_path;
+    const std::string prefix=root+"/";
+    for(const auto &arg:selected->rom_argv){
+        if(arg=="{game_path}")plan.argv.push_back(game_path);
+        else if(arg=="{game_app0}"){
+            // /app0 inside RPCS3 is the installed emulator title's own folder.
+            // Never remap a USB path or another app's files to /app0.
+            if(game_path.compare(0,prefix.size(),prefix)!=0)return RomLaunchRequest{};
+            plan.argv.push_back("/app0/"+game_path.substr(prefix.size()));
+        }else plan.argv.push_back(arg);
+    }
+    plan.target=detected.title_id;
+    plan.supported=true;
+    plan.reason.clear();
+    return plan;
 }
 inline std::string description(const Detection &d){
     switch(d.status){
