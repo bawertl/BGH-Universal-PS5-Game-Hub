@@ -25,6 +25,7 @@
 #include "serif_atlas_metrics.hpp"
 #include "platform_registry.hpp"
 #include "emulator_detection.hpp"
+#include "emulator_cards.hpp"
 #include <algorithm>
 #include <cmath>
 #include <array>
@@ -604,7 +605,8 @@ public:
         else serif_text(list,"BawertL's Game Hub",112,60,31,kInk,423);
         // Open header: no large outer capsule, just the count chip and matching divider.
         // Keep their visual centres aligned, with breathing room above the first row.
-        serif_text(list,"Meine Spiele",312,158,30,kInk,270);
+        serif_text(list,active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":"Meine Spiele",
+            312,158,30,kInk,298);
         const Rect count_chip{612,131,60,31};
         list.rounded_rect(count_chip,15,Color::rgb(0xF2E3C2,0.16f));
         list.bordered_rect(count_chip,15,Color::rgb(0xFFFFFF,0),1.0f,Color::rgb(0xF6E5C4,0.35f));
@@ -718,19 +720,30 @@ private:
         const auto &selected_game=catalogue_.games[indices_[static_cast<std::size_t>(selected_)]];
         // Emulator entries are registered homebrew apps, not individual games.
         // Bypass ROM dispatch and recent history in EVERY view (also Favorites).
-        // The IDs are the known, source-verified installed emulator IDs.
         if(selected_game.platform=="Homebrew"){
             launch_retry_after_=clock_+1.0f;
             launch_request_accepted_=false;
-            const char *emulator_platform=emulator_platform_for_title(selected_game.title_id);
-            if(!emulator_platform){
+            auto menu_plan=ulg::LaunchPlan{};
+            if(const char *known_platform=emulator_platform_for_title(selected_game.title_id))
+                menu_plan=emulator_menu_plan(known_platform); // proven legacy backends
+            if(!menu_plan.supported){
+                for(const auto &installed:detected_emulators_){
+                    const auto &d=installed.second;
+                    if(d.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+                       d.title_id==selected_game.title_id){
+                        menu_plan.target=d.title_id;
+                        menu_plan.supported=true;
+                        break;
+                    }
+                }
+            }
+            if(!menu_plan.supported){
                 launch_message_="Keine verifizierte Emulator-Startschnittstelle fuer diesen Eintrag";
                 feedback.play(audio::Cue::error);
                 return;
             }
-            // All three known emulator app menus use the same Forwarder as
-            // PS5SX2. Do not pass any game path or add a recent-history entry.
-            const auto result=ulg::send_launch(emulator_menu_plan(emulator_platform));
+            // Menu-only, no ROM or ELF arguments. Never add app menus to history.
+            const auto result=ulg::send_launch(menu_plan);
             launch_message_=result.message;
             if(result.status==ulg::LaunchStatus::queued ||
                result.status==ulg::LaunchStatus::started){
@@ -1131,7 +1144,8 @@ private:
     // Recent and visible games deliberately share the exact same cover pipeline.
     bool load_cover_for_game(ulg::Game &g){
         if(g.available && g.cover_path.empty() &&
-           (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360") &&
+           (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
+            g.platform=="PS3") &&
            attempted_emulator_covers_.insert(g.id).second){
             ulg::EmulatorCoverImporter importer(kEmulatorCoverFolder);
             std::string diagnosis;
@@ -1350,6 +1364,19 @@ private:
         static const ulg::emulator_detection::Detection missing{};
         const auto it=detected_emulators_.find(platform);
         return it==detected_emulators_.end()?missing:it->second;
+    }
+    // A displayed emulator application opens the app menu, not a ROM.
+    // Existing PS2/Switch/Xbox360 pathways retain their original commands.
+    bool homebrew_menu_available(const ulg::Game &game) const {
+        if(game.platform!="Homebrew")return false;
+        if(const char *known=emulator_platform_for_title(game.title_id))
+            if(emulator_menu_plan(known).supported)return true;
+        for(const auto &item:detected_emulators_){
+            const auto &d=item.second;
+            if(d.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+               d.title_id==game.title_id)return true;
+        }
+        return false;
     }
     ulg::LaunchPlan configured_rom_launch(const ulg::Game &game) const {
         auto plan=ulg::make_launch_plan(game.platform,game.path);
@@ -1580,6 +1607,7 @@ private:
         if(persist_platform_registry(std::move(candidate))){
             if(emulator_edit_app_){
                 refresh_emulator_detections();
+                rebuild(); // new verified emulator appears in the tab immediately
                 platform_settings_message_=ulg::emulator_detection::description(
                     emulator_detection_for(platform_registry_.entries[index].id));
             }
@@ -1604,6 +1632,9 @@ private:
         const std::string keep=(!indices_.empty() && selected_>=0 &&
             selected_<static_cast<int>(indices_.size()) && indices_[selected_]<catalogue_.games.size())
             ?catalogue_.games[indices_[static_cast<std::size_t>(selected_)]].id : std::string();
+        // Inject verified new emulator applications into the in-memory view.
+        // The cached catalogue and actual user ROMs are never modified on disk.
+        ulg::emulator_cards::sync(catalogue_,platform_registry_,detected_emulators_);
         indices_.clear();
         counts_.fill(0);
         for(std::size_t i=0;i<catalogue_.games.size();++i){
@@ -1820,7 +1851,7 @@ private:
             Color::rgb(0xFFF0D7,0.29f));
         list.bordered_rect(launch_button,18,Color::rgb(0xFFFFFF,0),1.5f,
             Color::rgb(0xF4E7D3,0.81f));
-        const bool menu_mode=emulator_platform_for_title(g.title_id)!=nullptr ||
+        const bool menu_mode=homebrew_menu_available(g) ||
             (!emulator_boot_settings_.direct_boot &&
              (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360"));
         const ui::Hint start_hint[]={{ui::Button::cross,hint(menu_mode?"Menue":"Spielen")}};
@@ -2063,23 +2094,26 @@ private:
         const bool ps5_direct=(g.platform=="PS5" && ulg::make_registered_ps5_launch_plan(g.title_id).supported);
         const bool ps4_direct=(g.platform=="PS4" && ulg::make_registered_ps4_launch_plan(g.title_id).supported);
         const bool ps2_menu=(g.platform=="PS2" && ulg::make_ps5sx2_menu_launch_plan().supported);
-        const bool can_start=g.available && (plan.supported || ps5_direct || ps4_direct || ps2_menu);
+        const bool can_start=g.available && (plan.supported || ps5_direct || ps4_direct || ps2_menu ||
+            homebrew_menu_available(g));
         list.rounded_rect({711,506,800,125},20,can_start?Color::rgb(0x3D527C,0.70f):Color::rgb(0x2C3044,0.70f));
         if(can_start){
-            const bool menu_mode=!emulator_boot_settings_.direct_boot &&
-                (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
-                 emulator_detection_for(g.platform).status==
-                     ulg::emulator_detection::Detection::Status::known_emulator);
+            const bool menu_mode=homebrew_menu_available(g) ||
+                (!emulator_boot_settings_.direct_boot &&
+                 (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
+                  emulator_detection_for(g.platform).status==
+                      ulg::emulator_detection::Detection::Status::known_emulator));
             const ui::Hint detail_start[]={{ui::Button::cross,hint(menu_mode?"Emulator-Menue":"Spielen")}};
             ui::HintLayout detail_layout;
             detail_layout.cy=557;detail_layout.size=28;detail_layout.text_size=27;detail_layout.item_gap=16;
             ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),detail_start,1,742,false,detail_layout);
         } else translated_text(list,fonts.semibold,
             g.available?"DIREKTSTART NICHT VERFUEGBAR":"SPIEL NICHT VERFUEGBAR",740,559,27,kMuted);
-        const bool only_menu=!emulator_boot_settings_.direct_boot &&
-            (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
-             emulator_detection_for(g.platform).status==
-                 ulg::emulator_detection::Detection::Status::known_emulator);
+        const bool only_menu=homebrew_menu_available(g) ||
+            (!emulator_boot_settings_.direct_boot &&
+             (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360" ||
+              emulator_detection_for(g.platform).status==
+                  ulg::emulator_detection::Detection::Status::known_emulator));
         translated_text(list,fonts.regular,can_start?(only_menu?"Startet Emulator-Menue ohne ROM-Startauftrag":(ps5_direct?(ps5_container?"Container-Teststart via PPSA-ID/Launcher-ELF 10199":"Systemstart ueber den vorhandenen Forwarder"):
             (ps4_direct?"PS4: aktiver Forwarder auf Port 10199 erforderlich":
             (ps2_menu?"PS2-Spielpfad via disc-launch.txt; Quadrat: Menue":

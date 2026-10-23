@@ -443,14 +443,31 @@ EmulatorCoverImporter::EmulatorCoverImporter(std::string cache_dir,int ftp_port,
     :cache_dir_(std::move(cache_dir)),ftp_port_(ftp_port),sources_(std::move(sources)){}
 bool EmulatorCoverImporter::hydrate(Game &game,std::string *diagnostic){
     auto report=[&](const std::string &msg){if(diagnostic)*diagnostic=msg;};
-    if(game.platform!="PS2" && game.platform!="Switch" && game.platform!="Xbox 360"){report("NICHT EMULATOR");return false;}
+    if(game.platform!="PS2" && game.platform!="Switch" && game.platform!="Xbox 360" &&
+       game.platform!="PS3"){report("NICHT EMULATOR");return false;}
     if(!game.cover_path.empty()){report("BEREITS ZUGEORDNET");return false;} // never overwrite existing covers.
     if(!safe_component(game.id)){report("UNGUELTIGE SPIEL-ID");return false;}
     for(const char *type:{".jpg",".png",".jpeg",".tga"}){
         if(const auto hit=cached(cache_dir_,game,type);!hit.empty()){game.cover_path=hit;report("BGH-CACHE: COVER GEFUNDEN");return true;}
     }
     std::vector<std::string> origins;
-    if(game.platform=="Switch"){
+    if(game.platform=="PS3"){
+        // KB-RPCS3: /rpcs3/games/<folder>/PS3_GAME/ICON0.PNG is the
+        // official per-game icon. Read over FTP when BGH is sandboxed.
+        // Try the actual art first, never synthesize from a different game.
+        const auto folder=(game.format=="ps3_ordner")?game.path:parent_dir(game.path);
+        if(!folder.empty()){
+            // A user-supplied portrait cover takes precedence over PS3's
+            // standard 320x176 landscape app icon.
+            candidates_for_key(origins,folder,"cover");
+            candidates_for_key(origins,folder,"folder");
+        }
+        if(game.format=="ps3_ordner"){
+            candidate(origins,game.path+"/PS3_GAME","ICON0.PNG");
+            candidate(origins,game.path,"ICON0.PNG");
+        }
+        report("PS3: SPIELEBILD AUS GAME-ORDNER");
+    }else if(game.platform=="Switch"){
         candidate(origins,sources_.switch_covers,eden_cover_filename(game.path));
         report("SWITCH: HASH GEFUNDEN " + eden_cover_filename(game.path));
     }else if(game.platform=="PS2"){
