@@ -341,6 +341,33 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
             continue;
         }
         if(entry.folder){
+            // PS3 extracted disc: <game>/PS3_GAME/PARAM.SFO. The app sandbox
+            // often denies /data/homebrew, so discover this via read-only FTP.
+            if(root.platform=="PS3" && metadata_budget>0){
+                const auto inside=ftp.list(child,150);
+                bool has_ps3_game=false;
+                if(inside.ok)for(const auto &part:inside.entries)
+                    if(part.folder && part.name=="PS3_GAME")has_ps3_game=true;
+                if(has_ps3_game){
+                    --metadata_budget;
+                    std::string sfo;
+                    if(ftp.retrieve(child+"/PS3_GAME/PARAM.SFO",sfo,262144)){
+                        const auto meta=native_metadata_from_bytes("",sfo);
+                        if(!meta.title.empty() || !meta.title_id.empty()){
+                            append_game(catalogue,seen,"PS3",child,
+                                meta.title.empty()?title_from_name(entry.name):meta.title,
+                                "ps3_ordner",max_games,meta.title_id);
+                            if(!catalogue.games.empty() && catalogue.games.back().path==child &&
+                               !cover_dir.empty() && image_budget>0){
+                                const auto cache=cover_dir+"/"+catalogue.games.back().id+".png";
+                                catalogue.games.back().cover_path=cached_cover(ftp,
+                                    child+"/PS3_GAME/ICON0.PNG",cache,image_budget);
+                            }
+                            continue;
+                        }
+                    }
+                }
+            }
             if(level<max_depth)ftp_walk(ftp,root,child,level+1,max_depth,max_games,catalogue,seen,budget,cover_dir,metadata_budget,image_budget);
         }else{
             const std::string fmt=format_for_file(root.platform,entry.name);

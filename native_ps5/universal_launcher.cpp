@@ -1612,7 +1612,7 @@ private:
     void draw_game_list(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
         if(indices_.empty()){
-            translated_text(list,fonts.regular,"Keine Einträge",329,305,24,kMuted);return;
+            translated_text(list,fonts.regular,"Keine Eintraege",329,305,24,kMuted);return;
         }
         const int first=std::max(0,static_cast<int>(std::floor(list_scroll_))-1);
         const int last=std::min(static_cast<int>(indices_.size()),first+kVisibleListRows+3);

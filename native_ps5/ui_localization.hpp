@@ -24,6 +24,7 @@ inline std::string translate_ui(const std::string &value,bool english){
         {"Titel eingeben ...","Enter title ..."},
         {"X: Buchstabe    Dreieck: Loeschen    Kreis: Fertig","X: Letter    Triangle: Delete    Circle: Done"},
         {"Keine Einträge","No entries"},
+        {"Keine Eintraege","No entries"},
         {"Kein Cover","No cover"},
         {"Spieleordner","Game Folders"},
         {"Emulatoren & Spielordner","Emulators & Game Folders"},

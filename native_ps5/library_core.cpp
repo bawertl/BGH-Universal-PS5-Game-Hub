@@ -159,6 +159,11 @@ std::string local_cover(const std::string &game_path, bool folder_game, const st
         const std::string icon="/user/appmeta/"+title_id+"/icon0.png";
         if(is_file(icon))return icon;
     }
+    // PS3 disc-folder games expose their original ICON0.PNG inside PS3_GAME.
+    if(folder_game){
+        const std::string ps3_icon=folder+"/PS3_GAME/ICON0.PNG";
+        if(is_file(ps3_icon))return ps3_icon;
+    }
     // Fallback is the game's existing icon, not a new synthesized cover.
     for(const char *name:{"sce_sys/icon0.png","sce_sys/ICON0.PNG","icon0.png","icon.png","PS4_GAME/ICON0.PNG"}){
         const std::string path=folder+"/"+name;if(is_file(path))return path;
@@ -296,7 +301,7 @@ void append_game(Catalogue &out, std::set<std::pair<std::string,std::string>> &s
     Game item;
     item.id=uid(platform,path);item.title=std::move(title);item.platform=std::move(platform);
     item.path=std::move(path);item.format=std::move(format);item.title_id=metadata_id.empty()?guess_id(item.path):metadata_id;
-    item.cover_path=local_cover(item.path,item.format=="installationsordner",item.title_id,item.id);
+    item.cover_path=local_cover(item.path,item.format=="installationsordner" || item.format=="ps3_ordner",item.title_id,item.id);
     out.games.push_back(std::move(item));
 }
 void add_failure(Catalogue &out,const std::string &path,const std::string &operation,int code,bool root){
@@ -375,6 +380,19 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
             }else if(c.folder && level<max_depth && !(root.platform=="PS4" && root.path=="/user/app" && level==0))
                 walk(root,c.path,level+1,max_depth,max_games,out,seen);
             continue;
+        }
+        // PS3 disc dumps are *folders*, not .iso/.pkg files. Recognize the
+        // exact RPCS3 layout <game>/PS3_GAME/PARAM.SFO read-only, and stop at
+        // the game folder so PS3_UPDATE and USRDIR never become fake games.
+        if(root.platform=="PS3" && c.folder){
+            const auto sfo=small_file(c.path+"/PS3_GAME/PARAM.SFO");
+            const auto meta=parse_sfo_bytes(sfo);
+            if(!meta.title.empty() || !meta.title_id.empty()){
+                append_game(out,seen,"PS3",c.path,
+                    meta.title.empty()?title_from(c.name):meta.title,
+                    "ps3_ordner",max_games,meta.title_id);
+                continue;
+            }
         }
         if(c.folder){if(level<max_depth)walk(root,c.path,level+1,max_depth,max_games,out,seen);continue;}
         const std::string fmt=format_for(root.platform,c.name);
@@ -739,7 +757,10 @@ void clean_catalogue(Catalogue &catalogue,const std::vector<Root> &roots){
                     if(ch>='a' && ch<='z')ch=static_cast<char>(ch-'a'+'A');
                 // Normalize BEFORE canonical_key(): identical PS4 titles dedupe.
             }
-        }else if(game.platform!="PS2"&&game.platform!="Switch"&&game.platform!="Xbox 360")continue;
+        }else if(game.platform!="PS2"&&game.platform!="Switch"&&game.platform!="Xbox 360"&&
+                 game.platform!="PS1"&&game.platform!="PSP"&&game.platform!="PS3"&&
+                 game.platform!="Xbox"&&game.platform!="Dreamcast"&&
+                 game.platform!="GameCube"&&game.platform!="Wii")continue;
         if(hidden_folder(game.path) || game.path.find("/$RECYCLE.BIN/")!=std::string::npos ||
            game.path.find("/System Volume Information/")!=std::string::npos)continue;
         // A disabled root cannot retain its old game via an offline cache entry.
