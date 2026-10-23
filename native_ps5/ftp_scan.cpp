@@ -133,6 +133,11 @@ std::string format_for_file(const std::string &platform,const std::string &name)
     }
     if(platform=="PS1")for(const char *e:{".cue",".chd"})if(ends_ci(name,e))return e+1;
     if(platform=="PSP")for(const char *e:{".iso",".cso",".chd",".pbp"})if(ends_ci(name,e))return e+1;
+    if(platform=="PS3")for(const char *e:{".iso",".pkg"})if(ends_ci(name,e))return e+1;
+    if(platform=="Xbox")for(const char *e:{".xbe",".iso"})if(ends_ci(name,e))return e+1;
+    if(platform=="Dreamcast")for(const char *e:{".gdi",".cdi",".chd"})if(ends_ci(name,e))return e+1;
+    if(platform=="GameCube")for(const char *e:{".iso",".gcm",".rvz"})if(ends_ci(name,e))return e+1;
+    if(platform=="Wii")for(const char *e:{".iso",".wbfs",".rvz"})if(ends_ci(name,e))return e+1;
     return {};
 }
 std::string stable_id(const std::string &platform,const std::string &path){
@@ -238,6 +243,12 @@ void hydrate_game(FtpReadonly &ftp,Game &game,const std::string &cover_dir,
         if(!meta.title_id.empty())game.title_id=meta.title_id;
         else if(game.title_id.empty())game.title_id=title_id_from_name(game.path);
         if(!meta.title.empty())game.title=meta.title;
+        else if(game.platform=="PS5" && valid_native_id(game.title_id,"PPSA")){
+            std::string appmeta;
+            if(ftp.retrieve("/user/appmeta/"+game.title_id+"/param.json",appmeta,262144))
+                game.title=ps5_appmeta_title_from_json(appmeta);
+            if(game.title.empty())game.title="Unbekanntes Spiel ("+game.title_id+")";
+        }
         else if(!game.title_id.empty())game.title="Unbekanntes Spiel ("+game.title_id+")";
         if(game.platform=="Homebrew"){
             if(game.title_id=="PPSA99203")game.title="PS5SX2";
@@ -296,8 +307,12 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
             if(!entry.folder){
                 if(root.platform!="PS4"){
                     const std::string format=format_for_file(root.platform,entry.name);
-                    if(!format.empty())append_game(catalogue,seen,"PS5",child,
-                        title_from_name(entry.name),format,max_games);
+                    if(!format.empty()){
+                        const auto id=title_id_from_name(entry.name);
+                        append_game(catalogue,seen,"PS5",child,
+                            ps5_container_fallback_title(title_from_name(entry.name),id),
+                            format,max_games,id);
+                    }
                 }
                 continue;
             }
@@ -326,6 +341,33 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
             continue;
         }
         if(entry.folder){
+            // PS3 extracted disc: <game>/PS3_GAME/PARAM.SFO. The app sandbox
+            // often denies /data/homebrew, so discover this via read-only FTP.
+            if(root.platform=="PS3" && metadata_budget>0){
+                const auto inside=ftp.list(child,150);
+                bool has_ps3_game=false;
+                if(inside.ok)for(const auto &part:inside.entries)
+                    if(part.folder && part.name=="PS3_GAME")has_ps3_game=true;
+                if(has_ps3_game){
+                    --metadata_budget;
+                    std::string sfo;
+                    if(ftp.retrieve(child+"/PS3_GAME/PARAM.SFO",sfo,262144)){
+                        const auto meta=native_metadata_from_bytes("",sfo);
+                        if(!meta.title.empty() || !meta.title_id.empty()){
+                            append_game(catalogue,seen,"PS3",child,
+                                meta.title.empty()?title_from_name(entry.name):meta.title,
+                                "ps3_ordner",max_games,meta.title_id);
+                            if(!catalogue.games.empty() && catalogue.games.back().path==child &&
+                               !cover_dir.empty() && image_budget>0){
+                                const auto cache=cover_dir+"/"+catalogue.games.back().id+".png";
+                                catalogue.games.back().cover_path=cached_cover(ftp,
+                                    child+"/PS3_GAME/ICON0.PNG",cache,image_budget);
+                            }
+                            continue;
+                        }
+                    }
+                }
+            }
             if(level<max_depth)ftp_walk(ftp,root,child,level+1,max_depth,max_games,catalogue,seen,budget,cover_dir,metadata_budget,image_budget);
         }else{
             const std::string fmt=format_for_file(root.platform,entry.name);
@@ -343,14 +385,16 @@ void ftp_walk(FtpReadonly &ftp,const Root &root,const std::string &path,int leve
 void supplement_from_local_ftp(Catalogue &catalogue,const std::vector<Root> &roots,
                                int max_depth,std::size_t max_games,int port,
                                const std::string &cover_dir){
-    bool need=false,ps4_root=false,native_cover_missing=false;
+    bool need=false,ps4_root=false,native_cover_missing=false,ps5_container_found=false;
     for(const auto &r:catalogue.roots)if(r.status!="ok"&&r.status!="deaktiviert"){need=true;break;}
     for(const auto &r:roots)if(r.enabled && r.platform=="PS4" && r.path=="/user/app")ps4_root=true;
     for(const auto &g:catalogue.games)
         if((g.platform=="PS4" && valid_native_id(g.title_id,"CUSA")) ||
            (g.platform=="PS5" && valid_native_id(g.title_id,"PPSA")))
             if(recovery_needed(g))native_cover_missing=true;
-    if(!need && !ps4_root && !native_cover_missing)return;
+    for(const auto &g:catalogue.games)if(g.platform=="PS5" &&
+       (g.format=="ffpfsc" || g.format=="exfat"))ps5_container_found=true;
+    if(!need && !ps4_root && !native_cover_missing && !ps5_container_found)return;
     FtpReadonly ftp(port);
     if(!ftp.connect_local())return;
     std::set<std::string> seen;for(const auto &g:catalogue.games)seen.insert(g.id);
@@ -441,6 +485,23 @@ void supplement_from_local_ftp(Catalogue &catalogue,const std::vector<Root> &roo
             ++catalogue.failed_operations;
             if(catalogue.errors.size()<256)catalogue.errors.push_back(
                 "FTP COVER-SUCHE AUSSTEHEND (BUDGET) "+game.path);
+        }
+    }
+    // Read-only appmeta pass is independent of the cover budget. This works
+    // when native POSIX denies appmeta but localhost FTP can read it, and
+    // also when the container already has its PNG cover in BGH's cache.
+    std::size_t container_title_budget=64;
+    for(auto &game:catalogue.games){
+        if(game.platform!="PS5" ||
+           (game.format!="ffpfsc" && game.format!="exfat") ||
+           !valid_native_id(game.title_id,"PPSA"))continue;
+        game.title=ps5_container_fallback_title(game.title,game.title_id);
+        if(container_title_budget==0)continue;
+        --container_title_budget;
+        std::string json;
+        if(ftp.retrieve("/user/appmeta/"+game.title_id+"/param.json",json,262144)){
+            const auto title=ps5_appmeta_title_from_json(json);
+            if(!title.empty())game.title=title;
         }
     }
     std::sort(catalogue.games.begin(),catalogue.games.end(),[](const Game &a,const Game &b){

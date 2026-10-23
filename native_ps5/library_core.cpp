@@ -123,6 +123,11 @@ std::string format_for(const std::string &platform,const std::string &path) {
     if(platform=="Xbox 360" && (e==".iso" || (e==".xex" && lowercase(basename(path))=="default.xex"))) return e.substr(1);
     if(platform=="PS1" && (e==".cue" || e==".chd")) return e.substr(1);
     if(platform=="PSP" && (e==".iso" || e==".cso" || e==".chd" || e==".pbp"))return e.substr(1);
+    if(platform=="PS3" && (e==".iso" || e==".pkg"))return e.substr(1);
+    if(platform=="Xbox" && (e==".xbe" || e==".iso"))return e.substr(1);
+    if(platform=="Dreamcast" && (e==".gdi" || e==".cdi" || e==".chd"))return e.substr(1);
+    if(platform=="GameCube" && (e==".iso" || e==".gcm" || e==".rvz"))return e.substr(1);
+    if(platform=="Wii" && (e==".iso" || e==".wbfs" || e==".rvz"))return e.substr(1);
     return "";
 }
 bool is_file(const std::string &p) {struct stat st{};return lstat(p.c_str(),&st)==0 && S_ISREG(st.st_mode);}
@@ -153,6 +158,11 @@ std::string local_cover(const std::string &game_path, bool folder_game, const st
        std::all_of(id.begin()+4,id.end(),[](char c){return c>='0'&&c<='9';})){
         const std::string icon="/user/appmeta/"+title_id+"/icon0.png";
         if(is_file(icon))return icon;
+    }
+    // PS3 disc-folder games expose their original ICON0.PNG inside PS3_GAME.
+    if(folder_game){
+        const std::string ps3_icon=folder+"/PS3_GAME/ICON0.PNG";
+        if(is_file(ps3_icon))return ps3_icon;
     }
     // Fallback is the game's existing icon, not a new synthesized cover.
     for(const char *name:{"sce_sys/icon0.png","sce_sys/ICON0.PNG","icon0.png","icon.png","PS4_GAME/ICON0.PNG"}){
@@ -291,7 +301,7 @@ void append_game(Catalogue &out, std::set<std::pair<std::string,std::string>> &s
     Game item;
     item.id=uid(platform,path);item.title=std::move(title);item.platform=std::move(platform);
     item.path=std::move(path);item.format=std::move(format);item.title_id=metadata_id.empty()?guess_id(item.path):metadata_id;
-    item.cover_path=local_cover(item.path,item.format=="installationsordner",item.title_id,item.id);
+    item.cover_path=local_cover(item.path,item.format=="installationsordner" || item.format=="ps3_ordner",item.title_id,item.id);
     out.games.push_back(std::move(item));
 }
 void add_failure(Catalogue &out,const std::string &path,const std::string &operation,int code,bool root){
@@ -335,7 +345,13 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
             // pass these file paths to registered-title launch/mount methods.
             if(!c.folder && root.platform!="PS4") {
                 const std::string fmt=format_for(root.platform,c.path);
-                if(!fmt.empty())append_game(out,seen,"PS5",c.path,title_from(c.name),fmt,max_games);
+                if(!fmt.empty()){
+                    const auto id=guess_id(c.path);
+                    const auto appmeta_title=ps5_appmeta_title_local(id);
+                    const auto title=appmeta_title.empty()
+                        ?ps5_container_fallback_title(title_from(c.name),id):appmeta_title;
+                    append_game(out,seen,"PS5",c.path,title,fmt,max_games,id);
+                }
                 continue;
             }
             if(c.folder && (native_candidate(c.path) || ps4_pkg_candidate(c.path,root.platform))) {
@@ -348,7 +364,11 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
                 if((root.platform=="PS4" && platform=="PS5") ||
                    (root.platform=="PS5" && platform=="PS4"))continue;
                 std::string title=meta.title.empty()?title_from(c.name):meta.title;
-                if(meta.title.empty() && !guess_id(c.path).empty())title="Unbekanntes Spiel ("+guess_id(c.path)+")";
+                if(meta.title.empty() && !guess_id(c.path).empty()){
+                    const auto id=meta.title_id.empty()?guess_id(c.path):meta.title_id;
+                    const auto appmeta_title=platform=="PS5"?ps5_appmeta_title_local(id):std::string{};
+                    title=appmeta_title.empty()?"Unbekanntes Spiel ("+guess_id(c.path)+")":appmeta_title;
+                }
                 if(platform=="Homebrew"){
                     const std::string id=meta.title_id.empty()?guess_id(c.path):meta.title_id;
                     if(id=="PPSA99203")title="PS5SX2";
@@ -360,6 +380,19 @@ void walk(const Root &root,const std::string &path,int level,int max_depth,std::
             }else if(c.folder && level<max_depth && !(root.platform=="PS4" && root.path=="/user/app" && level==0))
                 walk(root,c.path,level+1,max_depth,max_games,out,seen);
             continue;
+        }
+        // PS3 disc dumps are *folders*, not .iso/.pkg files. Recognize the
+        // exact RPCS3 layout <game>/PS3_GAME/PARAM.SFO read-only, and stop at
+        // the game folder so PS3_UPDATE and USRDIR never become fake games.
+        if(root.platform=="PS3" && c.folder){
+            const auto sfo=small_file(c.path+"/PS3_GAME/PARAM.SFO");
+            const auto meta=parse_sfo_bytes(sfo);
+            if(!meta.title.empty() || !meta.title_id.empty()){
+                append_game(out,seen,"PS3",c.path,
+                    meta.title.empty()?title_from(c.name):meta.title,
+                    "ps3_ordner",max_games,meta.title_id);
+                continue;
+            }
         }
         if(c.folder){if(level<max_depth)walk(root,c.path,level+1,max_depth,max_games,out,seen);continue;}
         const std::string fmt=format_for(root.platform,c.name);
@@ -380,6 +413,53 @@ std::string escaped(const std::string &v){
     }return out+'"';
 }
 } // namespace
+
+// Resolve titles from read-only PS5 app metadata, keeping the file-based
+// game ID and PPSA title ID unchanged for covers and start dispatch.
+std::string ps5_appmeta_title_from_json(const std::string &bytes){
+    if(bytes.empty() || bytes.size()>262144)return {};
+    const auto localized=bytes.find("\"localizedParameters\"");
+    if(localized!=std::string::npos){
+        for(const char *locale:{"de-DE","en-US","en-GB"}){
+            const auto locale_pos=bytes.find("\""+std::string(locale)+"\"",localized);
+            if(locale_pos==std::string::npos)continue;
+            const auto start=bytes.find('{',locale_pos);
+            if(start==std::string::npos)continue;
+            const auto end=bytes.find('}',start);
+            if(end==std::string::npos || end-start>4096)continue;
+            const auto title=json_field(bytes.substr(start,end-start+1),"titleName");
+            if(!title.empty())return title;
+        }
+    }
+    return json_field(bytes,"titleName");
+}
+std::string ps5_appmeta_title_local(const std::string &id){
+    if(!valid_native_id(id,"PPSA"))return {};
+    return ps5_appmeta_title_from_json(small_file("/user/appmeta/"+id+"/param.json"));
+}
+std::string ps5_container_fallback_title(const std::string &title,const std::string &id){
+    if(!valid_native_id(id,"PPSA"))return title;
+    std::string cleaned=title;
+    const std::string lowered=lowercase(cleaned);
+    const std::string needle=lowercase(id);
+    const auto pos=lowered.find(needle);
+    if(pos==std::string::npos)return title;
+    // Only strip complete PPSA tokens; never damage an unrelated title word.
+    const auto token_char=[](char c){return std::isalnum(static_cast<unsigned char>(c))!=0;};
+    if((pos>0 && token_char(cleaned[pos-1])) ||
+       (pos+id.size()<cleaned.size() && token_char(cleaned[pos+id.size()])))return title;
+    cleaned.erase(pos,id.size());
+    auto trim=[](std::string &s){
+        while(!s.empty() && (std::isspace(static_cast<unsigned char>(s.front())) ||
+              s.front()=='_' || s.front()=='-' || s.front()==':'))s.erase(s.begin());
+        while(!s.empty() && (std::isspace(static_cast<unsigned char>(s.back())) ||
+              s.back()=='_' || s.back()=='-' || s.back()==':'))s.pop_back();
+    };
+    trim(cleaned);
+    cleaned=collapse_title_spaces(cleaned);
+    // An all-ID filename has no confirmed title; preserve it for diagnostics.
+    return cleaned.empty()?title:cleaned;
+}
 
 NativeMetadata native_metadata_from_bytes(const std::string &json,const std::string &sfo){
     NativeMetadata result{json_field(json,"titleName"),json_field(json,"titleId")};
@@ -456,7 +536,8 @@ std::vector<Root> load_roots(const std::string &config_path) {
         while(!entry.empty() && (entry.back()=='\n'||entry.back()=='\r'))entry.pop_back();
         const auto split=entry.find('|');if(split==std::string::npos)continue;
         Root r{entry.substr(0,split),entry.substr(split+1)};
-        if(r.platform!="PS5/PS4"&&r.platform!="PS5"&&r.platform!="PS4"&&r.platform!="Homebrew"&&r.platform!="PS2"&&r.platform!="Switch"&&r.platform!="Xbox 360"&&r.platform!="PS1"&&r.platform!="PSP")continue;
+        if(r.platform!="PS5/PS4"&&r.platform!="PS5"&&r.platform!="PS4"&&r.platform!="Homebrew"&&r.platform!="PS2"&&r.platform!="Switch"&&r.platform!="Xbox 360"&&r.platform!="PS1"&&r.platform!="PSP"&&r.platform!="PS3"&&r.platform!="Xbox"&&
+           r.platform!="Dreamcast"&&r.platform!="GameCube"&&r.platform!="Wii")continue;
         if(r.path.empty() || r.path[0]!='/' || r.path=="/" || r.path.find("/../")!=std::string::npos || ends(r.path,"/..") || r.path.size()>4096)continue;
         roots.push_back(std::move(r));
         if(roots.size()==128)break;
@@ -676,7 +757,10 @@ void clean_catalogue(Catalogue &catalogue,const std::vector<Root> &roots){
                     if(ch>='a' && ch<='z')ch=static_cast<char>(ch-'a'+'A');
                 // Normalize BEFORE canonical_key(): identical PS4 titles dedupe.
             }
-        }else if(game.platform!="PS2"&&game.platform!="Switch"&&game.platform!="Xbox 360")continue;
+        }else if(game.platform!="PS2"&&game.platform!="Switch"&&game.platform!="Xbox 360"&&
+                 game.platform!="PS1"&&game.platform!="PSP"&&game.platform!="PS3"&&
+                 game.platform!="Xbox"&&game.platform!="Dreamcast"&&
+                 game.platform!="GameCube"&&game.platform!="Wii")continue;
         if(hidden_folder(game.path) || game.path.find("/$RECYCLE.BIN/")!=std::string::npos ||
            game.path.find("/System Volume Information/")!=std::string::npos)continue;
         // A disabled root cannot retain its old game via an offline cache entry.
