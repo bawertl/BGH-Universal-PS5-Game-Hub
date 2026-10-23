@@ -14,7 +14,7 @@ def between(source, a, b):
 def test_list_header_is_free_standing_and_separated():
     header = between(UI, 'void draw(app::Frame &frame) const', 'void request_selected_launch(')
     assert 'const Rect list_header' not in header
-    assert 'serif_text(list,"Meine Spiele"' in header
+    assert 'active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":"Meine Spiele"' in header
     assert 'const Rect count_chip' in header
     assert 'serif_text_width(count_text,count_size)' in header
     assert 'list.rounded_rect({300,176,386,2},1' in header
@@ -61,8 +61,10 @@ def test_known_emulator_apps_use_menu_without_rom_or_history():
     for title_id in ('PPSA99203','PPSA99008','PPSA50011'):
         assert title_id in UI
     assert 'emulator_platform_for_title(selected_game.title_id)' in menu
-    assert 'emulator_menu_plan(emulator_platform)' in menu
-    assert 'ulg::send_launch(emulator_menu_plan(emulator_platform))' in menu
+    assert 'menu_plan=emulator_menu_plan(known_platform)' in menu
+    assert 'ulg::send_launch(menu_plan)' in menu
+    assert 'd.status==ulg::emulator_detection::Detection::Status::known_emulator' in menu
+    assert 'd.title_id==selected_game.title_id' in menu
     assert 'record_recent(' not in menu
     assert 'stage_ps5sx2_disc_launch(' not in menu
     assert 'make_launch_plan(' not in menu

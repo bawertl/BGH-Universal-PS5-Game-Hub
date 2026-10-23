@@ -33,7 +33,9 @@ def test_menu_actions_use_forwarder_without_touching_recent():
     launch=segment('void request_selected_launch(', 'void refresh_storage(')
     homebrew=launch.split('if(selected_game.platform=="Homebrew")',1)[1].split('// Menu-only mode never stages',1)[0]
     menu_mode=launch.split('if(!emulator_boot_settings_.direct_boot &&',1)[1].split('launch_in_progress_=true;',1)[0]
-    assert 'ulg::send_launch(emulator_menu_plan(' in homebrew
+    assert 'menu_plan=emulator_menu_plan(known_platform)' in homebrew
+    assert 'ulg::send_launch(menu_plan)' in homebrew
+    assert 'd.title_id==selected_game.title_id' in homebrew
     assert 'menu_plan=emulator_menu_plan(selected_game.platform)' in menu_mode
     assert 'ulg::send_launch(menu_plan)' in menu_mode
     assert 'emulator_detection_for(selected_game.platform)' in menu_mode
