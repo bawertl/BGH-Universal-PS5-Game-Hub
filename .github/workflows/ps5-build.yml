@@ -46,7 +46,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Make silent guard failures actionable in GitHub Actions logs.
+          trap 'rc=$?; echo "::error::BGH Vorpruefung fehlgeschlagen in Zeile $LINENO: $BASH_COMMAND (Exit $rc)"; exit "$rc"' ERR
+          echo "Pruefe BGH V1.1.21 auf Branch: $GITHUB_REF_NAME"
           test "$GITHUB_REF_NAME" = 'bgh-v1.1.21-custom-themes'
+          # GitHub browser uploads can skip dotfiles (.keep). These files only
+          # preserve otherwise-empty user gallery folders inside the PS5 ZIP.
+          # Recreate missing placeholders instead of blocking the PS5 build.
+          for kind in backgrounds logos; do
+            folder="user_themes/$kind"
+            if [[ ! -f "$folder/.keep" ]]; then
+              echo "::notice::BGH Galerie-Platzhalter wird erstellt: $folder/.keep"
+              mkdir -p "$folder"
+              : > "$folder/.keep"
+            fi
+          done
+          echo 'BGH Galeriewege bereit; pruefe Quellcode und Regressionstests.'
           grep -Fq 'BGH V1.1.21' native_ps5/universal_launcher.cpp
           grep -Fq 'libScePad.so' tooling/install_ui_kit_overlay.py
           grep -Fq 'controllers_.poll();' native_ps5/universal_launcher.cpp
