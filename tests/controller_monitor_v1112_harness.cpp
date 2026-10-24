@@ -27,6 +27,11 @@ int main(){
     m.observe_primary(true);
     m.poll();
     assert(m.state[0]==1);
+    assert(m.poll_count==1 && m.symbols_ready);
+    assert(m.last_initial_result==0 && m.last_initial_user==101);
+    assert(m.last_login_result==0 && m.last_login_users[0]==101);
+    assert(m.diagnostic_users().find("init=0/101")!=std::string::npos);
+    assert(m.diagnostic_pad(1).find("C2 ON")!=std::string::npos);
     assert(m.state[1]==1);
     assert(m.state[2]==0);
     assert(m.state[3]==-1);

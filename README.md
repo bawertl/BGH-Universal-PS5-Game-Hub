@@ -1,3 +1,13 @@
+# BGH V1.1.16 – Passive DualSense-Diagnose (PS5-Testversion)
+
+**Ausgangsbranch:** `bgh-v1.1.15-shadowmount-json-fix` → **neuer Branch:** `bgh-v1.1.16-pad-diagnostics`. **App-ID/PS5-Ordner:** `PPSA99079` unverändert.
+
+**Zweck:** Reine Beobachtung der vorhandenen Controller-Abfragen, damit auf der echten PS5 Firmware 13.60 geprüft werden kann, warum der zweite DualSense nicht als verbunden erscheint. Unter **Einstellungen → System & Hilfe** werden Poll-Zähler, Symbolauflösung, Rückgabecode und ID des anfänglichen Benutzers, angemeldete Benutzer-IDs und pro Zusatzslot die Ergebnisse G/O/R (`scePadGetHandle` / `scePadOpen` / `scePadReadState`) samt bisherigem Verbindungsstatus angezeigt. `--` bedeutet *nicht aufgerufen*, negative Werte sind rohe API-Rückgaben und nicht automatisch `errno`. Slot 1 bleibt vom UI-Kit gesteuert. Die Ausleseintervalle und bestehenden PS5-API-Aufrufe wurden **nicht geändert**; insbesondere wird kein neues Handle durch die UI-Diagnose geöffnet. `0x4c` bleibt ein unbestätigter Status-Offset, keine Akkuschätzung.
+
+**Wichtig:** Das ist **kein Fix der Controller-2-Erkennung**. Es ist eine Diagnose zur Eingrenzung. Ein erster GitHub-Build und ein realer Zwei-Controller-Test sind erforderlich. ShadowMountPlus-Speicheranzeige, Startpfade, Benutzer-/Galeriedaten und die Jailbreak-Umgebung bleiben unverändert.
+
+---
+
 # BGH V1.1.15 – ShadowMountPlus JSON-Diagnose (PS5-Testversion)
 
 **Ausgangsbranch:** `bgh-v1.1.14-shadowmount-storage` → **neuer Branch:** `bgh-v1.1.15-shadowmount-json-fix`. **App-ID/PS5-Ordner:** `PPSA99079` (unverändert).

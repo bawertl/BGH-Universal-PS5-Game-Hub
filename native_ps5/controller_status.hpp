@@ -22,6 +22,33 @@ public:
     std::array<int,4> last_get{{-999,-999,-999,-999}};
     std::array<int,4> last_open{{-999,-999,-999,-999}};
     std::array<int,4> last_read{{-999,-999,-999,-999}};
+    // Passive diagnostics: captured only from calls already made by poll().
+    // They are observations, NOT proof of pad ownership or physical ports.
+    unsigned poll_count=0;
+    bool symbols_ready=false;
+    int last_initial_result=-999;
+    std::int32_t last_initial_user=-1;
+    int last_login_result=-999;
+    std::array<std::int32_t,4> last_login_users{{-1,-1,-1,-1}};
+    static std::string diagnostic_number(int value){
+        return value==-999?std::string("--"):std::to_string(value);
+    }
+    std::string diagnostic_users() const {
+        std::string result="init="+diagnostic_number(last_initial_result)+
+            "/"+std::to_string(last_initial_user)+
+            " list="+diagnostic_number(last_login_result)+" [";
+        for(unsigned i=0;i<4;++i){
+            if(i)result+=",";
+            result+=std::to_string(last_login_users[i]);
+        }
+        return result+"]";
+    }
+    std::string diagnostic_pad(unsigned slot) const {
+        if(slot>=4)return "?";
+        const char *status=state[slot]==1?"ON":(state[slot]==0?"OFF":"UNKNOWN");
+        return "C"+std::to_string(slot+1)+" "+status+
+            " G/O/R="+probe_summary(slot);
+    }
     std::string probe_summary(unsigned slot) const {
         if(slot>=4)return "?";
         const auto code=[](int value){return value==-999?std::string("--"):std::to_string(value);};
@@ -36,6 +63,7 @@ public:
     }
     void poll(){
 #if defined(BGH_TARGET_PS5)
+        ++poll_count;
         if(!resolved_){
             initial_=reinterpret_cast<Initial>(dlsym(RTLD_DEFAULT,"sceUserServiceGetInitialUser"));
             users_=reinterpret_cast<Users>(dlsym(RTLD_DEFAULT,"sceUserServiceGetLoginUserIdList"));
@@ -45,6 +73,11 @@ public:
             close_=reinterpret_cast<Close>(dlsym(RTLD_DEFAULT,"scePadClose"));
             resolved_=(get_ && read_ && (initial_ || users_));
         }
+        symbols_ready=resolved_;
+        last_initial_result=-999;
+        last_initial_user=-1;
+        last_login_result=-999;
+        last_login_users.fill(-1);
         // Keep controller 1 set by UI-kit observation; no overwrites of its
         // status or reads from its live input queue.
         for(unsigned slot=1;slot<4;++slot){
@@ -57,9 +90,17 @@ public:
         }
         if(!resolved_)return;
         std::int32_t initial_user=-1;
-        if(initial_ && initial_(&initial_user)!=0)initial_user=-1;
+        if(initial_){
+            last_initial_result=initial_(&initial_user);
+            if(last_initial_result!=0)initial_user=-1;
+        }
+        last_initial_user=initial_user;
         std::array<std::int32_t,4> logged{{-1,-1,-1,-1}};
-        if(users_ && users_(logged.data())!=0)logged.fill(-1);
+        if(users_){
+            last_login_result=users_(logged.data());
+            if(last_login_result!=0)logged.fill(-1);
+        }
+        last_login_users=logged;
         if(initial_user<0){
             for(const auto user:logged)if(user>=0){initial_user=user;break;}
         }

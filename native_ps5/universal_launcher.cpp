@@ -73,7 +73,7 @@ constexpr std::array<const char *,4> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.15-SHADOW-JSON-FIX [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.16-PAD-DIAG [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -707,7 +707,7 @@ public:
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.15";
+        const std::string release_label="BGH V1.1.16";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2974,7 +2974,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.15 ShadowMount",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.16 Controller-Diagnose",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -3005,17 +3005,24 @@ private:
         translated_text(list,fonts.regular,shorten("PROBE fallback: schreiben="+storage_status_label(probe_fallback_write_status_)+
             "  lesen="+storage_status_label(probe_fallback_read_status_)+
             "  aufraeumen="+probe_fallback_cleanup_status_,150),201,810,17,kInk);
-        // Probe return values from the existing periodic poll (no new PS5 calls).
-        // -999 = not called / symbol missing. Only on-console tests can
-        // establish whether additional controller indices work here.
+        // Passive controller diagnostics: ONLY reuse data already collected
+        // once per second. Do not open new pads from the drawing function.
+        const std::string pad_header="PAD-DIAG poll="+std::to_string(controllers_.poll_count)+
+            " api="+(controllers_.symbols_ready?"READY":"UNAVAILABLE")+
+            " | "+controllers_.diagnostic_users();
+        translated_text(list,fonts.regular,shorten(pad_header,146),201,828,15,kAccent);
         translated_text(list,fonts.regular,
-            "PAD G/O/R C2="+controllers_.probe_summary(1)+
-            "  C3="+controllers_.probe_summary(2)+
-            "  C4="+controllers_.probe_summary(3),201,839,16,kAccent);
+            controllers_.diagnostic_pad(1)+"    "+controllers_.diagnostic_pad(2)+
+            "    "+controllers_.diagnostic_pad(3),201,850,15,kAccent);
+        translated_text(list,fonts.regular,
+            "C1="+(controllers_.state[0]==1?std::string("UI ON"):
+                     controllers_.state[0]==0?std::string("UI OFF"):std::string("UI UNKNOWN"))+
+            " | -- = nicht aufgerufen, negativ = API-Fehler/kein Handle, UNKNOWN = unbestaetigt",
+            201,871,14,kMuted);
         translated_text(list,fonts.regular,"GESPEICHERTE REFERENZEN="+std::to_string(recent_list_.size())+
             "  PASSENDE KARTEN="+std::to_string(recent_card_count())+
-            "  LETZTE ID="+(recent_list_.empty()?"leer":shorten(recent_list_.front(),45)),
-            201,886,16,kAccent);
+            "  LETZTE ID="+(recent_list_.empty()?"leer":shorten(recent_list_.front(),35)),
+            201,893,14,kAccent);
     }
     void draw_browser(app::Frame &frame) const {
         frame.glass=true;auto &list=frame.overlay;const auto &fonts=context_.fonts;

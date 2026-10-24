@@ -32,11 +32,12 @@ def test_pad_diagnostics_do_not_add_probe_or_unverified_state():
     assert 'read_pad(user,0,0,-1)' in PAD
     assert 'sample+0x4c' in PAD # still only a candidate, not certified by source-level tests
     assert '0x54' not in PAD
-    assert 'controllers_.probe_summary(1)' in UI
+    assert 'controllers_.diagnostic_pad(1)' in UI
+    assert 'controllers_.diagnostic_users()' in UI
 
 def test_storage_and_build_startup_guards_retained():
     assert 'statvfs(' not in UI
     assert 'statvfs(' not in (ROOT/'native_ps5/bgh_storage_metrics.hpp').read_text()
-    assert 'V1_1_15_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'bgh-v1.1.15-shadowmount-json-fix' in WF
+    assert 'V1_1_16_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'bgh-v1.1.16-pad-diagnostics' in WF
     assert 'PPSA99079' in WF
