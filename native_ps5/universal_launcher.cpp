@@ -73,11 +73,12 @@ constexpr std::array<const char *,8> kPlatforms={
     "PS5/PS4","PS5","PS4","PS2","Switch","Xbox 360","PS1","PSP"
 };
 constexpr const char *kPathKeys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_-.<+";
-constexpr std::array<const char *,4> kSettingsTabs = {
-    "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
+constexpr std::array<const char *,8> kSettingsTiles = {
+    "Emulatoren & Spielordner", "Sprache", "Emulator-Startverhalten", "Kachel-Design",
+    "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.17-UI-PAD-TEST [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.18-SETTINGS-HUB [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -551,14 +552,19 @@ public:
             if(path_editor_open_){path_editor_open_=false;emulator_path_edit_=false;feedback.play(audio::Cue::back);}
             else if(browser_open_){browser_open_=false;emulator_path_edit_=false;feedback.play(audio::Cue::back);}
             else if(search_open_){search_open_=false;feedback.play(audio::Cue::back);}
-            else if(detail_ || settings_){detail_=false;settings_=false;feedback.play(audio::Cue::back);}
+            else if(settings_){
+                if(settings_subview_>=0)settings_subview_=-1;
+                else settings_=false;
+                feedback.play(audio::Cue::back);
+            }
+            else if(detail_){detail_=false;feedback.play(audio::Cue::back);}
             else if(recent_focus_){recent_focus_=false;feedback.play(audio::Cue::back);}
             return;
         }
         if(input.is_pressed(Action::menu)){
             detail_=false;search_open_=false;browser_open_=false;path_editor_open_=false;
             settings_=!settings_;
-            if(settings_){settings_tab_=0;probe_recent_storage();}
+            if(settings_){settings_subview_=-1;selected_tile_=0;settings_choice_=0;probe_recent_storage();}
             feedback.play(audio::Cue::open);return;
         }
         if(search_open_){update_search(input,feedback);return;}
@@ -715,7 +721,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.17";
+        const std::string release_label="BGH V1.1.18";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -1393,9 +1399,6 @@ private:
             items.push_back({p.id,p.short_label,p.icon_path,legacy_icon,true});
         }
         items.push_back({"Emulatoren","Emulatoren","",6,false});
-        items.push_back({"Apps","Apps","",6,false});
-        items.push_back({"Favoriten","Favoriten","",7,false});
-        items.push_back({"Zuletzt","Zuletzt","",8,false});
         sidebar_items_=std::move(items);
         tab_=0;
         for(std::size_t i=0;i<sidebar_items_.size();++i)
@@ -2025,27 +2028,28 @@ private:
         }
     }
     void draw_recent_cards(gfx::DrawList &list) const {
-        serif_text(list,"Zuletzt gespielt",369,898,21,Color::rgb(0xF0F8FF));
+        translated_text(list,context_.fonts.semibold,"Zuletzt gespielt",290,898,21,Color::rgb(0xF0F8FF));
         const auto recent=recent_indices();
-        if(recent_save_error_)serif_text(list,"Verlauf konnte nicht gespeichert werden",1035,895,17,Color::rgb(0xFFD3A3));
+        if(recent_save_error_)translated_text(list,context_.fonts.regular,"Verlauf konnte nicht gespeichert werden",1040,895,17,Color::rgb(0xFFD3A3));
         for(int i=0;i<3;++i){
-            const float x=364+i*397.0f;
-            const Rect card{x,915,380,95};
+            const float x=280.0f+i*445.0f;
+            const Rect card{x,915,425,95};
             glass_card(list,card,18);
             if(recent_focus_ && recent_selected_==i)
                 list.bordered_rect(card,18,Color::rgb(0xFFFFFF,0),2,Color::rgb(0xF0DFC0,0.70f));
             if(recent[i]<0){
-                serif_text(list,"Deine gestarteten Spiele erscheinen hier",x+18,966,16,kMuted,332);
+                translated_text(list,context_.fonts.regular,"Deine gestarteten Spiele erscheinen hier",x+18,966,16,kMuted);
                 continue;
             }
             const auto &g=catalogue_.games[static_cast<std::size_t>(recent[i])];
             const auto cover=covers_.get(g.cover_path);
             if(cover)list.image(cover,{x+14,924,73,73},gfx::kFullUv,Color::rgb(0xFFFFFF),11);
             else list.rounded_rect({x+14,924,73,73},11,platform_color(g.platform).with_alpha(0.24f));
-            serif_text(list,shorten(g.title,27),x+102,955,18,kInk,262);
+            translated_text(list,context_.fonts.semibold,shorten(g.title,42),x+102,955,17,kInk);
             const std::string native_recent=native_log_time_label(g);
-            serif_text(list,native_recent.empty()?display_platform_name(g.platform):
-                display_platform_name(g.platform)+" | "+native_recent,x+102,982,14,kMuted,268);
+            translated_text(list,context_.fonts.regular,
+                shorten(native_recent.empty()?display_platform_name(g.platform):
+                display_platform_name(g.platform)+" | "+native_recent,47),x+102,982,14,kMuted);
         }
     }
     void draw_controllers(gfx::DrawList &list) const {
@@ -2162,34 +2166,23 @@ private:
     }
     void draw_platform_bar(gfx::DrawList &list) const {
         if(sidebar_items_.empty())return;
-        // Seven capsules inside the 430..1440 top rail, 2 px spacing.
+        // Seven visible capsules within the longer, centered platform rail.
         // Count is NEVER clipped; shorten only the platform name if needed.
         constexpr int visible=7;
-        constexpr float pill_width=136.0f;
-        constexpr float pill_step=138.0f;
+        constexpr float pill_width=148.0f;
+        constexpr float pill_step=155.0f;
         constexpr float text_offset=36.0f;
         constexpr float text_budget=pill_width-text_offset-6.0f;
-        // Hide utility views ONLY in top rail. They remain reachable via the
-        // regular sidebar/navigation; favorites/history data are untouched.
-        std::vector<int> rail;
-        int rail_selected=-1;
-        for(int i=0;i<static_cast<int>(sidebar_items_.size());++i){
-            const auto &id=sidebar_items_[static_cast<std::size_t>(i)].id;
-            if(id=="Apps" || id=="Favoriten" || id=="Zuletzt")continue;
-            if(i==tab_)rail_selected=static_cast<int>(rail.size());
-            rail.push_back(i);
-        }
-        const int n=static_cast<int>(rail.size());
-        const int anchor=rail_selected>=0?rail_selected:0;
-        const int first=std::clamp(anchor-visible/2,0,std::max(0,n-visible));
-        glass_card(list,{430,106,1010,58},22);
+        // The rendered rail and navigation share sidebar_items_: no ghost tabs.
+        const int n=static_cast<int>(sidebar_items_.size());
+        const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
+        glass_card(list,{296,106,1122,58},22);
         for(int slot=0;slot<visible;++slot){
-            const int rail_index=first+slot;
-            if(rail_index>=n)break;
-            const int index=rail[static_cast<std::size_t>(rail_index)];
+            const int index=first+slot;
+            if(index>=n)break;
             const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
             const bool active=index==tab_;
-            const float x=442.0f+slot*pill_step;
+            const float x=310.0f+slot*pill_step;
             const Rect pill{x,115,pill_width,40};
             if(active){
                 list.glow({x-2,113,pill_width+4,44},17,12,Color::rgb(0x00A2FF,0.38f));
@@ -2223,46 +2216,48 @@ private:
             translated_text(list,context_.fonts.regular,display,
                 std::floor(x+text_offset),140.0f,text_size,
                 active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB));
-            if(slot<visible-1 && rail_index+1<n)
-                list.rounded_rect({std::floor(x+137.0f),124,1,22},0.5f,
+            if(slot<visible-1 && index+1<n)
+                list.rounded_rect({std::floor(x+pill_width+3.0f),124,1,22},0.5f,
                     Color::rgb(0x3B4D68,0.5f));
         }
-        if(first>0)serif_text(list,"<",432,142,20,Color::rgb(0x8CDFFF));
-        if(first+visible<n)serif_text(list,">",1425,142,20,Color::rgb(0x8CDFFF));
+        if(first>0)translated_text(list,context_.fonts.semibold,"<",298,142,20,Color::rgb(0x8CDFFF));
+        if(first+visible<n)translated_text(list,context_.fonts.semibold,">",1405,142,20,Color::rgb(0x8CDFFF));
     }
     void draw_storage_widgets(gfx::DrawList &list) const {
         // Only previously fetched data is rendered here; no socket/FS calls.
         const auto one=[&](const ulg::shadow_storage::Volume &data,
                            bool connected,const char* title,
                            const char* offline,const char* icon_path,float x){
-            const Rect panel{x,177,216,91};
-            // Unified restrained glass style, same geometry and real bytes.
-            list.rounded_rect({x+2,179,212,90},16,Color::rgb(0x071525,0.23f));
-            list.gradient_rect(panel,15,Color::rgb(0x182D45,0.56f),
-                Color::rgb(0x12243B,0.78f));
+            const Rect panel{x,177,225,91};
+            // Real ShadowMount bytes; delicate glass matches the launcher UI.
+            list.rounded_rect({x+2,179,221,90},16,Color::rgb(0x071525,0.20f));
+            list.gradient_rect(panel,15,Color::rgb(0x243C58,0.42f),
+                Color::rgb(0x102039,0.66f));
             list.bordered_rect(panel,15,Color::rgb(0xFFFFFF,0),0.9f,
-                Color::rgb(0x91B4D4,0.34f));
-            list.rounded_rect({x+15,181,185,1},0.5f,
-                Color::rgb(0xB9EDFF,0.24f));
+                Color::rgb(0x9AC8DD,0.43f));
+            list.rounded_rect({x+15,181,196,1},0.5f,
+                Color::rgb(0xB9EDFF,0.19f));
             const auto icon=covers_.get(icon_path);
             if(icon)list.image(icon,{std::floor(x+13.0f),192,28,28},
                 gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-            serif_text(list,title,x+48,201,15,Color::rgb(0xF1F9FF),160);
+            translated_text(list,context_.fonts.semibold,title,
+                std::floor(x+48),201,15,Color::rgb(0xF1F9FF));
             // Capacity only when the local API provided validated, real bytes.
             const std::string status=data.valid?
                 (ulg::storage_widgets::format_gib(data.available)+" frei / "+
                  ulg::storage_widgets::format_gib(data.total)):
                 std::string(offline);
-            serif_text(list,status,x+13,230,data.valid?12:14,
+            translated_text(list,context_.fonts.regular,status,
+                std::floor(x+13),230,data.valid?13:14,
                 (data.valid||connected)?Color::rgb(0x7DEAFF):
-                Color::rgb(0x8D9CAE),190);
-            list.rounded_rect({x+13,248,190,5},2.5f,
+                Color::rgb(0x8D9CAE));
+            list.rounded_rect({x+13,248,199,5},2.5f,
                 Color::rgb(0x203950,0.74f));
             if(data.valid && data.total>0){
                 const double fraction=std::clamp(
                     static_cast<double>(data.used)/static_cast<double>(data.total),
                     0.0,1.0);
-                const float width=static_cast<float>(190.0*fraction);
+                const float width=static_cast<float>(199.0*fraction);
                 if(width>0.5f){
                     list.glow({x+13,247,width,7},2,3,
                         Color::rgb(0x00B5FF,0.15f));
@@ -2274,11 +2269,11 @@ private:
         const auto &info=shadow_storage_;
         one(info.internal,true,"Interner Speicher",
             info.http_ok?"Speicher nicht gemeldet":"System bereit",
-            "/app0/assets/themes/storage_internal.png",1441);
+            "/app0/assets/themes/storage_internal.png",1431);
         const bool usb_connected=info.http_ok?info.usb.valid:storage_widgets_.usb_connected;
         one(info.usb,usb_connected,"Externer USB",
             usb_connected?"USB verbunden":"Nicht verbunden",
-            "/app0/assets/themes/storage_usb.png",1665);
+            "/app0/assets/themes/storage_usb.png",1668);
     }
     void draw_detail(app::Frame &frame) const {
         auto &list=frame.overlay;const auto &fonts=context_.fonts;
@@ -2505,118 +2500,78 @@ private:
         return ulg::tr_hint(label,language_settings_.english);
     }
     void update_settings(const InputFrame &input,app::Feedback &feedback){
-        // L1/R1 switches Settings tabs only (the main library keeps its own behavior).
-        if(input.is_pressed(Action::page_prev)||input.is_pressed(Action::page_next)){
-            const int step=input.is_pressed(Action::page_next)?1:-1;
-            const int count=static_cast<int>(kSettingsTabs.size());
-            settings_tab_=(settings_tab_+count+step)%count;
-            feedback.play(audio::Cue::tab);
-            return;
-        }
-        // Appearance: three independent settings, using Up/Down to move and X
-        // to toggle the selected option. No launch or library state changes.
-        if(settings_tab_==0){update_emulator_settings(input,feedback);return;}
-        if(settings_tab_==1){
-            if(input.nav==Direction::up){
-                presentation_selected_=std::max(0,presentation_selected_-1);
-                feedback.play(audio::Cue::focus);return;
-            }
-            if(input.nav==Direction::down){
-                presentation_selected_=std::min(3,presentation_selected_+1);
-                feedback.play(audio::Cue::focus);return;
-            }
+        if(settings_subview_==-1){
+            int next=selected_tile_;
+            if(input.nav==Direction::left && next%4>0)--next;
+            if(input.nav==Direction::right && next%4<3)++next;
+            if(input.nav==Direction::up && next>=4)next-=4;
+            if(input.nav==Direction::down && next<4)next+=4;
+            if(next!=selected_tile_){selected_tile_=next;feedback.play(audio::Cue::focus);}
             if(input.is_pressed(Action::confirm)){
-                bool changed=false;
-                if(presentation_selected_==0)changed=save_language_setting(!language_settings_.english);
-                else if(presentation_selected_==1)
-                    changed=save_emulator_boot_setting(!emulator_boot_settings_.direct_boot);
-                else if(presentation_selected_==2)
-                    changed=save_theme_setting(!theme_settings_.frosted_glass);
-                else if(presentation_selected_==3)
-                    changed=save_music_setting(!music_settings_.enabled);
-                feedback.play(changed?audio::Cue::select:audio::Cue::error);
+                settings_subview_=selected_tile_;
+                settings_choice_=(selected_tile_==1)?(language_settings_.english?1:0):
+                    (selected_tile_==2)?(emulator_boot_settings_.direct_boot?0:1):
+                    (selected_tile_==3)?(theme_settings_.frosted_glass?0:1):
+                    (selected_tile_==4)?(music_settings_.enabled?0:1):0;
+                gallery_row_=settings_subview_==7?1:0;
+                gallery_delete_armed_=false;
+                feedback.play(audio::Cue::open);
             }
             return;
         }
-        if(settings_tab_==3){
-            if(input.nav==Direction::up){gallery_row_=std::max(0,gallery_row_-1);gallery_delete_armed_=false;return;}
-            if(input.nav==Direction::down){gallery_row_=std::min(1,gallery_row_+1);gallery_delete_armed_=false;return;}
-            const auto kind=gallery_row_==0?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+        if(settings_subview_==0){update_emulator_settings(input,feedback);return;}
+        // Two mutually exclusive choices per option. X saves the chosen state
+        // using the EXISTING versioned, checksummed persistence functions.
+        if(settings_subview_==1 || settings_subview_==2 ||
+           settings_subview_==3 || settings_subview_==4){
+            if(input.nav==Direction::up || input.nav==Direction::left){
+                settings_choice_=0;feedback.play(audio::Cue::focus);return;
+            }
+            if(input.nav==Direction::down || input.nav==Direction::right){
+                settings_choice_=1;feedback.play(audio::Cue::focus);return;
+            }
             if(input.is_pressed(Action::confirm)){
+                bool saved=false;
+                if(settings_subview_==1)saved=save_language_setting(settings_choice_==1);
+                else if(settings_subview_==2)saved=save_emulator_boot_setting(settings_choice_==0);
+                else if(settings_subview_==3)saved=save_theme_setting(settings_choice_==0);
+                else saved=save_music_setting(settings_choice_==0);
+                feedback.play(saved?audio::Cue::select:audio::Cue::error);
+            }
+            return;
+        }
+        if(settings_subview_==6 || settings_subview_==7){
+            const bool background=settings_subview_==6;
+            const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+            if(input.nav==Direction::left || input.nav==Direction::right ||
+               input.is_pressed(Action::confirm)){
                 const auto choices=ulg::bgh_gallery::list(kind);
-                const std::string selected=gallery_row_==0?gallery_selection_.background:gallery_selection_.logo;
+                const auto &selected=background?gallery_selection_.background:gallery_selection_.logo;
                 int pos=-1;
                 for(std::size_t i=0;i<choices.size();++i)
                     if(choices[i].id==selected){pos=static_cast<int>(i);break;}
                 if(!choices.empty()){
-                    ulg::bgh_gallery::select(kind,choices[static_cast<std::size_t>((pos+1)%static_cast<int>(choices.size()))].id,gallery_selection_);
-                    save_gallery();
+                    const int delta=input.nav==Direction::left?-1:1;
+                    const int count=static_cast<int>(choices.size());
+                    ulg::bgh_gallery::select(kind,choices[static_cast<std::size_t>((pos+count+delta)%count)].id,gallery_selection_);
+                    save_gallery();feedback.play(audio::Cue::select);
                 }
                 gallery_delete_armed_=false;
                 return;
             }
             if(input.is_pressed(Action::north)){
-                const std::string id=gallery_row_==0?gallery_selection_.background:gallery_selection_.logo;
+                const auto id=background?gallery_selection_.background:gallery_selection_.logo;
                 if(id.rfind("user:",0)!=0){gallery_message_="Vorinstallierte Motive sind geschuetzt";gallery_delete_armed_=false;return;}
-                if(!gallery_delete_armed_){gallery_message_="Dreieck erneut: eigenes Bild loeschen";gallery_delete_armed_=true;return;}
-                const auto prev=gallery_selection_;
-                if(gallery_row_==0)gallery_selection_.background="showroom";
+                if(!gallery_delete_armed_){gallery_message_="Dreieck erneut: eigenes Motiv loeschen";gallery_delete_armed_=true;return;}
+                const auto previous=gallery_selection_;
+                if(background)gallery_selection_.background="showroom";
                 else gallery_selection_.logo="none";
                 const bool deleted=ulg::bgh_gallery::remove_user_image(kind,id,gallery_selection_,true);
-                if(!deleted)gallery_selection_=prev;
+                if(!deleted)gallery_selection_=previous;
                 else save_gallery();
                 gallery_message_=deleted?"Eigenes Bild geloescht":"Loeschen fehlgeschlagen";
                 gallery_delete_armed_=false;
-                return;
             }
-            return;
-        }
-        if(settings_tab_!=4)return; // Legacy folder tab retired; preserve its helpers for compatibility.
-        // Inside the retired folder tab, L2/R2 preserved the old platform filter.
-        if(input.is_pressed(Action::jump_prev)||input.is_pressed(Action::jump_next)){
-            const int count=static_cast<int>(kPlatforms.size()+1);
-            const int step=input.is_pressed(Action::jump_next)?1:-1;
-            settings_filter_=(settings_filter_+count+step)%count;
-            const auto filtered=settings_visible_roots();
-            settings_selected_=filtered.empty()?-1:static_cast<int>(filtered.front());
-            if(settings_filter_>0)add_platform_=settings_filter_-1;
-            feedback.play(audio::Cue::focus);
-        }
-        const auto visible=settings_visible_roots();
-        if(!visible.empty()){
-            const auto at=std::find(visible.begin(),visible.end(),static_cast<std::size_t>(settings_selected_));
-            int cursor=at==visible.end()?0:static_cast<int>(at-visible.begin());
-            if(input.nav==Direction::up)cursor=std::max(0,cursor-1);
-            if(input.nav==Direction::down)cursor=std::min(static_cast<int>(visible.size())-1,cursor+1);
-            settings_selected_=static_cast<int>(visible[static_cast<std::size_t>(cursor)]);
-        }
-        if(input.is_pressed(Action::west)){refresh();set_message("Nur AKTIVE Ordner erneut gescannt.");feedback.play(audio::Cue::select);}
-        if(input.is_pressed(Action::confirm) && settings_selected_>=0 &&
-           static_cast<std::size_t>(settings_selected_)<roots_.size()){
-            auto &root=roots_[static_cast<std::size_t>(settings_selected_)];
-            root.enabled=!root.enabled;
-            save_roots_and_rescan();feedback.play(audio::Cue::select);
-        }
-        if(input.is_pressed(Action::north)){
-            if(settings_selected_>=0 && static_cast<std::size_t>(settings_selected_)<roots_.size()){
-                for(std::size_t i=0;i<kPlatforms.size();++i)
-                    if(roots_[static_cast<std::size_t>(settings_selected_)].platform==kPlatforms[i])
-                        add_platform_=static_cast<int>(i);
-            }
-            emulator_path_edit_=false;
-            browser_open_=true;browser_path_="/";browser_selected_=0;refresh_browser();
-            feedback.play(audio::Cue::open);
-        }
-        if(input.is_pressed(Action::touch)){
-            emulator_path_edit_=false;
-            if(settings_selected_>=0 && static_cast<std::size_t>(settings_selected_)<roots_.size()){
-                edited_root_=settings_selected_;
-                input_path_=roots_[static_cast<std::size_t>(settings_selected_)].path;
-                for(std::size_t i=0;i<kPlatforms.size();++i)
-                    if(roots_[static_cast<std::size_t>(settings_selected_)].platform==kPlatforms[i])
-                        add_platform_=static_cast<int>(i);
-            }else {edited_root_=-1;input_path_="/";}
-            path_key_=0;path_editor_open_=true;feedback.play(audio::Cue::open);
         }
     }
     void refresh_browser(){browser_=ulg::browse_folders(browser_path_);browser_selected_=0;}
@@ -2697,50 +2652,198 @@ private:
         if(root.status=="kein_ordner")return "kein Ordner";
         return "Fehler";
     }
-    // The four-tab Settings shell retains the existing game/library state,
-    // path storage and history persistence still belong to their old owners.
+    // Small native vector pictograms: no bitmap magnification at TV scale.
+    void draw_settings_tile_icon(gfx::DrawList &list,int tile,float x,float y,bool selected) const {
+        const auto ink=selected?Color::rgb(0xC4FAFF):Color::rgb(0xCCE4F1);
+        const auto edge=Color::rgb(0xFFFFFF,0.0f);
+        const auto line=[&](float ax,float ay,float bx,float by){
+            // Only DrawList's verified rectangles are used. Small segments
+            // approximate diagonals; horizontal/vertical strokes are exact.
+            if(ay==by){list.rounded_rect({x+std::min(ax,bx),y+ay,
+                std::max(2.0f,std::abs(bx-ax)),2.0f},1.0f,ink);return;}
+            if(ax==bx){list.rounded_rect({x+ax,y+std::min(ay,by),2.0f,
+                std::max(2.0f,std::abs(by-ay))},1.0f,ink);return;}
+            const int steps=std::max(1,static_cast<int>(std::ceil(
+                std::max(std::abs(bx-ax),std::abs(by-ay))/3.0f)));
+            for(int i=0;i<=steps;++i){
+                const float t=static_cast<float>(i)/static_cast<float>(steps);
+                list.rounded_rect({x+ax+(bx-ax)*t,y+ay+(by-ay)*t,3.2f,3.2f},1.4f,ink);
+            }
+        };
+        switch(tile){
+        case 0: // controller/console
+            list.bordered_rect({x+6,y+11,31,24},7,edge,2.0f,ink);
+            line(13,17,13,28);line(8,22,18,22);
+            list.rounded_rect({x+25,y+19,4,4},2,ink);
+            list.rounded_rect({x+31,y+24,4,4},2,ink);
+            break;
+        case 1: // globe
+            list.bordered_rect({x+7,y+6,29,29},14,edge,2.0f,ink);
+            line(9,20,34,20);line(22,7,22,35);
+            line(17,9,14,19);line(14,23,18,32);
+            break;
+        case 2: // play
+            line(12,9,12,34);line(12,9,34,21);line(34,21,12,34);
+            break;
+        case 3: // palette / visual design
+            list.bordered_rect({x+7,y+7,29,29},13,edge,2.0f,ink);
+            list.rounded_rect({x+13,y+13,5,5},2,ink);
+            list.rounded_rect({x+25,y+12,5,5},2,ink);
+            list.rounded_rect({x+15,y+25,5,5},2,ink);
+            break;
+        case 4: // musical note
+            line(26,10,26,30);line(26,10,35,8);line(35,8,35,27);
+            list.rounded_rect({x+18,y+27,10,8},4,ink);
+            list.rounded_rect({x+27,y+24,10,8},4,ink);
+            break;
+        case 5: // settings / information
+            list.bordered_rect({x+12,y+12,19,19},10,edge,2.0f,ink);
+            line(22,6,22,12);line(22,31,22,37);
+            line(6,22,12,22);line(31,22,37,22);
+            line(10,10,14,14);line(30,30,34,34);
+            break;
+        case 6: // landscape frame
+            list.bordered_rect({x+6,y+8,32,28},5,edge,2.0f,ink);
+            line(11,30,21,19);line(21,19,30,29);
+            list.rounded_rect({x+28,y+13,6,6},3,ink);
+            break;
+        case 7: // BGH crown mark
+            line(7,14,11,33);line(11,33,34,33);line(34,33,38,14);
+            line(7,14,17,23);line(17,23,22,10);line(22,10,28,23);line(28,23,38,14);
+            list.rounded_rect({x+19,y+4,6,6},3,ink);
+            break;
+        }
+    }
+    // Two-level 4x2 settings hub. Existing subfeatures retain their persistence.
     void draw_settings(app::Frame &frame) const {
         frame.glass=true;
         auto &list=frame.overlay;
         const auto &fonts=context_.fonts;
-        list.rounded_rect({128,62,1664,963},30,Color::rgb(0x151D2D,0.98f));
+        list.rounded_rect({128,62,1664,963},30,Color::rgb(0x121D2E,0.985f));
         translated_text(list,fonts.display,"Einstellungen",185,137,42,kInk);
         translated_text(list,fonts.semibold,kBuildLabel,1230,133,15,kAccent);
-        // Tab buttons visually echo the shoulder buttons; only one is active.
-        for(std::size_t i=0;i<kSettingsTabs.size();++i){
-            const float x=184+static_cast<float>(i)*385.0f;
-            const Rect tab_rect{x,171,379,62};
-            const bool active=settings_tab_==static_cast<int>(i);
-            list.rounded_rect(tab_rect,15,active?Color::rgb(0x536B8B,0.93f):Color::rgb(0x263448,0.74f));
-            list.bordered_rect(tab_rect,15,Color::rgb(0xFFFFFF,0),1.2f,
-                active?Color::rgb(0xE5D5B6,0.82f):Color::rgb(0xC5D2E1,0.20f));
-            translated_text(list,fonts.semibold,kSettingsTabs[i],x+17,210,21,
-                active?kInk:Color::rgb(0xBBC5D1,0.76f));
-        }
-        if(settings_tab_==0)draw_settings_emulators(list);
-        else if(settings_tab_==1)draw_settings_presentation(list);
-        else if(settings_tab_==2)draw_settings_system(list);
-        else draw_settings_theme_gallery(list);
-        // A single, context-aware glyph legend at the bottom of Settings.
-        // The emulator tab changes the X, triangle and touchpad actions as
-        // focus enters its accordion; no contradictory duplicate text row.
-        if(settings_tab_==0){
-            draw_emulator_button_legend(list);
-        }else{
-            const ui::Hint settings_hints[] = {
-                {ui::Button::l1,hint("Tabs"),ui::Button::r1},
+        if(settings_subview_==-1){
+            translated_text(list,fonts.regular,"Dein Game Hub – persoenliche Einstellungen",189,181,20,kMuted);
+            const std::array<std::string,8> subtitles={
+                std::to_string(platform_registry_.entries.size())+" Plattformen  |  Pfade verwalten",
+                language_settings_.english?"Aktuell: English":"Aktuell: Deutsch",
+                emulator_boot_settings_.direct_boot?"Direktstart aktiv":"Nur Emulator-Menue",
+                theme_settings_.frosted_glass?"Frosted Petrol":"Transparent",
+                music_settings_.enabled?"Musik: AN":"Musik: AUS",
+                std::string("BGH V1.1.18  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
+                "Auswahl: "+gallery_selection_.background,
+                "Auswahl: "+gallery_selection_.logo
+            };
+            // 4 columns x 2 rows, with generous TV-safe margins.
+            for(int i=0;i<8;++i){
+                const int col=i%4,row=i/4;
+                const float x=187.0f+col*391.0f,y=254.0f+row*300.0f;
+                const Rect tile{x,y,372,270};
+                const bool selected=i==selected_tile_;
+                list.shadow({x,y+6,372,270},20,11,Color::rgb(0x000000,0.15f));
+                list.gradient_rect(tile,20,
+                    selected?Color::rgb(0x376D92,0.85f):Color::rgb(0x32485F,0.64f),
+                    selected?Color::rgb(0x245078,0.93f):Color::rgb(0x1B3046,0.74f));
+                if(selected)list.glow({x,y,372,270},20,11,Color::rgb(0x00BFFF,0.20f));
+                list.bordered_rect(tile,20,Color::rgb(0xFFFFFF,0),selected?2.0f:1.0f,
+                    selected?Color::rgb(0x83E8FF,0.90f):Color::rgb(0xB3CCDD,0.34f));
+                list.rounded_rect({x+25,y+24,47,47},11,
+                    selected?Color::rgb(0x065B83,0.68f):Color::rgb(0x1C4052,0.52f));
+                draw_settings_tile_icon(list,i,x+27,y+26,selected);
+                const std::string heading=kSettingsTiles[static_cast<std::size_t>(i)];
+                translated_text(list,fonts.semibold,heading,x+25,y+122,
+                    heading.size()>22?20:24,Color::rgb(0xF3FAFF));
+                translated_text(list,fonts.regular,shorten(subtitles[static_cast<std::size_t>(i)],43),
+                    x+25,y+165,17,selected?Color::rgb(0xBCEAFF):kMuted);
+                translated_text(list,fonts.regular,"X  Oeffnen",x+25,y+236,17,Color::rgb(0xB0C9DA));
+            }
+            const ui::Hint hints[]={
                 {ui::Button::dpad,hint("Auswahl")},
-                {ui::Button::cross,hint("Aendern")},
+                {ui::Button::cross,hint("Oeffnen")},
                 {ui::Button::circle,hint("Schliessen")}
             };
-            ui::HintLayout settings_layout;
-            settings_layout.cy=982;
-            settings_layout.size=24;
-            settings_layout.text_size=19;
-            settings_layout.item_gap=34;
-            ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),settings_hints,4,
-                195,false,settings_layout);
+            ui::HintLayout layout;layout.cy=984;layout.size=24;layout.text_size=18;layout.item_gap=34;
+            ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,3,194,false,layout);
+            return;
         }
+        translated_text(list,fonts.semibold,
+            kSettingsTiles[static_cast<std::size_t>(settings_subview_)],190,216,28,kAccent);
+        if(settings_subview_==0){draw_settings_emulators(list);draw_emulator_button_legend(list);return;}
+        if(settings_subview_==5){draw_settings_system(list);}
+        else if(settings_subview_==6 || settings_subview_==7){draw_settings_gallery_detail(list);}
+        else draw_settings_choice_detail(list);
+        const bool gallery=settings_subview_==6 || settings_subview_==7;
+        const ui::Hint hints[]={
+            {ui::Button::dpad,hint(gallery?"Motiv":"Auswahl")},
+            {ui::Button::cross,hint(gallery?"Weiter":"Speichern")},
+            {ui::Button::circle,hint("Zurueck")}
+        };
+        ui::HintLayout layout;layout.cy=982;layout.size=24;layout.text_size=18;layout.item_gap=34;
+        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,3,194,false,layout);
+    }
+    void draw_settings_choice_detail(gfx::DrawList &list) const {
+        const auto &fonts=context_.fonts;
+        std::array<std::string,2> choices{};
+        bool first_active=false;
+        std::string message;
+        if(settings_subview_==1){
+            choices={"Deutsch","English"};first_active=!language_settings_.english;
+            message=language_settings_message_;
+        }else if(settings_subview_==2){
+            choices={"Spiele direkt starten","Nur Emulator-Menue"};
+            first_active=emulator_boot_settings_.direct_boot;message=emulator_settings_message_;
+        }else if(settings_subview_==3){
+            choices={"Frosted Petrol (Acryl)","Transparent (Klar)"};
+            first_active=theme_settings_.frosted_glass;message=theme_settings_message_;
+        }else{
+            choices={"Musik AN","Musik AUS"};
+            first_active=music_settings_.enabled;message=music_settings_message_;
+        }
+        translated_text(list,fonts.regular,"Wert auswaehlen und mit X dauerhaft speichern",194,286,23,kMuted);
+        for(int i=0;i<2;++i){
+            const float y=358.0f+i*184.0f;
+            const Rect card{205,y,1510,152};
+            const bool selected=settings_choice_==i;
+            list.gradient_rect(card,20,selected?Color::rgb(0x23577C,0.84f):Color::rgb(0x273B55,0.70f),
+                Color::rgb(0x1B2A42,0.90f));
+            list.bordered_rect(card,20,Color::rgb(0xFFFFFF,0),selected?2.0f:1.0f,
+                selected?Color::rgb(0x7DEAFF):Color::rgb(0xA5B9D1,0.28f));
+            translated_text(list,fonts.semibold,choices[static_cast<std::size_t>(i)],248,y+87,30,kInk);
+            const bool active=(i==0)==first_active;
+            translated_text(list,fonts.semibold,active?"Aktuell aktiviert":"",1390,y+88,19,kAccent);
+        }
+        if(!message.empty())translated_text(list,fonts.regular,shorten(message,105),215,838,20,kAccent);
+    }
+    void draw_settings_gallery_detail(gfx::DrawList &list) const {
+        const auto& fonts=context_.fonts;
+        const bool background=settings_subview_==6;
+        const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+        const auto choices=ulg::bgh_gallery::list(kind);
+        const auto selected=background?gallery_selection_.background:gallery_selection_.logo;
+        translated_text(list,fonts.regular,
+            "X / Links / Rechts: Motiv wechseln  |  Dreieck zweimal: eigenes Bild loeschen",190,298,20,kMuted);
+        list.gradient_rect({195,351,1528,310},22,Color::rgb(0x253D57,0.72f),Color::rgb(0x14253E,0.89f));
+        list.bordered_rect({195,351,1528,310},22,Color::rgb(0xFFFFFF,0),1.3f,Color::rgb(0x86C8E7,0.45f));
+        translated_text(list,fonts.semibold,background?"Aktuelles Hintergrundbild":"Aktuelles BGH-Logo",245,420,29,kInk);
+        translated_text(list,fonts.semibold,selected,245,504,32,Color::rgb(0xA5EDFF));
+        translated_text(list,fonts.regular,"Verfuegbare Motive: "+std::to_string(choices.size()),245,574,21,kMuted);
+        const auto preview=covers_.get(background?gallery_background_path():gallery_logo_path());
+        if(preview){
+            const auto dimensions=covers_.size(background?gallery_background_path():gallery_logo_path());
+            if(dimensions.first>0 && dimensions.second>0){
+                const float sx=370.0f/static_cast<float>(dimensions.first);
+                const float sy=258.0f/static_cast<float>(dimensions.second);
+                const float scale=std::min(sx,sy);
+                const float w=static_cast<float>(dimensions.first)*scale;
+                const float h=static_cast<float>(dimensions.second)*scale;
+                list.image(preview,{1275+(370-w)*0.5f,372+(258-h)*0.5f,w,h},
+                    gfx::kFullUv,Color::rgb(0xFFFFFF),12);
+            }
+        }
+        translated_text(list,fonts.regular,
+            background?"Eigene Bilder: /data/bgh/themes/backgrounds":"Eigene Bilder: /data/bgh/themes/logos",
+            197,741,20,kMuted);
+        if(!gallery_message_.empty())translated_text(list,fonts.regular,gallery_message_,197,828,20,kAccent);
     }
     void draw_root_button_legend(gfx::DrawList &list) const {
         const ui::Hint hints[]={
@@ -2773,7 +2876,6 @@ private:
         // All enumerated buttons exist in ps5-homebrew-ui's ui/glyphs.hpp.
         // Touchpad and both triggers are actual controller glyphs, not text.
         const ui::Hint common[]={
-            {ui::Button::l1,hint("Tabs"),ui::Button::r1},
             {ui::Button::dpad,hint("Auswahl")}
         };
         ui::Hint hints[9]{};
@@ -2795,7 +2897,7 @@ private:
             hints[count++]={ui::Button::square,hint(emulator_expanded_?"Einklappen":"Aufklappen")};
         }
         hints[count++]={ui::Button::l2,hint("Reihenfolge"),ui::Button::r2};
-        hints[count++]={ui::Button::circle,hint("Schliessen")};
+        hints[count++]={ui::Button::circle,hint("Zurueck")};
         ui::HintLayout layout;
         layout.cy=983;
         layout.size=19;
@@ -2930,67 +3032,6 @@ private:
             shorten(settings_message_,92),190,923,18,Color::rgb(0xFFC18D));
         // Native root-tab glyphs are rendered once by draw_root_button_legend().
     }
-    void draw_settings_presentation(gfx::DrawList &list) const {
-        const auto &fonts=context_.fonts;
-        translated_text(list,fonts.display,"Darstellung & Verhalten",189,292,34,kInk);
-        translated_text(list,fonts.regular,
-            "Persoenliche Optionen, ohne Eingriff in Spielordner oder Verlauf.",190,326,19,kMuted);
-        const auto card=[&](int index,float y,const char *heading){
-            list.bordered_rect({185,y,1535,132},18,Color::rgb(0x25344A,0.85f),2.0f,
-                presentation_selected_==index?Color::rgb(0x7CE0C8,0.90f):Color::rgb(0xFFFFFF,0.13f));
-            translated_text(list,fonts.semibold,heading,215,y+37,26,kInk);
-        };
-        const auto choice=[&](Rect r,bool active,const std::string &caption){
-            list.bordered_rect(r,12,
-                active?Color::rgb(0x496D75,0.90f):Color::rgb(0x273549,0.82f),1.5f,
-                active?Color::rgb(0x7CE0C8,0.85f):Color::rgb(0xFFFFFF,0.17f));
-            translated_text(list,fonts.semibold,caption,r.x+20,r.y+31,19,active?kInk:kMuted);
-        };
-        card(0,348,"Sprache");
-        translated_text(list,fonts.regular,"X: Sprache wechseln",230,445,17,kMuted);
-        choice({665,393,476,48},!language_settings_.english,"Deutsch");
-        choice({1158,393,476,48},language_settings_.english,"English");
-        card(1,488,"Emulator-Startverhalten");
-        translated_text(list,fonts.regular,"Nur PS2, Switch und Xbox 360",230,585,17,kMuted);
-        choice({665,532,476,48},emulator_boot_settings_.direct_boot,"Spiele direkt starten");
-        choice({1158,532,476,48},!emulator_boot_settings_.direct_boot,"Nur Emulator-Menue");
-        card(2,628,"Kachel-Design");
-        const bool frosted=theme_settings_.frosted_glass;
-        choice({665,672,476,48},frosted,"Frosted Petrol (Acryl)");
-        choice({1158,672,476,48},!frosted,"Transparent (Klar)");
-        card(3,768,"Hintergrundmusik");
-        translated_text(list,fonts.regular,"BGH-Musik in Dauerschleife",230,861,17,kMuted);
-        choice({665,812,476,48},music_settings_.enabled,"Musik AN");
-        choice({1158,812,476,48},!music_settings_.enabled,"Musik AUS");
-        // One result line well above the shared controller button legend.
-        const std::string message=!music_settings_message_.empty()?music_settings_message_:
-            !theme_settings_message_.empty()?theme_settings_message_:
-            !language_settings_message_.empty()?language_settings_message_:emulator_settings_message_;
-        if(!message.empty())translated_text(list,fonts.regular,
-            shorten(message,110),190,932,18,kAccent);
-    }
-    void draw_settings_theme_gallery(gfx::DrawList &list) const {
-        const auto& fonts=context_.fonts;
-        translated_text(list,fonts.display,"Hintergruende & Logos",190,293,35,kInk);
-        translated_text(list,fonts.regular,"X: Motiv wechseln  |  Dreieck zweimal: eigenes Motiv loeschen",190,334,21,kMuted);
-        const auto backgrounds=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
-        const auto logos=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::logo);
-        const auto label=[](const std::vector<ulg::bgh_gallery::ThemeItem>& choices,const std::string& id){
-            for(const auto& item:choices)if(item.id==id)return item.id;
-            return std::string("Nicht verfuegbar");
-        };
-        for(int i=0;i<2;++i){
-            const float y=392.0f+static_cast<float>(i)*160.0f;
-            list.bordered_rect({185,y,1540,135},18,Color::rgb(0x273A52,0.89f),2.0f,
-                i==gallery_row_?Color::rgb(0x06D5FF):Color::rgb(0xFFFFFF,0.13f));
-            const bool bg=i==0;
-            translated_text(list,fonts.semibold,bg?"Hintergrundbild":"BGH Logo",222,y+51,31,kInk);
-            translated_text(list,fonts.semibold,label(bg?backgrounds:logos,
-                bg?gallery_selection_.background:gallery_selection_.logo),775,y+53,25,kInk);
-        }
-        translated_text(list,fonts.regular,"Eigene Bilder per FTP nach /data/bgh/themes/backgrounds oder /data/bgh/themes/logos",190,757,18,kMuted);
-        translated_text(list,fonts.regular,gallery_message_,190,847,19,Color::rgb(0x79D8FF));
-    }
     void draw_settings_system(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
         list.rounded_rect({184,269,750,325},18,Color::rgb(0x263447,0.82f));
@@ -3000,12 +3041,12 @@ private:
         translated_text(list,fonts.regular,"L3: Details             Quadrat: Aktualisieren",207,394,20,kMuted);
         translated_text(list,fonts.regular,"Dreieck: Suche          Touchpad: Zuletzt gespielt",207,433,20,kMuted);
         translated_text(list,fonts.regular,"L1/R1: Plattformen (Bibliothek)",207,472,20,kMuted);
-        translated_text(list,fonts.regular,"L1/R1: Tabs (hier)       L2/R2: Ordnerfilter",207,511,20,kAccent);
+        translated_text(list,fonts.regular,"Optionen: Einstellungsuebersicht  |  L2/R2: Ordnerfilter",207,511,20,kAccent);
         translated_text(list,fonts.regular,language_settings_.english?
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.17 UI/Pad-Test",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.18 Settings Hub",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -3142,7 +3183,9 @@ private:
     std::vector<ulg::Root> roots_;
     ulg::BrowserResult browser_;
     std::string browser_path_="/",input_path_="/",settings_message_;
-    int settings_tab_=0; // Settings tab navigation remains transient
+    int settings_subview_=-1; // -1 = 4x2 overview; 0..7 = focused detail
+    int selected_tile_=0;
+    int settings_choice_=0;
     ulg::PlatformRegistry platform_registry_=ulg::default_platform_registry();
     std::vector<ulg::emulator_detection::Profile> emulator_profiles_;
     std::map<std::string,ulg::emulator_detection::Detection> detected_emulators_;
@@ -3153,7 +3196,6 @@ private:
     bool emulator_expanded_=false,emulator_edit_app_=false;
     int emulator_subselected_=-1;
     std::size_t emulator_edit_folder_=0;
-    int presentation_selected_=1; // Preserve X=emulator switch until user picks language
     ulg::LanguageSettings language_settings_{};
     std::string language_settings_message_;
     ulg::ThemeSettings theme_settings_{};

@@ -76,18 +76,18 @@ def test_7_snap_fonts_and_correct_version():
     assert 'std::floor(1814.0f)' in UI
     assert 'std::floor(1861.0f)' in UI
     assert 'context_.fonts.regular,display' in UI
-    assert 'BGH V1.1.17-UI-PAD-TEST' in UI
-    assert 'release_label="BGH V1.1.17"' in UI
-    assert 'Version: BGH V1.1.17' in UI
+    assert 'BGH V1.1.18-SETTINGS-HUB' in UI
+    assert 'release_label="BGH V1.1.18"' in UI
+    assert 'Version: BGH V1.1.18' in UI
 
 
 def test_release_workflow_builds_integrated_source_without_old_overwrite():
-    assert 'branches: [bgh-v1.1.17-ui-pad-import]' in WF
-    assert 'V1_1_17_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'V1_1_17_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.18-settings-hub]' in WF
+    assert 'V1_1_18_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'V1_1_18_PPSA99079_PS5_TEST.zip' in WF
     assert 'python3 tooling/bgh_apply_v1110.py' not in WF
     assert 'python3 tooling/bgh_startup_guard_v1111.py' not in WF
-    assert 'BGH V1.1.17-UI-PAD-TEST' in WF
+    assert 'BGH V1.1.18-SETTINGS-HUB' in WF
     for needle in ('make_registered_ps5_launch_plan(g.title_id)',
                    'make_registered_ps4_launch_plan(g.title_id)',
                    'stage_ps5sx2_disc_launch(g.path)',

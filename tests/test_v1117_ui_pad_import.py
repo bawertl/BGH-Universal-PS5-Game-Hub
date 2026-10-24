@@ -25,11 +25,11 @@ def test_pad_linked_imports_and_primary_ownership():
 
 def test_visual_changes_but_no_game_launch_regressions():
     rail=UI.split('void draw_platform_bar(',1)[1].split('void draw_storage_widgets(',1)[0]
-    assert 'if(id=="Apps" || id=="Favoriten" || id=="Zuletzt")continue;' in rail
-    assert 'rail.push_back(i);' in rail
-    assert 'items.push_back({"Favoriten"' in UI
-    assert 'items.push_back({"Zuletzt"' in UI
-    assert 'items.push_back({"Apps"' in UI
+    assert 'const int n=static_cast<int>(sidebar_items_.size());' in rail
+    sidebar=UI.split('void rebuild_sidebar()',1)[1].split('bool persist_platform_registry(',1)[0]
+    assert 'items.push_back({"Apps"' not in sidebar
+    assert 'items.push_back({"Favoriten"' not in sidebar
+    assert 'items.push_back({"Zuletzt"' not in sidebar
     assert 'list.gradient_rect(launch_button,15,kActiveTabStart,kActiveTabEnd);' in UI
     assert 'list.gradient_rect(pill,17,kActiveTabStart,kActiveTabEnd);' in rail
     assert 'serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16' in UI
@@ -48,9 +48,9 @@ def test_visual_changes_but_no_game_launch_regressions():
 
 
 def test_current_version_and_build():
-    assert 'BGH V1.1.17-UI-PAD-TEST' in UI
-    assert 'bgh-v1.1.17-ui-pad-import' in WORKFLOW
-    assert 'V1_1_17_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.18-SETTINGS-HUB' in UI
+    assert 'bgh-v1.1.18-settings-hub' in WORKFLOW
+    assert 'V1_1_18_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'APP_IMPORT_STUBS' in OVERLAY
 
 
