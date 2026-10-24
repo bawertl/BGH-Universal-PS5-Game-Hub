@@ -1,24 +1,24 @@
-name: BGH V1.1.12 - Nativer PS5 Build UI Polish
+name: BGH V1.1.13 - Nativer PS5 Build UI Persist
 
 on:
   push:
-    branches: [bgh-v1.1.12-ui-polish]
+    branches: [bgh-v1.1.13-ui-persist]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v1112-ui-polish-${{ github.ref }}
+  group: bgh-v1113-ui-persist-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: BGH V1.1.12 - Nativer PS5 Build und Pruefung
+    name: BGH V1.1.13 - Nativer PS5 Build und Pruefung
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
-      - name: Quellstand V1.1.12 auschecken
+      - name: Quellstand V1.1.13 auschecken
         uses: actions/checkout@v4
 
       - name: PS5-Buildwerkzeuge installieren
@@ -40,17 +40,17 @@ jobs:
           test -x native_ps5/cover-test-cli
           test -x native_ps5/emulator-cover-test-cli
 
-      # V1.1.12 is a fully integrated source tree. Never re-run the old
+      # V1.1.13 is a fully integrated source tree. Never re-run the old
       # V1.1.10->V1.1.11 patch scripts against it: that would erase fixes.
-      - name: V1.1.12 integrierten Source und Regression-Grenzen pruefen
+      - name: V1.1.13 integrierten Source und Regression-Grenzen pruefen
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = 'bgh-v1.1.12-ui-polish'
-          grep -Fq 'BGH V1.1.12-UI-POLISH' native_ps5/universal_launcher.cpp
+          test "$GITHUB_REF_NAME" = 'bgh-v1.1.13-ui-persist'
+          grep -Fq 'BGH V1.1.13-UI-PERSIST' native_ps5/universal_launcher.cpp
           grep -Fq 'controllers_.poll();' native_ps5/universal_launcher.cpp
           grep -Fq 'controllers_.observe_primary(input.connected);' native_ps5/universal_launcher.cpp
-          grep -Fq 'BGH_BawertLs_Game_Hub_V1_1_12_' tooling/build_native_ps5.sh
+          grep -Fq 'BGH_BawertLs_Game_Hub_V1_1_13_' tooling/build_native_ps5.sh
           test -s native_ps5/launcher_client.cpp
           test -s native_ps5/ftp_scan.cpp
           test -s native_ps5/ftp_ps2_writer.cpp
@@ -72,16 +72,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/backup/BGH_V1.1.12
-          cp -a native_ps5 tooling assets tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.12/
-          test -s build/backup/BGH_V1.1.12/tooling/bgh_startup_guard_v1111.py
-          (cd build/backup && zip -q -r ../BGH_V1.1.12_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip BGH_V1.1.12)
+          mkdir -p build/backup/BGH_V1.1.13
+          cp -a native_ps5 tooling assets tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.13/
+          test -s build/backup/BGH_V1.1.13/tooling/bgh_startup_guard_v1111.py
+          (cd build/backup && zip -q -r ../BGH_V1.1.13_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip BGH_V1.1.13)
 
       - name: Upload full source backup
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-12-KOMPLETTPROJEKT
-          path: build/BGH_V1.1.12_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip
+          name: BGH-V1-1-13-KOMPLETTPROJEKT
+          path: build/BGH_V1.1.13_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -163,7 +163,7 @@ jobs:
           path: build/ps5-opengl-sdk-1.0.2
           key: bgh-opengl-1.0.2-a51956162693-llvm21-noble-${{ hashFiles('tooling/build_pinned_opengl_sdk.sh') }}
 
-      - name: Echte native PS5-Anwendung aus V1.1.12 bauen
+      - name: Echte native PS5-Anwendung aus V1.1.13 bauen
         shell: bash
         run: |
           set -euo pipefail
@@ -177,11 +177,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 tooling/verify_ps5_package.py \
-            build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip PPSA99079
+            build/ps5/BGH_BawertLs_Game_Hub_V1_1_13_PPSA99079_PS5_TEST.zip PPSA99079
           python3 - <<'PY'
           import hashlib, json, pathlib, zipfile
           source = pathlib.Path('sce_sys/icon0.png').read_bytes()
-          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip')
+          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_13_PPSA99079_PS5_TEST.zip')
           with zipfile.ZipFile(package) as z:
               prefix = 'PPSA99079/'
               meta = json.loads(z.read(prefix + 'sce_sys/param.json'))
@@ -219,20 +219,20 @@ jobs:
               if b'PS4|/user/app' not in z.read(prefix + 'assets/paths.conf'):
                   raise SystemExit('FEHLER: Der PS4-PKG-Installationspfad fehlt')
               binary = z.read(prefix + 'eboot.bin')
-              if b'BGH V1.1.12-UI-POLISH' not in binary:
+              if b'BGH V1.1.13-UI-PERSIST' not in binary:
                   raise SystemExit('FEHLER: Die BGH-Design-Buildkennung fehlt in eboot.bin')
               if b'@BGH_GIT_COMMIT@' in binary:
                   raise SystemExit('FEHLER: Nicht ersetzter Build-Platzhalter in eboot.bin')
           print('Bestaetigt: BGH-App-Name, freigegebenes Icon und Logo im PS5-Paket.')
           PY
-          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip
+          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_13_PPSA99079_PS5_TEST.zip
 
       - name: Fertige PS5-ZIP direkt zum Download anbieten
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-12-UI-POLISH-PPSA99079-TEST
-          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip
+          name: BGH-V1-1-13-UI-PERSIST-PPSA99079-TEST
+          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_13_PPSA99079_PS5_TEST.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -241,7 +241,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-12-UI-POLISH-Build-Fehler
+          name: BGH-V1-1-13-UI-PERSIST-Build-Fehler
           path: build/native-ps5-build.log
           if-no-files-found: warn
           retention-days: 14
