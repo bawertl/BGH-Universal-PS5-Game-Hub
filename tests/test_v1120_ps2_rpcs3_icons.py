@@ -61,7 +61,7 @@ def test_new_storage_art_is_crisp_transparent_and_loaded_not_only_declared():
         file=ROOT/'assets/themes'/name
         assert file.is_file()
         with Image.open(file) as image:
-            assert image.size==(96,96) and image.mode=='RGBA'
+            assert image.size==(256,256) and image.mode=='RGBA'
             assert image.getchannel('A').getextrema()==(0,255)
         assert ('/app0/assets/themes/'+name) in UI
     storage=UI.split('void draw_storage_widgets(',1)[1].split('void draw_detail(',1)[0]
@@ -90,9 +90,9 @@ def test_ps2_ftp_uses_exact_single_filename_and_keeps_verification():
 
 def test_release_identity_and_preserved_network_backends():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.20-ps2-rpcs3-icons' in wf
-    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in UI
-    assert 'BGH V1.1.20' in UI
+    assert 'bgh-v1.1.21-custom-themes' in wf
+    assert 'BGH V1.1.21' in UI
+    assert 'BGH V1.1.21' in UI
     assert 'PPSA99303' in UI
     assert 'ulg::shadow_storage::fetch_storage()' in UI
     for name in ('launcher_client.cpp','ftp_scan.cpp','ps5_launch.cpp', 'controller_status.hpp'):

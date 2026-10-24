@@ -78,7 +78,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.20-PS2-RPCS3-ICONS [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.21";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -709,8 +709,8 @@ public:
         else if(ulg::bgh_gallery::logo_should_render(gallery_selection_))serif_text(list,"BawertL's Game Hub",113,68,27,kInk,320);
         // Reserved crest/crown asset slot; do not fabricate an official logo.
         draw_controllers(list);
-        serif_text(list,current_time_label(),1681,49,23,Color::rgb(0xF3F8FF));
-        serif_text(list,current_date_label(),1680,74,16,Color::rgb(0xCAD6E7));
+        translated_text(list,fonts.semibold,current_time_label(),1681,49,23,Color::rgb(0xF3F8FF));
+        translated_text(list,fonts.regular,current_date_label(),1680,74,16,Color::rgb(0xCAD6E7));
         const auto search_icon=covers_.get("/app0/assets/ui/search.png");
         if(search_icon)list.image(search_icon,{std::floor(1814.0f),std::floor(22.0f),30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
         const auto settings_icon=covers_.get("/app0/assets/ui/settings.png");
@@ -734,10 +734,10 @@ public:
         hint_layout.text_size=16;hint_layout.item_gap=20;
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         // Both footer labels share an identical baseline and discrete pixels.
-        serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
+        translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.20";
-        serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
+        const std::string release_label="BGH V1.1.21";
+        translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
         if(browser_open_)draw_browser(frame);
@@ -2772,7 +2772,7 @@ private:
                 emulator_boot_settings_.direct_boot?"Direktstart aktiv":"Nur Emulator-Menue",
                 theme_settings_.frosted_glass?"Frosted Petrol":"Transparent",
                 music_settings_.enabled?"Musik: AN":"Musik: AUS",
-                std::string("BGH V1.1.20  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
+                std::string("ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
                 "Auswahl: "+gallery_selection_.background,
                 "Auswahl: "+gallery_selection_.logo
             };
@@ -3088,7 +3088,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.20 PS2 RPCS3 Fix",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.21",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

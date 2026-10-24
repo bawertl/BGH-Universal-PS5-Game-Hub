@@ -32,8 +32,8 @@ def test_visual_changes_but_no_game_launch_regressions():
     assert 'items.push_back({"Zuletzt"' not in sidebar
     assert 'list.gradient_rect(launch_button,15,kActiveTabStart,kActiveTabEnd);' in UI
     assert 'list.gradient_rect(pill,17,kActiveTabStart,kActiveTabEnd);' in rail
-    assert 'serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16' in UI
-    assert 'serif_text(list,release_label+" UI-TEST",1720,1057,14' in UI
+    assert 'translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16' in UI
+    assert 'translated_text(list,fonts.semibold,release_label,1720,1057,14' in UI
     assert 'std::floor(cursor+0.5f)' in UI
     assert 'gallery_selection_loaded_after_boot_?' in UI
     assert 'if(!gallery_selection_loaded_after_boot_)' in UI
@@ -48,9 +48,9 @@ def test_visual_changes_but_no_game_launch_regressions():
 
 
 def test_current_version_and_build():
-    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in UI
-    assert 'bgh-v1.1.20-ps2-rpcs3-icons' in WORKFLOW
-    assert 'V1_1_20_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.21' in UI
+    assert 'bgh-v1.1.21-custom-themes' in WORKFLOW
+    assert 'V1_1_21_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'APP_IMPORT_STUBS' in OVERLAY
 
 

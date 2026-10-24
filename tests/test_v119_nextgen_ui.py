@@ -42,4 +42,4 @@ def test_feature_is_isolated_and_header_installed():
     assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
     assert "storage_widgets.hpp', concepts/'storage_widgets.hpp'" in OVERLAY
     assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
-    assert 'UI-TEST' in UI
+    assert 'UI-TEST' not in UI

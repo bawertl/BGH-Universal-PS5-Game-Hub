@@ -236,9 +236,9 @@ def test_ps5_ps4_launch_protocol_unchanged_except_v127_prelaunch_history():
     assert 'ulg::send_launch(ps2_plan)' in ps2
     assert 'ulg::cancel_ps5sx2_disc_launch(request)' in ps2
     assert 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' in ps2
-    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in src
+    assert 'BGH V1.1.21' in src
     assert 'ftp_stage_ps2_request' in (NATIVE/'ps2_autostart.hpp').read_text()
     assert 'O_CREAT' not in (NATIVE/'ps2_autostart.hpp').read_text()
     overlay=(ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert "project/'native_ps5'/'ftp_ps2_writer.cpp'" in overlay
-    assert 'bgh-v1.1.20-ps2-rpcs3-icons' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
+    assert 'bgh-v1.1.21-custom-themes' in (ROOT/'.github/workflows/ps5-build.yml').read_text()

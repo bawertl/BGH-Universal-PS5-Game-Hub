@@ -39,8 +39,20 @@ inline bool valid_filename(const std::string& filename) {
     });
     return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
 }
+// FTP-writable directories inside the installed PPSA99079 title.
+// The two previous paths remain read-only discovery fallbacks for older users.
 inline const char* upload_folder(Kind kind) {
-    return kind == Kind::background ? "/data/bgh/themes/backgrounds" : "/data/bgh/themes/logos";
+    return kind == Kind::background ?
+        "/data/homebrew/PPSA99079/user_themes/backgrounds" :
+        "/data/homebrew/PPSA99079/user_themes/logos";
+}
+inline const char* app0_upload_folder(Kind kind) {
+    return kind == Kind::background ? "/app0/user_themes/backgrounds" :
+                                     "/app0/user_themes/logos";
+}
+inline const char* legacy_upload_folder(Kind kind) {
+    return kind == Kind::background ? "/data/bgh/themes/backgrounds" :
+                                     "/data/bgh/themes/logos";
 }
 inline std::vector<ThemeItem> builtins(Kind kind) {
     if (kind == Kind::background) return {
@@ -56,19 +68,29 @@ inline std::vector<ThemeItem> builtins(Kind kind) {
 }
 inline std::vector<ThemeItem> list(Kind kind) {
     std::vector<ThemeItem> result = builtins(kind);
-    const char* dir = upload_folder(kind);
-    DIR* dp = ::opendir(dir);
-    if (!dp) return result; // a missing import directory is not a fatal error
-    while (dirent* entry = ::readdir(dp)) {
-        const std::string filename(entry->d_name);
-        if (!valid_filename(filename)) continue;
-        const std::string path = std::string(dir) + "/" + filename;
-        struct stat st {};
-        if (::lstat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
-        result.push_back({"user:" + filename, path, true, false});
-        if (result.size() == 67) break; // 3 built-ins + up to 64 additions
+    // Prefer the writable install folder, with /app0 and the old user folder
+    // supported for existing selections. Duplicate filenames keep one ID.
+    const char* folders[] = {upload_folder(kind), app0_upload_folder(kind),
+                             legacy_upload_folder(kind)};
+    for (const char* dir : folders) {
+        DIR* dp = ::opendir(dir);
+        if (!dp) continue; // No directory is not an error and never blocks boot.
+        while (dirent* entry = ::readdir(dp)) {
+            const std::string filename(entry->d_name);
+            if (!valid_filename(filename)) continue;
+            const std::string id = "user:" + filename;
+            if (std::any_of(result.begin(),result.end(),[&](const ThemeItem& t){
+                    return t.id == id;
+                })) continue;
+            const std::string path = std::string(dir) + "/" + filename;
+            struct stat st{};
+            if (::lstat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
+            result.push_back({id, path, true, false});
+            if (result.size() >= 67) break; // 3 built-ins + up to 64 images
+        }
+        ::closedir(dp);
+        if (result.size() >= 67) break;
     }
-    ::closedir(dp);
     return result;
 }
 inline bool find(Kind kind, const std::string& id, ThemeItem& result) {
@@ -127,10 +149,18 @@ inline bool remove_user_image(Kind kind, const std::string& id,
         (kind == Kind::logo && id == sel.logo)) return false;
     const std::string filename = id.substr(5);
     if (!valid_filename(filename)) return false;
-    const std::string path = std::string(upload_folder(kind)) + "/" + filename;
+    ThemeItem image;
+    if (!find(kind,id,image) || !image.user_supplied) return false;
+    // Restrict deletion to the three known theme directories (never assets).
+    bool approved = false;
+    for (const char* folder : {upload_folder(kind),app0_upload_folder(kind),
+                                legacy_upload_folder(kind)}) {
+        if (image.path == std::string(folder) + "/" + filename) approved = true;
+    }
+    if (!approved) return false;
     struct stat st{};
-    if (::lstat(path.c_str(),&st) != 0 || !S_ISREG(st.st_mode)) return false;
-    return ::unlink(path.c_str()) == 0;
+    if (::lstat(image.path.c_str(),&st) != 0 || !S_ISREG(st.st_mode)) return false;
+    return ::unlink(image.path.c_str()) == 0;
 }
 inline bool logo_should_render(const Selection& sel) {
     // No opendir/lstat during every rendered frame.

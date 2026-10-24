@@ -62,5 +62,5 @@ def test_fan_artwork_only_and_launch_paths_preserved():
         'make_registered_ps4_launch_plan(g.title_id)',
         'ulg::send_launch(plan)'):
         assert launch in UI
-    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in UI
-    assert 'branches: [bgh-v1.1.20-ps2-rpcs3-icons]' in WF
+    assert 'BGH V1.1.21' in UI
+    assert 'branches: [bgh-v1.1.21-custom-themes]' in WF
