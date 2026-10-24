@@ -1,4 +1,4 @@
-"""V1.1.13 targeted regression checks: does not claim PS5 hardware success."""
+"""V1.1.14 targeted regression checks: does not claim PS5 hardware success."""
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -37,6 +37,6 @@ def test_pad_diagnostics_do_not_add_probe_or_unverified_state():
 def test_storage_and_build_startup_guards_retained():
     assert 'statvfs(' not in UI
     assert 'statvfs(' not in (ROOT/'native_ps5/bgh_storage_metrics.hpp').read_text()
-    assert 'V1_1_13_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'bgh-v1.1.13-ui-persist' in WF
+    assert 'V1_1_14_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'bgh-v1.1.14-shadowmount-storage' in WF
     assert 'PPSA99079' in WF

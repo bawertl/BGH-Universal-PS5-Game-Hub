@@ -1,3 +1,17 @@
+# BGH V1.1.14 – ShadowMountPlus-Speicheranzeige (PS5-Testversion)
+
+**Ausgangsbranch:** `bgh-v1.1.13-ui-persist` → **neuer Branch:** `bgh-v1.1.14-shadowmount-storage`. **App-ID/PS5-Ordner:** `PPSA99079` (unverändert).
+
+Der Launcher liest nach 8 Sekunden erstmals und anschließend frühestens alle 60 Sekunden ausschließlich `POST http://127.0.0.1:10101/api/v1/storage` mit Body `{}`. Benötigt wird ein **bereits laufendes ShadowMountPlus mit kompatibler HTTP-Schnittstelle**; der Launcher startet oder konfiguriert weder ShadowMountPlus noch weitere Payloads.
+
+Aus der Antwort werden ausschließlich reale, validierte Bytewerte für `/user` sowie `/mnt/usb*` und `/mnt/ext*` in den zwei Speicher-Widgets angezeigt. Mehrere externe Dateisysteme werden anhand des `source`-Feldes dedupliziert und zusammengefasst. Die Balken zeigen `used_bytes / total_bytes`; die freie Kapazität verwendet `available_bytes`. Textgrößen entsprechen dezimalen GB/TB (10^9 / 10^12 Byte). Sind keine gültigen Daten vorhanden, bleiben nur Statusinformationen sichtbar – keine erfundenen Werte und kein voll ausgefüllter Dummy-Balken.
+
+**Vorsicht:** Das ist die erste experimentelle HTTP-Anbindung. Sie arbeitet mit begrenzten lokalen Socket-Timeouts und ohne zusätzlichen C++-Thread, kann daher bei einer langsam antwortenden API einen kurzen Frame-Stillstand auslösen. Die reale PS5-API-Verfügbarkeit, vollständige Paketkompilierung und Laufzeitstabilität sind erst durch GitHub-Build und den PS5-Test bestätigt. Kein `statvfs()` im neuen API-Pfad. Diagnose unter **Einstellungen → System & Hilfe → ShadowMount HTTP**.
+
+**Bestehende Startumgebung:** ShadowMountPlus läuft bereits; die Launcher-ELF wird für bestehende Spielstarts benötigt; PS2-Helper-ELF wie bisher für PS2-Direktstarts. V1.1.14 verändert diese ELFs oder Startwege nicht.
+
+---
+
 # BGH V1.1.4 – USB-Scan-Reparatur (aus stabiler V1.1.3) 
 
 **Ausgangsbranch:** `bgh-v1.1.3` → **neuer Branch:** `bgh-v1.1.4-usb-rebuild`.

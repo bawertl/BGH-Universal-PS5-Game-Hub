@@ -19,6 +19,7 @@
 #include "bgh_theme_gallery.hpp"
 #include "bgh_nextgen_layout.hpp"
 #include "storage_widgets.hpp"
+#include "storage_shadowmount.hpp"
 #include "ui/glyphs.hpp"
 #include "platform/ps5/system.hpp"
 #include "ui/motion.hpp"
@@ -72,7 +73,7 @@ constexpr std::array<const char *,4> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.13-UI-PERSIST [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.14-SHADOW-STORAGE [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -482,7 +483,9 @@ public:
         };
         return kInfo;
     }
-    void enter() override { clock_=0.0f; next_storage_poll_=30.0f; next_controller_poll_=5.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
+    void enter() override { clock_=0.0f; next_shadow_poll_=8.0f;
+        shadow_storage_=ulg::shadow_storage::Snapshot{};
+        next_storage_poll_=30.0f; next_controller_poll_=5.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
@@ -496,6 +499,13 @@ public:
             refresh_gallery_paths();
         }
         if(clock_>=next_storage_poll_){storage_widgets_=ulg::storage_widgets::detect();next_storage_poll_=clock_+30.0f;}
+        // V1.1.14 experiment: only after 8 seconds, then <= once/minute.
+        // Read-only HTTP POST to a *pre-existing* ShadowMountPlus daemon.
+        // The socket has short timeouts; avoid requesting in enter()/draw().
+        if(clock_>=next_shadow_poll_){
+            next_shadow_poll_=clock_+60.0f;
+            shadow_storage_=ulg::shadow_storage::fetch_storage();
+        }
         // Debounce new, synchronous cover decodes during fast navigation.
         // Bundled assets and the three recent cards are always serviced first.
         const bool browsing_screen=!settings_ && !detail_ && !search_open_ &&
@@ -697,7 +707,7 @@ public:
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.13";
+        const std::string release_label="BGH V1.1.14";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2197,29 +2207,46 @@ private:
         if(first+visible<n)serif_text(list,">",1425,142,20,Color::rgb(0x8CDFFF));
     }
     void draw_storage_widgets(gfx::DrawList &list) const {
-        // Draw consumes the cached snapshot; never probe the filesystem in a
-        // render frame and never reintroduce the unsafe PS5 statvfs path.
-        const auto one=[&](bool connected,const char* title,const char* status_text,
-                           const char* icon_path,float x){
+        // Only previously fetched data is rendered here; no socket/FS calls.
+        const auto one=[&](const ulg::shadow_storage::Volume &data,
+                           bool connected,const char* title,
+                           const char* offline,const char* icon_path,float x){
             const Rect panel{x,177,216,91};
             glass_card(list,panel,15);
             const auto icon=covers_.get(icon_path);
             if(icon)list.image(icon,{std::floor(x+13.0f),192,28,28},
                 gfx::kFullUv,Color::rgb(0xFFFFFF),0);
             serif_text(list,title,x+48,201,15,Color::rgb(0xF1F9FF),160);
-            serif_text(list,status_text,x+13,230,14,
-                connected?Color::rgb(0x7DEAFF):Color::rgb(0x8D9CAE),190);
-            list.rounded_rect({x+13,248,190,5},2.5f,Color::rgb(0x24354C,0.88f));
-            if(connected){
-                list.glow({x+13,247,190,7},3,5,Color::rgb(0x00B5FF,0.35f));
-                list.gradient_rect({x+13,248,190,5},2.5f,
-                    Color::rgb(0x007BD5),Color::rgb(0x00E5FF));
+            // Capacity only when the local API provided validated, real bytes.
+            const std::string status=data.valid?
+                (ulg::storage_widgets::format_gib(data.available)+" frei / "+
+                 ulg::storage_widgets::format_gib(data.total)):
+                std::string(offline);
+            serif_text(list,status,x+13,230,data.valid?12:14,
+                (data.valid||connected)?Color::rgb(0x7DEAFF):
+                Color::rgb(0x8D9CAE),190);
+            list.rounded_rect({x+13,248,190,5},2.5f,
+                Color::rgb(0x24354C,0.88f));
+            if(data.valid && data.total>0){
+                const double fraction=std::clamp(
+                    static_cast<double>(data.used)/static_cast<double>(data.total),
+                    0.0,1.0);
+                const float width=static_cast<float>(190.0*fraction);
+                if(width>0.5f){
+                    list.glow({x+13,247,width,7},3,5,
+                        Color::rgb(0x00B5FF,0.25f));
+                    list.gradient_rect({x+13,248,width,5},2.5f,
+                        Color::rgb(0x007BD5),Color::rgb(0x00E5FF));
+                }
             }
         };
-        one(true,"Interner Speicher","System bereit",
+        const auto &info=shadow_storage_;
+        one(info.internal,true,"Interner Speicher",
+            info.http_ok?"Speicher nicht gemeldet":"System bereit",
             "/app0/assets/themes/storage_internal.png",1441);
-        const bool usb_connected=storage_widgets_.usb_connected;
-        one(usb_connected,"Externer USB",usb_connected?"USB verbunden":"Nicht verbunden",
+        const bool usb_connected=info.http_ok?info.usb.valid:storage_widgets_.usb_connected;
+        one(info.usb,usb_connected,"Externer USB",
+            usb_connected?"USB verbunden":"Nicht verbunden",
             "/app0/assets/themes/storage_usb.png",1665);
     }
     void draw_detail(app::Frame &frame) const {
@@ -2947,12 +2974,15 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.13 UI-Persist",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.14 ShadowMount",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
         translated_text(list,fonts.regular,"Aktive Scanpfade: "+std::to_string(active)+" / "+std::to_string(roots_.size()),978,489,23,kInk);
-        translated_text(list,fonts.regular,"Diagnose: Nur lesen; keine Loesch- oder Reparaturfunktion.",978,541,17,kMuted);
+        translated_text(list,fonts.regular,"ShadowMount HTTP: "+shadow_storage_.diagnostic+
+            (shadow_storage_.http_ok?(" | USB-Laufwerke: "+std::to_string(shadow_storage_.usb_count)):
+            " | keine Kapazitaetsdaten"),978,529,17,kAccent);
+        translated_text(list,fonts.regular,"Diagnose: Nur lesen; keine Loesch- oder Reparaturfunktion.",978,559,17,kMuted);
         // Diagnostic reads/writes cover both the download mount and the /data fallback.
         list.rounded_rect({184,614,1540,288},14,Color::rgb(0x0D1927,0.92f));
         const std::string primary_dir_status=primary_storage_visible_?"SICHTBAR":
@@ -3100,6 +3130,8 @@ private:
     std::set<std::string> favorites_;
     ulg::ControllerStatus controllers_;
     ulg::storage_widgets::Snapshot storage_widgets_{};
+    ulg::shadow_storage::Snapshot shadow_storage_{};
+    float next_shadow_poll_=8.0f;
     float next_storage_poll_=0.0f;
     float next_controller_poll_=5.0f;
     bool recent_focus_=false;

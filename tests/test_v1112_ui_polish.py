@@ -1,4 +1,4 @@
-"""V1.1.13 contract: UI changes only, no reintroduced startup blocker."""
+"""V1.1.14 contract: UI changes only, no reintroduced startup blocker."""
 from pathlib import Path
 import subprocess
 
@@ -50,6 +50,7 @@ def test_5_storage_status_is_cached_and_icons_exist():
     assert '::stat(' not in view
     assert 'statvfs(' not in view
     assert 'storage_widgets_.usb_connected' in view
+    assert 'shadow_storage_.diagnostic' in UI
     assert 'System bereit' in view
     for filename in ('storage_internal.png','storage_usb.png'):
         assert (ROOT/'assets/themes'/filename).is_file()
@@ -75,18 +76,18 @@ def test_7_snap_fonts_and_correct_version():
     assert 'std::floor(1814.0f)' in UI
     assert 'std::floor(1861.0f)' in UI
     assert 'context_.fonts.regular,display' in UI
-    assert 'BGH V1.1.13-UI-PERSIST' in UI
-    assert 'release_label="BGH V1.1.13"' in UI
-    assert 'Version: BGH V1.1.13' in UI
+    assert 'BGH V1.1.14-SHADOW-STORAGE' in UI
+    assert 'release_label="BGH V1.1.14"' in UI
+    assert 'Version: BGH V1.1.14' in UI
 
 
 def test_release_workflow_builds_integrated_source_without_old_overwrite():
-    assert 'branches: [bgh-v1.1.13-ui-persist]' in WF
-    assert 'V1_1_13_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'V1_1_13_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.14-shadowmount-storage]' in WF
+    assert 'V1_1_14_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'V1_1_14_PPSA99079_PS5_TEST.zip' in WF
     assert 'python3 tooling/bgh_apply_v1110.py' not in WF
     assert 'python3 tooling/bgh_startup_guard_v1111.py' not in WF
-    assert 'BGH V1.1.13-UI-PERSIST' in WF
+    assert 'BGH V1.1.14-SHADOW-STORAGE' in WF
     for needle in ('make_registered_ps5_launch_plan(g.title_id)',
                    'make_registered_ps4_launch_plan(g.title_id)',
                    'stage_ps5sx2_disc_launch(g.path)',

@@ -74,9 +74,9 @@ inline Snapshot detect(){
     return out;
 }
 inline std::string format_gib(std::uint64_t bytes){
-    const double gib=static_cast<double>(bytes)/1073741824.0;
+    const double gib=static_cast<double>(bytes)/1000000000.0;
     char result[32]{};
-    if(gib>=1024.0)std::snprintf(result,sizeof(result),"%.1f TB",gib/1024.0);
+    if(gib>=1000.0)std::snprintf(result,sizeof(result),"%.1f TB",gib/1000.0);
     else std::snprintf(result,sizeof(result),"%.0f GB",gib);
     return result;
 }
