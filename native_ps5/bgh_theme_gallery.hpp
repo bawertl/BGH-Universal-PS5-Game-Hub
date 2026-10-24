@@ -74,6 +74,7 @@ inline std::vector<ThemeItem> builtins(Kind kind) {
         {"lake", "/app0/assets/premium_lake_background.png", false, false},
         {"showroom", "/app0/assets/themes/backgrounds/cyber_showroom.png", false, false},
         {"mountain_crown", "/app0/assets/themes/backgrounds/bgh_berg_cyber_mit_kronenlogo.png", false, true},
+        {"gaming_hall", "/app0/assets/themes/backgrounds/gaming_hall_2k.png", false, false},
     };
     return {
         {"legacy", "/app0/assets/bgh_logo.png", false, false},
@@ -117,10 +118,10 @@ inline std::vector<ThemeItem> list(Kind kind) {
                 header[0]==255 && header[1]==216 && header[2]==255);
             if (!valid) continue;
             result.push_back({id, path, true, false});
-            if (result.size() >= 67) break; // 3 built-ins + up to 64 images
+            if (result.size() >= 68) break; // 4 built-ins + up to 64 images
         }
         ::closedir(dp);
-        if (result.size() >= 67) break;
+        if (result.size() >= 68) break;
     }
     return result;
 }

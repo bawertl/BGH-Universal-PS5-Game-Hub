@@ -66,7 +66,7 @@ if [[ "$actual_blob" != "$expected_blob" ]]; then
   exit 12
 fi
 python3 "$PROJECT/tooling/install_ui_kit_overlay.py" "$KIT"
-# BGH V1.1.23: package the selectable images, not just the default assets.
+# BGH V1.1.24: package the selectable images, not just the default assets.
 mkdir -p "$KIT/assets/themes"
 cp -a "$PROJECT/assets/themes/." "$KIT/assets/themes/"
 # The kit sources compile inside src/concepts, not native_ps5.
@@ -104,7 +104,7 @@ SOURCE_ZIP="$KIT/dist/$TITLE_ID.zip"
 # preserving the native title's signed binaries and PS5 0777 archive modes.
 python3 "$PROJECT/tooling/append_user_theme_folders.py" \
   "$SOURCE_ZIP" "$TITLE_ID" "$PROJECT/user_themes"
-DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_23_${TITLE_ID}_PS5_TEST.zip"
+DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_24_${TITLE_ID}_PS5_TEST.zip"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$SOURCE_ZIP" "$TITLE_ID"
 cp -f -- "$SOURCE_ZIP" "$DEST"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$DEST" "$TITLE_ID"

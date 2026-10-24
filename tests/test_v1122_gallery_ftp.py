@@ -26,11 +26,11 @@ def test_gallery_imports_from_ftp_when_app_cannot_open_remote_folder(tmp_path):
 int main(int argc,char**argv){
     const int port=std::stoi(argv[1]);
     const auto before=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
-    assert(before.size()==3);
+    assert(before.size()==4);
     const auto report=ulg::bgh_gallery::import_from_local_ftp(ulg::bgh_gallery::Kind::background,8,port);
     assert(report.ftp_ok && report.added==1 && report.failed==0);
     const auto after=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
-    assert(after.size()==4);
+    assert(after.size()==5);
     assert(after.back().id=="user:Mein Bild.png");
     const auto twice=ulg::bgh_gallery::import_from_local_ftp(ulg::bgh_gallery::Kind::background,8,port);
     assert(twice.ftp_ok && twice.added==0 && twice.already==1);
