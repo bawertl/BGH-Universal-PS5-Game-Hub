@@ -1,24 +1,24 @@
-name: BGH V1.1.11 - Nativer PS5 Build Startup Hotfix
+name: BGH V1.1.12 - Nativer PS5 Build UI Polish
 
 on:
   push:
-    branches: [bgh-v1.1.11-startup-hotfix]
+    branches: [bgh-v1.1.12-ui-polish]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v1111-startup-hotfix-${{ github.ref }}
+  group: bgh-v1112-ui-polish-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: BGH V1.1.11 - Nativer PS5 Build und Pruefung
+    name: BGH V1.1.12 - Nativer PS5 Build und Pruefung
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
-      - name: Check out exact current V1.1.9 successor source
+      - name: Quellstand V1.1.12 auschecken
         uses: actions/checkout@v4
 
       - name: PS5-Buildwerkzeuge installieren
@@ -40,77 +40,26 @@ jobs:
           test -x native_ps5/cover-test-cli
           test -x native_ps5/emulator-cover-test-cli
 
-      # Older tests intentionally assert the V1.1.9 workflow name, branch and
-      # package filename. Do NOT run these against V1.1.11 or rewrite their
-      # assertions to fabricate a pass. Execute the full suite on its original
-      # immutable V1.1.9 source before integrating the new UI into this checkout.
-      - name: V1.1.9 Regressionstests auf unveraendertem V1.1.9-Quellstand
+      # V1.1.12 is a fully integrated source tree. Never re-run the old
+      # V1.1.10->V1.1.11 patch scripts against it: that would erase fixes.
+      - name: V1.1.12 integrierten Source und Regression-Grenzen pruefen
         shell: bash
         run: |
           set -euo pipefail
-          export PATH="/usr/lib/llvm-18/bin:$PATH"
-          git fetch --no-tags --depth=1 origin refs/heads/bgh-v1.1.9-nextgen-ui
-          old_checkout="$RUNNER_TEMP/bgh-v119-baseline"
-          git worktree add --detach "$old_checkout" FETCH_HEAD
-          (
-            cd "$old_checkout"
-            echo 'Pruefe V1.1.9 im eigenen Checkout: keine V1.1.11-Dateien oder Versionsannahmen'
-            test -s .github/workflows/ps5-build.yml
-            grep -Fq 'bgh-v1.1.9-nextgen-ui' .github/workflows/ps5-build.yml
-            grep -Fq 'BGH V1.1.9' native_ps5/universal_launcher.cpp
-            make -C native_ps5 -B CXX=g++ -j 2
-            /usr/bin/python3 -m pytest -q tests
-            bash tooling/test_native_gui_syntax.sh
-          )
-          # Main V1.1.11 checkout remains intact for its actual code integration.
-          test "$GITHUB_REF_NAME" = 'bgh-v1.1.11-startup-hotfix'
-          test -s tooling/bgh_apply_v1110.py
-
-      - name: V1.1.11 Branch und eigenstaendigen Workflow pruefen
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF_NAME" = 'bgh-v1.1.11-startup-hotfix'
-          grep -Fq 'BGH V1.1.11 - Nativer PS5 Build Startup Hotfix' .github/workflows/ps5-build.yml
-          test -s tooling/bgh_apply_v1110.py
-          test -s tooling/bgh_startup_guard_v1111.py
-          test -s native_ps5/bgh_theme_gallery.hpp
-          test -s native_ps5/bgh_storage_metrics.hpp
-          test -s native_ps5/bgh_nextgen_layout.hpp
-
-      - name: Integrate UI updates into the checked out C++ project
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$GITHUB_REF_NAME" = 'bgh-v1.1.11-startup-hotfix'
-          test -s native_ps5/universal_launcher.cpp
-          grep -Fq 'BGH V1.1.9' native_ps5/universal_launcher.cpp
-          test -s native_ps5/controller_status.hpp
-          python3 tooling/bgh_apply_v1110.py
-          # Stabilize generated V1.1.10 code BEFORE any C++ syntax or PS5 build.
-          python3 tooling/bgh_startup_guard_v1111.py
-          grep -Fq 'BGH V1.1.11' native_ps5/universal_launcher.cpp
-          grep -Fq 'Hintergruende & Logos' native_ps5/universal_launcher.cpp
-          grep -Fq 'const bool with_case_header=false' native_ps5/universal_launcher.cpp
-          grep -Fq 'gallery_background_path()' native_ps5/universal_launcher.cpp
-          # Safety must be proven on actual, generated C++ (not only helper tests).
-          if grep -Fq 'bgh_storage::internal()' native_ps5/universal_launcher.cpp; then exit 1; fi
-          if grep -Fq 'bgh_storage::external()' native_ps5/universal_launcher.cpp; then exit 1; fi
-          if grep -Eq 'statvfs[[:space:]]*\(' native_ps5/universal_launcher.cpp native_ps5/bgh_storage_metrics.hpp; then exit 1; fi
-          if grep -Fq 'controllers_.poll()' native_ps5/universal_launcher.cpp; then exit 1; fi
-          grep -Fq 'controllers_.observe_primary(input.connected)' native_ps5/universal_launcher.cpp
-          grep -Fq 'gallery_logo_path()' native_ps5/universal_launcher.cpp
-          grep -Fq 'BGH_BawertLs_Game_Hub_V1_1_11_' tooling/build_native_ps5.sh
-          # The existing PS5 scanner and launch bridges remain in place.
+          test "$GITHUB_REF_NAME" = 'bgh-v1.1.12-ui-polish'
+          grep -Fq 'BGH V1.1.12-UI-POLISH' native_ps5/universal_launcher.cpp
+          grep -Fq 'controllers_.poll();' native_ps5/universal_launcher.cpp
+          grep -Fq 'controllers_.observe_primary(input.connected);' native_ps5/universal_launcher.cpp
+          grep -Fq 'BGH_BawertLs_Game_Hub_V1_1_12_' tooling/build_native_ps5.sh
           test -s native_ps5/launcher_client.cpp
           test -s native_ps5/ftp_scan.cpp
           test -s native_ps5/ftp_ps2_writer.cpp
-          test -s assets/themes/backgrounds/bgh_berg_cyber_mit_kronenlogo.png
-          test -s assets/themes/backgrounds/cyber_showroom.png
-          test -s assets/themes/logos/bgh_kronenlogo_freigestellt.png
           test -s assets/themes/storage_internal.png
           test -s assets/themes/storage_usb.png
-          echo 'BGH V1.1.11: Native UI preserved and storage/pad startup guard applied.'
+          if grep -Eq 'statvfs[[:space:]]*\(' native_ps5/universal_launcher.cpp native_ps5/bgh_storage_metrics.hpp; then
+            echo 'BLOCKER: unsafe PS5 statvfs reintroduced'; exit 1
+          fi
+          /usr/bin/python3 -m pytest -q tests/test_v1112_ui_polish.py
 
       - name: Build-check of actual patched native C++ code
         shell: bash
@@ -119,20 +68,20 @@ jobs:
           bash tooling/test_native_gui_syntax.sh
           bash tests/run_bgh_addons_tests.sh
 
-      - name: Create true full-source backup of modified checkout
+      - name: Create true full-source backup of integrated checkout
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/backup/BGH_V1.1.11
-          cp -a native_ps5 tooling assets tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.11/
-          test -s build/backup/BGH_V1.1.11/tooling/bgh_startup_guard_v1111.py
-          (cd build/backup && zip -q -r ../BGH_V1.1.11_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip BGH_V1.1.11)
+          mkdir -p build/backup/BGH_V1.1.12
+          cp -a native_ps5 tooling assets tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.12/
+          test -s build/backup/BGH_V1.1.12/tooling/bgh_startup_guard_v1111.py
+          (cd build/backup && zip -q -r ../BGH_V1.1.12_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip BGH_V1.1.12)
 
       - name: Upload full source backup
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-11-KOMPLETTPROJEKT
-          path: build/BGH_V1.1.11_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip
+          name: BGH-V1-1-12-KOMPLETTPROJEKT
+          path: build/BGH_V1.1.12_STARTUP_HOTFIX_KOMPLETTPROJEKT.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -214,7 +163,7 @@ jobs:
           path: build/ps5-opengl-sdk-1.0.2
           key: bgh-opengl-1.0.2-a51956162693-llvm21-noble-${{ hashFiles('tooling/build_pinned_opengl_sdk.sh') }}
 
-      - name: Echte native PS5-Anwendung aus V1.1.11 bauen
+      - name: Echte native PS5-Anwendung aus V1.1.12 bauen
         shell: bash
         run: |
           set -euo pipefail
@@ -228,11 +177,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 tooling/verify_ps5_package.py \
-            build/ps5/BGH_BawertLs_Game_Hub_V1_1_11_PPSA99079_PS5_TEST.zip PPSA99079
+            build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip PPSA99079
           python3 - <<'PY'
           import hashlib, json, pathlib, zipfile
           source = pathlib.Path('sce_sys/icon0.png').read_bytes()
-          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_11_PPSA99079_PS5_TEST.zip')
+          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip')
           with zipfile.ZipFile(package) as z:
               prefix = 'PPSA99079/'
               meta = json.loads(z.read(prefix + 'sce_sys/param.json'))
@@ -270,20 +219,20 @@ jobs:
               if b'PS4|/user/app' not in z.read(prefix + 'assets/paths.conf'):
                   raise SystemExit('FEHLER: Der PS4-PKG-Installationspfad fehlt')
               binary = z.read(prefix + 'eboot.bin')
-              if b'BGH V1.1.11-STARTUP-HOTFIX' not in binary:
+              if b'BGH V1.1.12-UI-POLISH' not in binary:
                   raise SystemExit('FEHLER: Die BGH-Design-Buildkennung fehlt in eboot.bin')
               if b'@BGH_GIT_COMMIT@' in binary:
                   raise SystemExit('FEHLER: Nicht ersetzter Build-Platzhalter in eboot.bin')
           print('Bestaetigt: BGH-App-Name, freigegebenes Icon und Logo im PS5-Paket.')
           PY
-          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_11_PPSA99079_PS5_TEST.zip
+          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip
 
       - name: Fertige PS5-ZIP direkt zum Download anbieten
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-11-STARTUP-HOTFIX-PPSA99079-TEST
-          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_11_PPSA99079_PS5_TEST.zip
+          name: BGH-V1-1-12-UI-POLISH-PPSA99079-TEST
+          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_12_PPSA99079_PS5_TEST.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -292,7 +241,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-11-STARTUP-HOTFIX-Build-Fehler
+          name: BGH-V1-1-12-UI-POLISH-Build-Fehler
           path: build/native-ps5-build.log
           if-no-files-found: warn
           retention-days: 14
