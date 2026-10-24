@@ -40,7 +40,7 @@ bool decode_png(const std::string &filename,PngImage &result,int max_edge){
             if(ihdr||size!=13)return false;
             ihdr=true;
             width=static_cast<int>(be32(payload));height=static_cast<int>(be32(payload+4));
-            if(width<1||height<1||width>2048||height>2048 || payload[8]!=8 ||
+            if(width<1||height<1||width>4096||height>4096 || payload[8]!=8 ||
                payload[10]!=0 || payload[11]!=0 || payload[12]!=0)return false;
             color=payload[9];
             channels=color==0?1:color==2?3:color==3?1:color==4?2:color==6?4:0;
@@ -60,7 +60,7 @@ bool decode_png(const std::string &filename,PngImage &result,int max_edge){
     if(!end||!ihdr||compressed.empty()||(color==3&&palette.empty()))return false;
     const std::size_t stride=static_cast<std::size_t>(width)*channels;
     const std::size_t unpacked_size=(stride+1)*static_cast<std::size_t>(height);
-    if(unpacked_size>32*1024*1024)return false;
+    if(unpacked_size>80*1024*1024)return false;
     std::vector<std::uint8_t> packed(unpacked_size);
     uLongf count=static_cast<uLongf>(packed.size());
     if(uncompress(packed.data(),&count,compressed.data(),static_cast<uLong>(compressed.size()))!=Z_OK||count!=packed.size())return false;

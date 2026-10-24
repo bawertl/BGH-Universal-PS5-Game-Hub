@@ -29,6 +29,9 @@ public:
     FtpReadonly& operator=(const FtpReadonly&)=delete;
     bool connect_local();
     FtpListing list(const std::string &directory,std::size_t max_entries=2000);
+    // Gallery-specific compatibility fallback for PS5 FTP servers that omit
+    // MLSD or format MLSD facts differently. Existing game scanner unchanged.
+    FtpListing list_names(const std::string &directory,std::size_t max_entries=2000);
     bool retrieve(const std::string &path,std::string &bytes,std::size_t max_bytes=262144);
     FtpTransferStatus retrieve_detailed(const std::string &path,std::string &bytes,std::size_t max_bytes=262144);
     // Read exactly len bytes from an absolute file offset using REST/RETR.

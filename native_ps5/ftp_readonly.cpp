@@ -143,6 +143,41 @@ FtpListing FtpReadonly::list(const std::string &directory,std::size_t max_entrie
     out.ok=true;out.operation="";out.reply=226;
     return out;
 }
+// NLST fallback is deliberately separate from the existing MLSD game scanner.
+// It does not mutate FTP state outside this object and never sends STOR/DELE.
+FtpListing FtpReadonly::list_names(const std::string &directory,std::size_t max_entries){
+    FtpListing out;out.operation="FTP CONNECT/LOGIN";
+    if(!safe_ftp_path(directory) || !connect_local())return out;
+    std::string reply;
+    out.reply=command("CWD "+directory,reply);out.operation="FTP CWD";
+    if(out.reply!=250)return out;
+    std::string error;
+    const int data=data_socket(error);out.operation="FTP PASV";
+    if(data<0)return out;
+    out.reply=command("NLST",reply);out.operation="FTP NLST";
+    if(out.reply!=150 && out.reply!=125){::close(data);return out;}
+    std::string body;
+    const bool received=read_data(data,body,2*1024*1024);
+    ::close(data);
+    out.reply=response(reply);
+    if(!received || out.reply!=226){disconnect();return out;}
+    max_entries=std::min(max_entries,std::size_t(5000));
+    std::size_t pos=0;
+    while(pos<body.size() && out.entries.size()<max_entries){
+        const auto end=body.find('\n',pos);
+        std::string name=body.substr(pos,end==std::string::npos?std::string::npos:end-pos);
+        pos=end==std::string::npos?body.size():end+1;
+        if(!name.empty()&&name.back()=='\r')name.pop_back();
+        // NLST can return either names or absolute/relative full paths.
+        const auto slash=name.find_last_of('/');
+        if(slash!=std::string::npos)name=name.substr(slash+1);
+        if(name.empty()||name=="."||name==".."||
+           name.find('\r')!=std::string::npos||name.find('\n')!=std::string::npos)continue;
+        out.entries.push_back({name,false});
+    }
+    out.ok=true;out.reply=226;out.operation.clear();
+    return out;
+}
 // PS5 metadata/PNG art: retain V0.12's proven RETR-only transaction path.
 // SIZE is deliberately NOT used on the shared scan connection.
 bool FtpReadonly::retrieve(const std::string &path,std::string &bytes,std::size_t max_bytes){

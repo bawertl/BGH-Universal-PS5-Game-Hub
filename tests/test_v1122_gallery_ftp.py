@@ -102,7 +102,7 @@ int main(int argc,char**argv){
 def test_no_network_during_per_frame_gallery_render():
     ui=(NATIVE/'universal_launcher.cpp').read_text()
     # Network import is only triggered when opening a gallery tile.
-    assert 'const auto report=ulg::bgh_gallery::import_from_local_ftp(kind);' in ui
+    assert 'const auto ftp=ulg::bgh_gallery::import_from_local_ftp(kind);' in ui
     render=ui.split('void draw_settings_gallery_detail')[1].split('void draw_root_button_legend')[0]
     assert 'import_from_local_ftp' not in render
-    assert 'FTP: /data/homebrew/PPSA99079/user_themes/backgrounds' in render
+    assert 'Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds' in render

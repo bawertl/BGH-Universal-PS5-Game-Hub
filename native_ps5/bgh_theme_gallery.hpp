@@ -13,6 +13,9 @@
 #include <vector>
 
 // Test builds can redirect only the BGH-owned import cache to a temp folder.
+#ifndef BGH_GALLERY_UPLOAD_ROOT
+#define BGH_GALLERY_UPLOAD_ROOT "/data/homebrew/PPSA99079/user_themes"
+#endif
 #ifndef BGH_GALLERY_CACHE_ROOT
 #define BGH_GALLERY_CACHE_ROOT "/download0/hui/ulg_v04/user_themes"
 #endif
@@ -30,18 +33,19 @@ struct Selection {
     std::string logo = "legacy";
 };
 inline bool valid_filename(const std::string& filename) {
-    if (filename.empty() || filename.size() > 96 || filename[0] == '.') return false;
-    for (const unsigned char c : filename) {
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-              (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_' || c == ' ')) return false;
-    }
-    const auto point = filename.find_last_of('.');
-    if (point == std::string::npos) return false;
-    std::string ext = filename.substr(point);
-    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){
-        return c >= 'A' && c <= 'Z' ? static_cast<char>(c + ('a'-'A')) : static_cast<char>(c);
+    // UTF-8 names from FTP/iPhone/Windows are fine, including spaces, umlauts,
+    // parentheses and suffixes such as "Bild (1).PNG". Restrict only real
+    // path/control injection, not normal punctuation.
+    if(filename.empty() || filename.size()>200 || filename[0]=='.')return false;
+    for(unsigned char c:filename)
+        if(c=='/' || c=='\\' || c<32 || c==127)return false;
+    const auto point=filename.find_last_of('.');
+    if(point==std::string::npos || point==filename.size()-1)return false;
+    std::string ext=filename.substr(point);
+    std::transform(ext.begin(),ext.end(),ext.begin(),[](unsigned char c){
+        return c>='A'&&c<='Z'?static_cast<char>(c+('a'-'A')):static_cast<char>(c);
     });
-    return ext == ".jpg" || ext == ".jpeg" || ext == ".png";
+    return ext==".jpg" || ext==".jpeg" || ext==".png";
 }
 // FTP-writable directories inside the installed PPSA99079 title.
 // The two previous paths remain read-only discovery fallbacks for older users.
@@ -54,8 +58,8 @@ inline const char* imported_folder(Kind kind) {
 }
 inline const char* upload_folder(Kind kind) {
     return kind == Kind::background ?
-        "/data/homebrew/PPSA99079/user_themes/backgrounds" :
-        "/data/homebrew/PPSA99079/user_themes/logos";
+        BGH_GALLERY_UPLOAD_ROOT "/backgrounds" :
+        BGH_GALLERY_UPLOAD_ROOT "/logos";
 }
 inline const char* app0_upload_folder(Kind kind) {
     return kind == Kind::background ? "/app0/user_themes/backgrounds" :
@@ -94,8 +98,24 @@ inline std::vector<ThemeItem> list(Kind kind) {
                     return t.id == id;
                 })) continue;
             const std::string path = std::string(dir) + "/" + filename;
-            struct stat st{};
-            if (::lstat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
+            // On the jailbroken PS5, path metadata can be denied even when
+            // fopen/fread works (the cover decoder already uses this rule).
+            // Never gate an otherwise readable picture on lstat/stat.
+            FILE* picture = std::fopen(path.c_str(), "rb");
+            if (!picture) continue;
+            unsigned char header[8]{};
+            const std::size_t count = std::fread(header, 1, sizeof(header), picture);
+            std::fclose(picture);
+            const auto dot = filename.find_last_of('.');
+            std::string ext = filename.substr(dot);
+            std::transform(ext.begin(),ext.end(),ext.begin(),[](unsigned char c){
+                return c>='A'&&c<='Z'?static_cast<char>(c+('a'-'A')):static_cast<char>(c);
+            });
+            const unsigned char png[8]={137,80,78,71,13,10,26,10};
+            const bool valid=count==8 && (ext==".png" ?
+                std::memcmp(header,png,8)==0 :
+                header[0]==255 && header[1]==216 && header[2]==255);
+            if (!valid) continue;
             result.push_back({id, path, true, false});
             if (result.size() >= 67) break; // 3 built-ins + up to 64 images
         }
@@ -169,8 +189,8 @@ inline bool remove_user_image(Kind kind, const std::string& id,
         if (image.path == std::string(folder) + "/" + filename) approved = true;
     }
     if (!approved) return false;
-    struct stat st{};
-    if (::lstat(image.path.c_str(),&st) != 0 || !S_ISREG(st.st_mode)) return false;
+    // No metadata requirement: PS5 can deny lstat for readable files.
+    // The exact allowlisted path above prevents arbitrary deletion.
     return ::unlink(image.path.c_str()) == 0;
 }
 inline bool logo_should_render(const Selection& sel) {

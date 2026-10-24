@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.22";
+constexpr const char *kBuildLabel = "BGH V1.1.23";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -304,6 +304,9 @@ class UniversalLauncher final : public app::Concept {
     int gallery_row_=0;
     bool gallery_delete_armed_=false;
     std::string gallery_message_;
+    // Snapshot only when opening/changing the gallery. Never perform FTP or
+    // per-frame directory scans in draw_settings_gallery_detail().
+    std::vector<ulg::bgh_gallery::ThemeItem> gallery_choices_;
     std::string gallery_background_cache_="/app0/assets/premium_lake_background.png";
     std::string gallery_logo_cache_="/app0/assets/bgh_logo.png";
     bool gallery_selection_loaded_after_boot_=false;
@@ -737,7 +740,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.22";
+        const std::string release_label="BGH V1.1.23";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2561,9 +2564,16 @@ private:
                 if(settings_subview_==6 || settings_subview_==7){
                     const auto kind=settings_subview_==6?
                         ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
-                    const auto report=ulg::bgh_gallery::import_from_local_ftp(kind);
-                    gallery_message_=report.detail;
+                    // Prefer direct file reading, with a separately scoped FTP
+                    // fallback when the PS5 sandbox hides the install folder.
+                    const auto direct=ulg::bgh_gallery::import_from_local_filesystem(kind);
+                    gallery_message_=direct.detail;
+                    if(direct.readable==0 || direct.cache_errors>0){
+                        const auto ftp=ulg::bgh_gallery::import_from_local_ftp(kind);
+                        gallery_message_+="  |  "+ftp.detail;
+                    }
                     // Refresh only after the import; never touch game caches.
+                    gallery_choices_=ulg::bgh_gallery::list(kind);
                     refresh_gallery_paths();
                 }
                 feedback.play(audio::Cue::open);
@@ -2596,7 +2606,7 @@ private:
             const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
             if(input.nav==Direction::left || input.nav==Direction::right ||
                input.is_pressed(Action::confirm)){
-                const auto choices=ulg::bgh_gallery::list(kind);
+                const auto& choices=gallery_choices_;
                 const auto &selected=background?gallery_selection_.background:gallery_selection_.logo;
                 int pos=-1;
                 for(std::size_t i=0;i<choices.size();++i)
@@ -2627,6 +2637,7 @@ private:
                 if(!deleted)gallery_selection_=previous;
                 else save_gallery();
                 gallery_message_=deleted?"Eigenes Bild geloescht":"Loeschen fehlgeschlagen";
+                if(deleted)gallery_choices_=ulg::bgh_gallery::list(kind);
                 gallery_delete_armed_=false;
             }
         }
@@ -2874,8 +2885,7 @@ private:
     void draw_settings_gallery_detail(gfx::DrawList &list) const {
         const auto& fonts=context_.fonts;
         const bool background=settings_subview_==6;
-        const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
-        const auto choices=ulg::bgh_gallery::list(kind);
+        const auto& choices=gallery_choices_;
         const auto selected=background?gallery_selection_.background:gallery_selection_.logo;
         translated_text(list,fonts.regular,
             "X / Links / Rechts: Motiv wechseln  |  Dreieck zweimal: eigenes Bild loeschen",190,298,20,kMuted);
@@ -2898,9 +2908,9 @@ private:
             }
         }
         translated_text(list,fonts.regular,
-            background?"FTP: /data/homebrew/PPSA99079/user_themes/backgrounds":"FTP: /data/homebrew/PPSA99079/user_themes/logos",
+            background?"Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds":"Bilder: /data/homebrew/PPSA99079/user_themes/logos",
             197,741,20,kMuted);
-        if(!gallery_message_.empty())translated_text(list,fonts.regular,gallery_message_,197,828,20,kAccent);
+        if(!gallery_message_.empty())translated_text(list,fonts.regular,shorten(gallery_message_,150),197,828,19,kAccent);
     }
     void draw_root_button_legend(gfx::DrawList &list) const {
         const ui::Hint hints[]={
@@ -3103,7 +3113,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.22",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.23",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
