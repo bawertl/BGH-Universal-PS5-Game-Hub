@@ -58,5 +58,5 @@ def test_unchanged_launch_and_storage_interfaces():
                  'ulg::send_launch(plan)'):
         assert text in UI
     assert 'statvfs(' not in UI
-    assert 'branches: [bgh-v1.1.24-gallery-fix]' in WF
+    assert 'branches: [bgh-v1.1.24-gaming-hall]' in WF
     assert 'BGH V1.1.24' in UI

@@ -63,4 +63,4 @@ def test_fan_artwork_only_and_launch_paths_preserved():
         'ulg::send_launch(plan)'):
         assert launch in UI
     assert 'BGH V1.1.24' in UI
-    assert 'branches: [bgh-v1.1.24-gallery-fix]' in WF
+    assert 'branches: [bgh-v1.1.24-gaming-hall]' in WF
