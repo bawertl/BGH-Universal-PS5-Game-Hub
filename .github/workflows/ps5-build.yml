@@ -1,179 +1,25 @@
-name: BGH - BawertLs Game Hub V1.1.9 - NextGen UI Test
+name: BGH V1.1.10 - NextGen UI Polish
 
 on:
   push:
-    branches: [bgh-v1.1.9-nextgen-ui]
+    branches: [bgh-v1.1.10-nextgen-ui-polish]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v119-nextgen-ui-${{ github.ref }}
+  group: bgh-v1110-nextgen-ui-polish-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: BGH V1.1.9 - Build and verify
+    name: BGH V1.1.10 - Build and verify
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
-      - name: BGH V1.1.9-Quellcode aus aktuellem Branch laden
+      - name: Check out exact current V1.1.9 successor source
         uses: actions/checkout@v4
-
-      - name: Sicherstellen, dass wirklich V1.1.9 gebaut wird
-        shell: bash
-        run: |
-          set -euo pipefail
-          trap 'echo "BGH V1.1.9 QUELLCODE-CHECK FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
-          echo "GitHub branch: $GITHUB_REF_NAME"
-          if [[ "$GITHUB_REF_NAME" != "bgh-v1.1.9-nextgen-ui" ]]; then
-            echo "Unerwarteter Branch: $GITHUB_REF_NAME" >&2
-            exit 1
-          fi
-          test -s native_ps5/universal_launcher.cpp
-          test -s native_ps5/playtime_log.hpp
-          test -s native_ps5/emulator_detection.hpp
-          test -s assets/emulator_profiles.json
-          grep -Fq 'refresh_playtime_log()' native_ps5/universal_launcher.cpp
-          test -s native_ps5/ftp_readonly.cpp
-          test -s native_ps5/root_manager.cpp
-          test -s assets/titles.conf
-          grep -Fxq 'PS4|/user/app' assets/paths.conf
-          test -s tests/test_v128_ps4_pkg_detection.py
-          test -s tests/test_v129_library_cleanup.py
-          test -s tests/test_v1210_xbox_usb_covers.py
-          test -s tests/test_v1211_ps5_bridge.py
-          test -s tests/test_v1212_port_diagnostics.py
-          test -s tests/test_v1213_socket_diagnostics.py
-          test -s tests/test_v1214_blocking_connect.py
-          grep -Fq 'probe_local_launch_services()' native_ps5/universal_launcher.cpp
-          grep -Fq 'probe_loopback_tcp(9021)' native_ps5/launcher_client.cpp
-          grep -Fq 'probe_loopback_tcp(10199)' native_ps5/launcher_client.cpp
-          grep -Fq 'probe_loopback_tcp(2121)' native_ps5/launcher_client.cpp
-          grep -Fq 'SO_SNDTIMEO' native_ps5/launcher_client.cpp
-          grep -Fq 'probe_errno_name(p.os_error)' native_ps5/universal_launcher.cpp
-          grep -Fq 'make_registered_ps5_launch_plan(g.title_id)' native_ps5/universal_launcher.cpp
-          grep -Fq 'make_registered_ps4_launch_plan(g.title_id)' native_ps5/universal_launcher.cpp
-          grep -Fq 'make_registered_ps4_launch_plan' native_ps5/launcher_client.cpp
-          test -s tests/test_v1215_ps4_bridge.py
-          test -s tests/test_v1216_ps2_menu.py
-          test -s tests/test_v1217_ps2_autostart.py
-          test -s native_ps5/ps2_autostart.hpp
-          test -s native_ps5/ftp_ps2_writer.cpp
-          grep -Fq 'ftp_stage_ps2_request' native_ps5/ps2_autostart.hpp
-          grep -Fq 'stage_ps5sx2_disc_launch(g.path)' native_ps5/universal_launcher.cpp
-          grep -Fq 'make_ps5sx2_menu_launch_plan()' native_ps5/universal_launcher.cpp
-          grep -Fq 'p.target="PPSA99203"' native_ps5/launcher_client.cpp
-          grep -Fq 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' native_ps5/universal_launcher.cpp
-          grep -Fq '/mnt/usb1/xbox360/Cover' native_ps5/emulator_covers.hpp
-          grep -Fq 'Lord of the Rings War in the North.jpg' native_ps5/emulator_covers.cpp
-          grep -Fq 'clean_catalogue(catalogue_,roots_)' native_ps5/universal_launcher.cpp
-          grep -Fq 'library_v129.bin' native_ps5/universal_launcher.cpp
-          grep -Fq 'library_v113_ps5_cover.bin' native_ps5/universal_launcher.cpp
-          test -s tests/test_v113_usb_ps5_cover_recovery.py
-          test -s tests/test_v113_usb_scan_repair.py
-          test -s tests/test_v114_release_consistency.py
-          test -s assets/bgh_logo.png
-          test -s assets/premium_lake_background.png
-          test -s assets/ui/controller.png
-          test -s assets/ui/search.png
-          test -s assets/ui/settings.png
-          test -s assets/ui/cover_frame.png
-          test -s assets/ui/cover_frame_active.png
-          test -s assets/ui/cover_shadow.png
-          test -s assets/ui/fan_case_header_ps5.png
-          test -s assets/ui/fan_case_header_ps4.png
-          test -s assets/ui/fan_case_header_switch.png
-          test -s assets/ui/serif_atlas.png
-          test -s native_ps5/serif_atlas_metrics.hpp
-          grep -Fq "serif_atlas_metrics.hpp" tooling/install_ui_kit_overlay.py
-          grep -Fq '/app0/assets/premium_lake_background.png' native_ps5/universal_launcher.cpp
-          grep -Fq '/app0/assets/ui/cover_frame.png' native_ps5/universal_launcher.cpp
-          grep -Fq '/app0/assets/ui/fan_case_header_ps5.png' native_ps5/universal_launcher.cpp
-          test -s sce_sys/icon0.png
-          test -s tests/test_v07_metadata.py
-          test -s tooling/build_native_ps5.sh
-          test -s native_ps5/emulator_covers.cpp
-          test -s tests/test_v11_ps2_switch_runtime.py
-          test -s tests/test_v12_premium_hub.py
-          test -s tests/test_v1222_glass_polish.py
-          test -s tests/test_v1224_navigation_recent.py
-          test -s tests/test_v1225_storage_diagnostics.py
-          grep -Fq 'struct StorageStatus' native_ps5/state_store.hpp
-          grep -Fq 'storage_probe_v126_primary.bin' native_ps5/universal_launcher.cpp
-          grep -Fq 'storage_probe_v126_fallback.bin' native_ps5/universal_launcher.cpp
-          test -s tests/test_v105_settings_tabs.py
-          grep -Fq 'constexpr std::array<const char *,3> kSettingsTabs' native_ps5/universal_launcher.cpp
-          grep -Fq 'if(settings_tab_!=3)return;' native_ps5/universal_launcher.cpp
-          grep -Fq 'Action::jump_prev' native_ps5/universal_launcher.cpp
-          grep -Fq 'draw_settings_system(list)' native_ps5/universal_launcher.cpp
-          grep -Fq 'VERLAUF-DIAG' native_ps5/universal_launcher.cpp
-          grep -Fq 'Action::l3' native_ps5/universal_launcher.cpp
-          grep -Fq 'ui::Button::left_stick' native_ps5/universal_launcher.cpp
-          grep -Fq 'const float hero_boost=' native_ps5/universal_launcher.cpp
-          grep -Fq 'ui::Button::cross,hint(menu_mode?"Menue":"Spielen")' native_ps5/universal_launcher.cpp
-          test -s tests/test_v122_cover_recovery.py
-          test -s tooling/test_host_cover_decode.py
-          test -s native_ps5/cover_decode_test_cli.cpp
-          grep -Fq "retrieve_detailed" native_ps5/ftp_readonly.cpp
-          grep -Fq "BGH-CACHE-ORDNER NICHT VERFUEGBAR" native_ps5/emulator_covers.cpp
-          test -s native_ps5/premium_navigation.hpp
-          grep -Fq "draw_cover_fan(list)" native_ps5/universal_launcher.cpp
-          grep -Fq 'request_selected_launch(feedback)' native_ps5/universal_launcher.cpp
-          grep -Fq 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f' native_ps5/universal_launcher.cpp
-          grep -Fq "draw_storage_widgets(list)" native_ps5/universal_launcher.cpp
-          grep -Fq "draw_recent_cards(list)" native_ps5/universal_launcher.cpp
-          grep -Fq "draw_platform_bar(list)" native_ps5/universal_launcher.cpp
-          grep -Fq "BGH V1.1.9-EMULATOR-AUTODETECTION" native_ps5/universal_launcher.cpp
-          grep -Fq 'clean_title_for_display(game.title)' native_ps5/universal_launcher.cpp
-          grep -Fq 'release_label="BGH V1.1.9"' native_ps5/universal_launcher.cpp
-          grep -Fq 'battery.fill(-1);' native_ps5/controller_status.hpp
-          grep -Fq 'charging.fill(-1);' native_ps5/controller_status.hpp
-          test -s tests/test_v103_ui_controller.py
-          grep -Fq '@BGH_GIT_COMMIT@' native_ps5/universal_launcher.cpp
-          grep -Fq 'prepare_directory("/download0/hui/ulg_v04/covers")' native_ps5/universal_launcher.cpp
-          grep -Fq 'BGH-CACHE-ORDNER NICHT VERFUEGBAR / CACHE-DATEI OEFFNEN' native_ps5/emulator_covers.cpp
-          grep -Fq 'PS5 metadata/PNG art: retain V0.12' native_ps5/ftp_readonly.cpp
-          grep -Fq 'kPrefixCap' native_ps5/emulator_covers.cpp
-          grep -Fq 'chd_cached_serial' native_ps5/emulator_covers.cpp
-          test -s native_ps5/cover_image.cpp
-          test -s native_ps5/ps5_launch.cpp
-          grep -Fq 'sceSystemServiceLaunchApp' native_ps5/ps5_launch.cpp
-          grep -Fq 'ulg_v08/covers' native_ps5/universal_launcher.cpp
-          grep -Fq "BGH - BawertL's Game Hub" native_ps5/universal_launcher.cpp
-          test -s tests/test_v109_forwarder_oled.py
-          test -s tests/test_v106_emulator_mode.py
-          grep -Fq 'write_emulator_boot_settings' native_ps5/state_store.cpp
-          grep -Fq 'kPrimaryEmulatorSettingsFile' native_ps5/universal_launcher.cpp
-          grep -Fq 'if(!emulator_boot_settings_.direct_boot &&' native_ps5/universal_launcher.cpp
-          grep -Fq 'if(order_.size()>=256)' native_ps5/universal_launcher.cpp
-          grep -Fq 'kQuietSeconds = 0.035f' native_ps5/cover_load_debounce.hpp
-          grep -Fq 'fan_native_card_height(cover_dimensions.first,cover_dimensions.second,w,h)' native_ps5/universal_launcher.cpp
-          grep -Fq 'cover_contain_rect(size.first,size.second,art_rect)' native_ps5/universal_launcher.cpp
-          grep -Fq 'write_theme_settings' native_ps5/state_store.cpp
-          grep -Fq 'read_theme_settings' native_ps5/state_store.cpp
-          grep -Fq 'theme_settings_.frosted_glass' native_ps5/universal_launcher.cpp
-          test -s assets/ui/frosted_lake_backdrop.png
-          test -s tests/test_v1011_dynamic_cover_theme.py
-          test -s tests/test_v1010_cover_fit_performance.py
-          test -s native_ps5/platform_registry.hpp
-          grep -Fq 'rebuild_sidebar()' native_ps5/universal_launcher.cpp
-          grep -Fq 'write_platform_registry' native_ps5/platform_registry.hpp
-          test -s tests/test_v110_platform_registry.py
-          test -s tests/test_v1111_universal_platform_manager.py
-          test -s tests/test_v1112_unified_icons_hints.py
-          test -s tests/test_v1113_final_ui_polish.py
-          for platform in ps5 ps4 ps2 switch xbox360 ps1 psp ps3 xbox dreamcast gamecube wii; do
-            test -s "assets/platforms/${platform}.png"
-          done
-          grep -Fq 'draw_emulator_button_legend(list)' native_ps5/universal_launcher.cpp
-          grep -Fq 'ui::Button::touchpad' native_ps5/universal_launcher.cpp
-          grep -Fq 'ui::Button::l2' native_ps5/universal_launcher.cpp
-          grep -Fq 'ui::Button::r2' native_ps5/universal_launcher.cpp
-          grep -Fq 'rom_folders' native_ps5/platform_registry.hpp
-          grep -Fq 'emulator_expanded_' native_ps5/universal_launcher.cpp
-          echo 'BGH V1.1.9 source verification OK: no V0.6 archive used.'
 
       - name: PS5-Buildwerkzeuge installieren
         shell: bash
@@ -194,13 +40,58 @@ jobs:
           test -x native_ps5/cover-test-cli
           test -x native_ps5/emulator-cover-test-cli
 
-      - name: V1.1.9-Tests und GUI-Syntaxpruefung
+      - name: V1.1.9 Baseline-Tests vor dem UI-Patch
         shell: bash
         run: |
           set -euo pipefail
           export PATH="/usr/lib/llvm-18/bin:$PATH"
           /usr/bin/python3 -m pytest -q tests
           bash tooling/test_native_gui_syntax.sh
+
+      - name: Integrate UI updates into the checked out C++ project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = 'bgh-v1.1.10-nextgen-ui-polish'
+          test -s native_ps5/universal_launcher.cpp
+          grep -Fq 'BGH V1.1.9' native_ps5/universal_launcher.cpp
+          test -s native_ps5/controller_status.hpp
+          python3 tooling/bgh_apply_v1110.py
+          grep -Fq 'BGH V1.1.10' native_ps5/universal_launcher.cpp
+          grep -Fq 'Hintergruende & Logos' native_ps5/universal_launcher.cpp
+          grep -Fq 'const bool with_case_header=false' native_ps5/universal_launcher.cpp
+          grep -Fq 'gallery_background_path()' native_ps5/universal_launcher.cpp
+          grep -Fq 'bgh_storage::internal()' native_ps5/universal_launcher.cpp
+          test -s assets/themes/backgrounds/bgh_berg_cyber_mit_kronenlogo.png
+          test -s assets/themes/backgrounds/cyber_showroom.png
+          test -s assets/themes/logos/bgh_kronenlogo_freigestellt.png
+          test -s assets/themes/storage_internal.png
+          test -s assets/themes/storage_usb.png
+          echo 'BGH V1.1.10: Real C++ integration complete in GitHub checkout.'
+
+      - name: Build-check of actual patched native C++ code
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tooling/test_native_gui_syntax.sh
+          bash tests/run_bgh_addons_tests.sh
+
+      - name: Create true full-source backup of modified checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/backup/BGH_V1.1.10
+          cp -a native_ps5 tooling assets tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.10/
+          (cd build/backup && zip -q -r ../BGH_V1.1.10_NEXTGEN_UI_POLISH_KOMPLETTPROJEKT.zip BGH_V1.1.10)
+
+      - name: Upload full source backup
+        uses: actions/upload-artifact@v7
+        with:
+          name: BGH-V1-1-10-KOMPLETTPROJEKT
+          path: build/BGH_V1.1.10_NEXTGEN_UI_POLISH_KOMPLETTPROJEKT.zip
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
 
       - name: JPG/TGA-Bilddekoder mit gepinntem stb_image testen
         shell: bash
@@ -279,7 +170,7 @@ jobs:
           path: build/ps5-opengl-sdk-1.0.2
           key: bgh-opengl-1.0.2-a51956162693-llvm21-noble-${{ hashFiles('tooling/build_pinned_opengl_sdk.sh') }}
 
-      - name: Echte native PS5-Anwendung aus V1.1.9 bauen
+      - name: Echte native PS5-Anwendung aus V1.1.10 bauen
         shell: bash
         run: |
           set -euo pipefail
@@ -293,11 +184,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 tooling/verify_ps5_package.py \
-            build/ps5/BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip PPSA99079
+            build/ps5/BGH_BawertLs_Game_Hub_V1_1_10_PPSA99079_PS5_TEST.zip PPSA99079
           python3 - <<'PY'
           import hashlib, json, pathlib, zipfile
           source = pathlib.Path('sce_sys/icon0.png').read_bytes()
-          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip')
+          package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_10_PPSA99079_PS5_TEST.zip')
           with zipfile.ZipFile(package) as z:
               prefix = 'PPSA99079/'
               meta = json.loads(z.read(prefix + 'sce_sys/param.json'))
@@ -317,6 +208,13 @@ jobs:
                   raise SystemExit('FEHLER: Serifenschrift-Grafik fehlt im PS5-Paket')
               if prefix + 'assets/bgh_logo.png' not in z.namelist():
                   raise SystemExit('FEHLER: Das BGH-Logo fehlt im App-Paket')
+              for new_asset in (
+                  'assets/themes/backgrounds/cyber_showroom.png',
+                  'assets/themes/backgrounds/bgh_berg_cyber_mit_kronenlogo.png',
+                  'assets/themes/logos/bgh_kronenlogo_freigestellt.png',
+                  'assets/themes/storage_internal.png','assets/themes/storage_usb.png'):
+                  if prefix + new_asset not in z.namelist():
+                      raise SystemExit('FEHLER: NextGen Motiv nicht im PS5-Paket: ' + new_asset)
               if prefix + 'assets/bgh_wordmark.png' not in z.namelist():
                   raise SystemExit('FEHLER: Das neue BGH-Schriftlogo fehlt im Paket')
               if prefix + 'assets/audio/music/BGH_EccoTidesOfTime.ogg' not in z.namelist():
@@ -328,20 +226,20 @@ jobs:
               if b'PS4|/user/app' not in z.read(prefix + 'assets/paths.conf'):
                   raise SystemExit('FEHLER: Der PS4-PKG-Installationspfad fehlt')
               binary = z.read(prefix + 'eboot.bin')
-              if b'BGH V1.1.9-EMULATOR-AUTODETECTION' not in binary:
+              if b'BGH V1.1.10-NEXTGEN-UI-POLISH' not in binary:
                   raise SystemExit('FEHLER: Die BGH-Design-Buildkennung fehlt in eboot.bin')
               if b'@BGH_GIT_COMMIT@' in binary:
                   raise SystemExit('FEHLER: Nicht ersetzter Build-Platzhalter in eboot.bin')
           print('Bestaetigt: BGH-App-Name, freigegebenes Icon und Logo im PS5-Paket.')
           PY
-          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip
+          sha256sum build/ps5/BGH_BawertLs_Game_Hub_V1_1_10_PPSA99079_PS5_TEST.zip
 
       - name: Fertige PS5-ZIP direkt zum Download anbieten
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-9-EMULATORS-PPSA99079-TEST
-          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_9_PPSA99079_PS5_TEST.zip
+          name: BGH-V1-1-10-NEXTGEN-UI-POLISH-PPSA99079-TEST
+          path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_10_PPSA99079_PS5_TEST.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -350,7 +248,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-9-EMULATORS-Build-Fehler
+          name: BGH-V1-1-10-NEXTGEN-UI-POLISH-Build-Fehler
           path: build/native-ps5-build.log
           if-no-files-found: warn
           retention-days: 14
