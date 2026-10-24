@@ -21,7 +21,6 @@ int main(){
   assert(ulg::storage_widgets::format_gib(350000000000ULL)=="350 GB");
   const std::string input=kMounted;
   for(const auto &bad:{std::string("{}"),std::string("{\"status\":1,\"mounts\":[]}"),
-      std::string("{\"status\":0,\"mounts\": [ {\"mount_point\":\"/user\",\"total_bytes\":1} ]}"),
       std::string("{\"status\":0,\"mounts\":[}"),
       std::string("{\"status\":0,\"mounts\":[]")+"INVALID"}){
     Snapshot previous=r;
@@ -29,6 +28,22 @@ int main(){
     assert(r.internal.total==previous.internal.total);
   }
   assert(!parse_storage_json(input.substr(0,input.size()-8),r));
+  // ShadowMount may list additional unrelated capacity-bearing filesystems.
+  // Their unexpected fields must not hide valid /user or USB numbers.
+  Snapshot incompleteMount;
+  assert(parse_storage_json(R"({"status":0,"mounts":[{"mount_point":"/user","total_bytes":1}]})",incompleteMount));
+  assert(!incompleteMount.internal.valid && incompleteMount.http_ok);
+  Snapshot systemMounts;
+  assert(parse_storage_json(R"({"status":0,"mounts":[
+    {"source":"root","mount_point":"/","filesystem":"bfs"},
+    {"source":"device","mount_point":"/user","total_bytes":1000,"used_bytes":450,"available_bytes":550},
+    {"source":"sdisk","mount_point":"/mnt/usb1","total_bytes":2000,"used_bytes":500,"available_bytes":1500}
+  ]})", systemMounts));
+  assert(systemMounts.http_ok && systemMounts.internal.valid && systemMounts.usb.valid);
+  assert(systemMounts.internal.used==450 && systemMounts.usb.total==2000);
+  std::string diagnostic;
+  assert(!parse_storage_json(R"({"status":0,"mounts":[{broken}]})", systemMounts,&diagnostic));
+  assert(diagnostic=="JSON_MOUNT_SYNTAX");
   Snapshot noUsb;
   assert(parse_storage_json(R"({"mounts":[],"status":0,"destinations":[],"count":0})",noUsb));
   assert(noUsb.http_ok && !noUsb.usb.valid && !noUsb.internal.valid);

@@ -76,18 +76,18 @@ def test_7_snap_fonts_and_correct_version():
     assert 'std::floor(1814.0f)' in UI
     assert 'std::floor(1861.0f)' in UI
     assert 'context_.fonts.regular,display' in UI
-    assert 'BGH V1.1.14-SHADOW-STORAGE' in UI
-    assert 'release_label="BGH V1.1.14"' in UI
-    assert 'Version: BGH V1.1.14' in UI
+    assert 'BGH V1.1.15-SHADOW-JSON-FIX' in UI
+    assert 'release_label="BGH V1.1.15"' in UI
+    assert 'Version: BGH V1.1.15' in UI
 
 
 def test_release_workflow_builds_integrated_source_without_old_overwrite():
-    assert 'branches: [bgh-v1.1.14-shadowmount-storage]' in WF
-    assert 'V1_1_14_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'V1_1_14_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.15-shadowmount-json-fix]' in WF
+    assert 'V1_1_15_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'V1_1_15_PPSA99079_PS5_TEST.zip' in WF
     assert 'python3 tooling/bgh_apply_v1110.py' not in WF
     assert 'python3 tooling/bgh_startup_guard_v1111.py' not in WF
-    assert 'BGH V1.1.14-SHADOW-STORAGE' in WF
+    assert 'BGH V1.1.15-SHADOW-JSON-FIX' in WF
     for needle in ('make_registered_ps5_launch_plan(g.title_id)',
                    'make_registered_ps4_launch_plan(g.title_id)',
                    'stage_ps5sx2_disc_launch(g.path)',

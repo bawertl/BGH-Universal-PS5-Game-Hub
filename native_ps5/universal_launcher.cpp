@@ -73,7 +73,7 @@ constexpr std::array<const char *,4> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.14-SHADOW-STORAGE [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.15-SHADOW-JSON-FIX [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -499,7 +499,7 @@ public:
             refresh_gallery_paths();
         }
         if(clock_>=next_storage_poll_){storage_widgets_=ulg::storage_widgets::detect();next_storage_poll_=clock_+30.0f;}
-        // V1.1.14 experiment: only after 8 seconds, then <= once/minute.
+        // V1.1.15 experiment: only after 8 seconds, then <= once/minute.
         // Read-only HTTP POST to a *pre-existing* ShadowMountPlus daemon.
         // The socket has short timeouts; avoid requesting in enter()/draw().
         if(clock_>=next_shadow_poll_){
@@ -707,7 +707,7 @@ public:
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.14";
+        const std::string release_label="BGH V1.1.15";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2974,7 +2974,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.14 ShadowMount",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.15 ShadowMount",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

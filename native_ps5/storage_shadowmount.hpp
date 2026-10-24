@@ -1,4 +1,4 @@
-// BGH V1.1.14: read-only ShadowMountPlus 1.7 HTTP storage telemetry.
+// BGH V1.1.15: read-only ShadowMountPlus 1.7 HTTP storage telemetry.
 // No direct PS5 statvfs, no service configuration or storage mutation.
 // This experimental first integration uses the existing, bounded localhost
 // socket model; PS5 timing and API availability still require console tests.
@@ -117,8 +117,10 @@ inline bool parse_mount(const std::string &s,std::size_t &p,Mount &m){
         if(p<s.size()&&s[p]=='}'){++p;closed=true;break;}
         if(p>=s.size()||s[p++]!=',')return false;
     }
-    return closed && m.fields==31 && !m.source.empty() && m.mount.size()>1 &&
-        m.mount[0]=='/' && m.total>0 && m.used<=m.total && m.available<=m.total;
+    // A syntactically valid mount object may represent '/' or a system-only
+    // filesystem, and may lack a capacity (older daemon/future API versions).
+    // Validation must happen AFTER filtering for the mounts BGH displays.
+    return closed;
 }
 inline bool mount_usb(const std::string &s){
     // Documented ShadowMountPlus roots. Do not sum unrelated mounts.
@@ -137,47 +139,82 @@ inline bool add(Volume &v,const Mount &m){
     return true;
 }
 } // namespace detail
-inline bool parse_storage_json(const std::string &json,Snapshot &out){
+inline bool parse_storage_json(const std::string &json,Snapshot &out,
+                               std::string *error=nullptr){
+    // Parse into a temporary snapshot: a failed response must not overwrite
+    // previous valid storage information. Never trust arbitrary daemon data.
     Snapshot result{};
-    if(json.size()>131072)return false;
-    std::size_t p=0;detail::space(json,p);if(p>=json.size()||json[p++]!='{')return false;
+    const auto fail=[&](const char* code)->bool{
+        if(error)*error=code;
+        return false;
+    };
+    if(json.size()>131072)return fail("JSON_TOO_LARGE");
+    std::size_t p=0;detail::space(json,p);
+    if(p>=json.size()||json[p++]!='{')return fail("JSON_ROOT");
     bool ok_status=false,got_mounts=false,closed_root=false;
     std::set<std::string> devices;
     while(p<json.size()){
-        detail::space(json,p);if(p<json.size()&&json[p]=='}'){++p;closed_root=true;break;}
-        std::string key;if(!detail::quoted(json,p,key))return false;
-        detail::space(json,p);if(p>=json.size()||json[p++]!=':')return false;
+        detail::space(json,p);
+        if(p<json.size()&&json[p]=='}'){++p;closed_root=true;break;}
+        std::string key;if(!detail::quoted(json,p,key))return fail("JSON_KEY");
+        detail::space(json,p);
+        if(p>=json.size()||json[p++]!=':')return fail("JSON_COLON");
         if(key=="status"){
-            std::uint64_t status=1;if(!detail::integer(json,p,status)||status!=0)return false;
+            std::uint64_t status=1;
+            if(!detail::integer(json,p,status)||status!=0)return fail("JSON_STATUS");
             ok_status=true;
         }else if(key=="mounts"){
-            detail::space(json,p);if(p>=json.size()||json[p++]!='[')return false;
+            detail::space(json,p);
+            if(p>=json.size()||json[p++]!='[')return fail("JSON_MOUNTS");
             got_mounts=true;bool closed_array=false;
             unsigned entries=0;
             while(p<json.size()){
-                detail::space(json,p);if(p<json.size()&&json[p]==']'){++p;closed_array=true;break;}
-                if(++entries>64)return false;
-                detail::Mount m;if(!detail::parse_mount(json,p,m))return false;
-                if(m.mount=="/user"){
-                    // Internal /user, not the raw drive's advertised capacity.
-                    if(!result.internal.valid&&!detail::add(result.internal,m))return false;
-                }else if(detail::mount_usb(m.mount)){
-                    if(devices.insert(m.source).second){
-                        if(!detail::add(result.usb,m))return false;
-                        ++result.usb_count;
+                detail::space(json,p);
+                if(p<json.size()&&json[p]==']'){++p;closed_array=true;break;}
+                if(++entries>64)return fail("JSON_MOUNT_LIMIT");
+                detail::Mount m;
+                if(!detail::parse_mount(json,p,m))return fail("JSON_MOUNT_SYNTAX");
+                // Only selected filesystem roots are relevant. Invalid or
+                // incomplete capacity data for any other mount must NOT
+                // discard an otherwise valid API response.
+                const bool internal=(m.mount=="/user");
+                const bool external=detail::mount_usb(m.mount);
+                if(internal||external){
+                    const bool complete=(m.fields&(1U|4U|8U|16U))==
+                        (1U|4U|8U|16U);
+                    const bool sane=complete && m.total>0 && m.used<=m.total &&
+                        m.available<=m.total && m.mount[0]=='/';
+                    if(sane){
+                        if(internal){
+                            if(!result.internal.valid && !detail::add(result.internal,m))
+                                return fail("JSON_OVERFLOW_INTERNAL");
+                        }else{
+                            const std::string device=m.source.empty()?m.mount:m.source;
+                            if(devices.insert(device).second){
+                                if(!detail::add(result.usb,m))return fail("JSON_OVERFLOW_USB");
+                                ++result.usb_count;
+                            }
+                        }
                     }
                 }
-                detail::space(json,p);if(p<json.size()&&json[p]==']'){++p;closed_array=true;break;}
-                if(p>=json.size()||json[p++]!=',')return false;
+                detail::space(json,p);
+                if(p<json.size()&&json[p]==']'){++p;closed_array=true;break;}
+                if(p>=json.size()||json[p++]!=',')return fail("JSON_MOUNT_SEPARATOR");
             }
-            if(!closed_array)return false;
-        }else if(!detail::skip(json,p))return false;
-        detail::space(json,p);if(p<json.size()&&json[p]=='}'){++p;closed_root=true;break;}
-        if(p>=json.size()||json[p++]!=',')return false;
+            if(!closed_array)return fail("JSON_MOUNT_END");
+        }else if(!detail::skip(json,p))return fail("JSON_OTHER_FIELD");
+        detail::space(json,p);
+        if(p<json.size()&&json[p]=='}'){++p;closed_root=true;break;}
+        if(p>=json.size()||json[p++]!=',')return fail("JSON_SEPARATOR");
     }
     detail::space(json,p);
-    if(!closed_root||!ok_status||!got_mounts||p!=json.size())return false;
-    result.http_ok=true;result.diagnostic="OK";out=result;return true;
+    if(!closed_root||p!=json.size())return fail("JSON_END");
+    if(!ok_status)return fail("JSON_NO_STATUS");
+    if(!got_mounts)return fail("JSON_NO_MOUNTS");
+    result.http_ok=true;
+    result.diagnostic=(result.internal.valid||result.usb.valid)?"OK":"OK_NO_CAPACITY";
+    if(error)error->clear();
+    out=result;return true;
 }
 inline bool decode_http(const std::string &response,std::string &body){
     const std::size_t split=response.find("\r\n\r\n");
@@ -261,7 +298,11 @@ inline Snapshot fetch_storage(){
     if(!received_eof){result.diagnostic="HTTP_TRUNCATED";return result;}
     std::string json;
     if(!decode_http(response,json)){result.diagnostic="HTTP_INVALID";return result;}
-    if(!parse_storage_json(json,result)){result.diagnostic="JSON_INVALID";return result;}
+    std::string parse_error;
+    if(!parse_storage_json(json,result,&parse_error)){
+        result.diagnostic=parse_error.empty()?"JSON_INVALID":parse_error;
+        return result;
+    }
     return result;
 }
 } // namespace ulg::shadow_storage

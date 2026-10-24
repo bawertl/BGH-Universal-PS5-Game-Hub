@@ -1,6 +1,6 @@
-# BGH V1.1.14 – ShadowMountPlus-Speicheranzeige (PS5-Testversion)
+# BGH V1.1.15 – ShadowMountPlus JSON-Diagnose (PS5-Testversion)
 
-**Ausgangsbranch:** `bgh-v1.1.13-ui-persist` → **neuer Branch:** `bgh-v1.1.14-shadowmount-storage`. **App-ID/PS5-Ordner:** `PPSA99079` (unverändert).
+**Ausgangsbranch:** `bgh-v1.1.14-shadowmount-storage` → **neuer Branch:** `bgh-v1.1.15-shadowmount-json-fix`. **App-ID/PS5-Ordner:** `PPSA99079` (unverändert).
 
 Der Launcher liest nach 8 Sekunden erstmals und anschließend frühestens alle 60 Sekunden ausschließlich `POST http://127.0.0.1:10101/api/v1/storage` mit Body `{}`. Benötigt wird ein **bereits laufendes ShadowMountPlus mit kompatibler HTTP-Schnittstelle**; der Launcher startet oder konfiguriert weder ShadowMountPlus noch weitere Payloads.
 
@@ -8,7 +8,7 @@ Aus der Antwort werden ausschließlich reale, validierte Bytewerte für `/user` 
 
 **Vorsicht:** Das ist die erste experimentelle HTTP-Anbindung. Sie arbeitet mit begrenzten lokalen Socket-Timeouts und ohne zusätzlichen C++-Thread, kann daher bei einer langsam antwortenden API einen kurzen Frame-Stillstand auslösen. Die reale PS5-API-Verfügbarkeit, vollständige Paketkompilierung und Laufzeitstabilität sind erst durch GitHub-Build und den PS5-Test bestätigt. Kein `statvfs()` im neuen API-Pfad. Diagnose unter **Einstellungen → System & Hilfe → ShadowMount HTTP**.
 
-**Bestehende Startumgebung:** ShadowMountPlus läuft bereits; die Launcher-ELF wird für bestehende Spielstarts benötigt; PS2-Helper-ELF wie bisher für PS2-Direktstarts. V1.1.14 verändert diese ELFs oder Startwege nicht.
+**Bestehende Startumgebung:** ShadowMountPlus läuft bereits; die Launcher-ELF wird für bestehende Spielstarts benötigt; PS2-Helper-ELF wie bisher für PS2-Direktstarts. V1.1.15 verändert diese ELFs oder Startwege nicht.
 
 ---
 
@@ -383,3 +383,10 @@ Dieser Build basiert auf dem V1.1.3 PS5-USB-Cover-Fix-Test-Hotfix und integriert
 * Neuer Katalogcache `library_v114_usb_scan_repair.bin`, alte Caches und Benutzereinstellungen bleiben erhalten.
 * Der uebernommene native GitHub-Build erfordert weiterhin erreichbare gepinnte Abhaengigkeiten; erfolgreicher nativer PS5-Build und Konsolentest stehen aus.
 * Branch: `bgh-v1.1.4-usb-rebuild`, Ausgangsbranch: `bgh-v1.1.3`.
+
+
+**Diagnose nach dem ersten PS5-Test:** V1.1.14 meldete `JSON_INVALID`.
+V1.1.15 akzeptiert korrekte Zusatz-/Systemmounts und prüft Kapazitäten erst
+bei den tatsächlich angezeigten `/user`-/USB-Mounts. Statt des pauschalen
+Fehlercodes werden präzisere JSON-Fehlerkategorien angezeigt. Der vollständige
+Dateninhalt wird nicht protokolliert. Echte PS5-Daten müssen noch getestet werden.
