@@ -13,7 +13,7 @@ def test_platform_navigation_no_hidden_tabs():
         assert f'items.push_back({{"{hidden}"' not in sidebar
     bar=section('void draw_platform_bar(', 'void draw_storage_widgets(')
     assert 'sidebar_items_.size()' in bar and 'const int index=first+slot;' in bar
-    assert 'pill_width=148.0f' in bar and 'pill_step=155.0f' in bar
+    assert 'pill_width=142.0f' in bar and 'pill_step=147.0f' in bar
     assert 'switch_tab((tab_+1)%static_cast<int>(sidebar_items_.size()))' in UI
     assert 'recent_indices()' in UI and 'toggle_favorite()' in UI
 
@@ -41,9 +41,11 @@ def test_native_fonts_storage_and_recents():
     for view in (recent,storage):
         assert 'translated_text(list,context_.fonts.regular' in view
         assert 'serif_text(list,' not in view
-    assert 'const Rect card{x,915,425,95};' in recent
-    assert 'shorten(g.title,42)' in recent
+    assert 'const Rect card{x,915,recent_card_width,110};' in recent
+    assert 'recent_card_width=460.0f;' in recent
+    assert 'shorten(g.title,51)' in recent
     assert 'const Rect panel{x,177,225,91};' in storage
+    assert 'glass_card(list,panel,15);' in storage
     assert 'shadow_storage_' in storage
 
 def test_unchanged_launch_and_storage_interfaces():
@@ -56,5 +58,5 @@ def test_unchanged_launch_and_storage_interfaces():
                  'ulg::send_launch(plan)'):
         assert text in UI
     assert 'statvfs(' not in UI
-    assert 'branches: [bgh-v1.1.18-settings-hub]' in WF
-    assert 'BGH V1.1.18-SETTINGS-HUB' in UI
+    assert 'branches: [bgh-v1.1.19-visual-polish]' in WF
+    assert 'BGH V1.1.19-VISUAL-POLISH' in UI

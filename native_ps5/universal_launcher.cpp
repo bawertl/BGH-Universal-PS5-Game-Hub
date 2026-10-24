@@ -78,7 +78,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.18-SETTINGS-HUB [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.19-VISUAL-POLISH [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -528,6 +528,13 @@ public:
             controllers_.poll();
             next_controller_poll_=clock_+1.0f;
         }
+        // Visual transition only: the working native/UI-kit Pad API is untouched.
+        for(std::size_t slot=0;slot<4;++slot){
+            const int now=controllers_.state[slot];
+            if(now==1 && last_pad_visual_state_[slot]!=1)
+                pad_connect_pulse_start_[slot]=clock_;
+            last_pad_visual_state_[slot]=now;
+        }
         // A single authoritative game index drives the list, fan and information.
         // Animation always follows the CURRENT target; quick key presses never queue tweens.
         const float target=static_cast<float>(selected_);
@@ -536,10 +543,12 @@ public:
             ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows),dt,15.0f);
         const auto new_logo=gallery_logo_path(); if(!new_logo.empty() && !covers_.has(new_logo))covers_.load(new_logo);
         const auto new_background=gallery_background_path(); if(!new_background.empty() && !covers_.has(new_background))covers_.load(new_background);
-        for(const char* storage_icon:{"/app0/assets/themes/storage_internal.png","/app0/assets/themes/storage_usb.png"})
-            if(!covers_.has(storage_icon))covers_.load(storage_icon);
         if(!covers_.has("/app0/assets/ui/frosted_lake_backdrop.png"))covers_.load("/app0/assets/ui/frosted_lake_backdrop.png");
         if(!covers_.has("/app0/assets/ui/serif_atlas.png"))covers_.load("/app0/assets/ui/serif_atlas.png");
+        // Two small bundled PNGs. Never decoded during draw_controllers().
+        for(const char* pad_icon:{"/app0/assets/ui/pad_active.png",
+                                  "/app0/assets/ui/pad_inactive.png"})
+            if(!covers_.has(pad_icon))covers_.load(pad_icon);
         // One tiny bundled icon per frame; never synchronously load a whole
         // future-platform icon pack during scrolling.
         for(const auto &p:platform_registry_.entries){
@@ -721,7 +730,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.18";
+        const std::string release_label="BGH V1.1.19";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -1813,7 +1822,7 @@ private:
         if(depth>3.2f)return;
         // Front cover has a stronger hero emphasis; all sizes animate with selection.
         const float base_scale=std::max(0.46f,1.0f-depth*0.15f);
-        const float hero_boost=0.19f*std::max(0.0f,1.0f-depth*0.88f);
+        const float hero_boost=0.31f*std::max(0.0f,1.0f-depth*0.88f);
         const float scale=base_scale+hero_boost;
         const float w=307*scale;
         float h=410*scale;
@@ -1824,8 +1833,8 @@ private:
         if(!with_case_header && covers_.has(g.cover_path))
             h=fan_native_card_height(cover_dimensions.first,cover_dimensions.second,w,h);
         // V1.0.0 uses a tighter five-cover hero fan: larger main cover, wider wings.
-        const float near_distance=std::min(depth,1.0f)*251.55f;
-        const float far_distance=std::max(0.0f,depth-1.0f)*169.65f;
+        const float near_distance=std::min(depth,1.0f)*264.0f;
+        const float far_distance=std::max(0.0f,depth-1.0f)*178.0f;
         const float distance=near_distance+far_distance;
         const float cx=kFanCentreX+std::copysign(distance,relative);
         const float cy=kFanCentreY+depth*18.0f;
@@ -1912,7 +1921,7 @@ private:
         // Draw after the cover (and before titles); alpha diminishes per band.
         if(image && g.available){
             const float reflection_y=card.y+card.h+7.0f;
-            const float max_reflection=std::min(78.0f,card.h*0.24f);
+            const float max_reflection=std::min(depth<0.55f?42.0f:70.0f,card.h*0.18f);
             for(int strip=0;strip<3;++strip){
                 const float segment=max_reflection/3.0f;
                 const float a=(depth<0.5f?0.23f:0.10f)*(1.0f-static_cast<float>(strip)*0.35f);
@@ -2028,12 +2037,15 @@ private:
         }
     }
     void draw_recent_cards(gfx::DrawList &list) const {
-        translated_text(list,context_.fonts.semibold,"Zuletzt gespielt",290,898,21,Color::rgb(0xF0F8FF));
+        translated_text(list,context_.fonts.semibold,"Zuletzt gespielt",262,898,21,Color::rgb(0xF0F8FF));
         const auto recent=recent_indices();
         if(recent_save_error_)translated_text(list,context_.fonts.regular,"Verlauf konnte nicht gespeichert werden",1040,895,17,Color::rgb(0xFFD3A3));
         for(int i=0;i<3;++i){
-            const float x=280.0f+i*445.0f;
-            const Rect card{x,915,425,95};
+            constexpr float recent_card_width=460.0f;
+            constexpr float recent_gap=18.0f;
+            const float x=kFanCentreX-(3.0f*recent_card_width+2.0f*recent_gap)*0.5f+
+                i*(recent_card_width+recent_gap);
+            const Rect card{x,915,recent_card_width,110};
             glass_card(list,card,18);
             if(recent_focus_ && recent_selected_==i)
                 list.bordered_rect(card,18,Color::rgb(0xFFFFFF,0),2,Color::rgb(0xF0DFC0,0.70f));
@@ -2043,55 +2055,61 @@ private:
             }
             const auto &g=catalogue_.games[static_cast<std::size_t>(recent[i])];
             const auto cover=covers_.get(g.cover_path);
-            if(cover)list.image(cover,{x+14,924,73,73},gfx::kFullUv,Color::rgb(0xFFFFFF),11);
-            else list.rounded_rect({x+14,924,73,73},11,platform_color(g.platform).with_alpha(0.24f));
-            translated_text(list,context_.fonts.semibold,shorten(g.title,42),x+102,955,17,kInk);
+            if(cover)list.image(cover,{x+14,930,80,80},gfx::kFullUv,Color::rgb(0xFFFFFF),11);
+            else list.rounded_rect({x+14,930,80,80},11,platform_color(g.platform).with_alpha(0.24f));
+            translated_text(list,context_.fonts.semibold,shorten(g.title,51),x+108,961,17,kInk);
             const std::string native_recent=native_log_time_label(g);
             translated_text(list,context_.fonts.regular,
                 shorten(native_recent.empty()?display_platform_name(g.platform):
-                display_platform_name(g.platform)+" | "+native_recent,47),x+102,982,14,kMuted);
+                display_platform_name(g.platform)+" | "+native_recent,54),x+108,991,14,kMuted);
         }
     }
     void draw_controllers(gfx::DrawList &list) const {
-        // The same four positions as before; never mark an unverified pad active.
+        // Actual connectivity remains authoritative; this routine draws only.
         for(unsigned i=0;i<4;++i){
-            const float x=1318+i*78.0f,y=22;
+            const float x=1318+i*78.0f,y=22.0f;
             const int status=controllers_.state[i];
-            const bool connected=(status==1);
-            const auto color=connected?Color::rgb(0xFDFBF7,0.98f):
-                Color::rgb(0x6A7588,0.38f);
-            if(connected)
-                list.glow({x-5,y-1,48,43},15,8,Color::rgb(0xF5E2BC,0.18f));
-            const auto pad=covers_.get("/app0/assets/ui/controller.png");
-            if(pad)list.image(pad,{x-4,y,42,42},gfx::kFullUv,color,0);
-            else {
-                list.rounded_rect({x,y+4,45,21},10,color);
-                list.rounded_rect({x,y+15,12,13},6,color);
-                list.rounded_rect({x+33,y+15,12,13},6,color);
-                const auto dark=Color::rgb(0x1A283C);
-                list.rounded_rect({x+9,y+9,3,10},1,dark);
-                list.rounded_rect({x+5,y+13,11,3},1,dark);
-                list.rounded_rect({x+31,y+10,4,4},2,dark);
-                list.rounded_rect({x+36,y+15,4,4},2,dark);
+            const bool connected=status==1;
+            const float elapsed=clock_-pad_connect_pulse_start_[i];
+            // Three short, crisp blinks in the first 0.6 seconds after connection.
+            const bool blink_dim=connected && elapsed>=0.0f && elapsed<0.6f &&
+                (static_cast<int>(elapsed/0.1f)%2==1);
+            const float alpha=blink_dim?0.31f:1.0f;
+            const char* asset=connected?"/app0/assets/ui/pad_active.png":
+                "/app0/assets/ui/pad_inactive.png";
+            const auto pad=covers_.get(asset);
+            if(pad){
+                list.image(pad,{std::floor(x-5.0f),std::floor(y-2.0f),46,46},
+                    gfx::kFullUv,Color::rgb(0xFFFFFF,alpha),0);
+            }else{
+                // Native no-texture fallback, deliberately without a blurry glow.
+                const Color fallback=connected?Color::rgb(0xF4FDFF,alpha):
+                    Color::rgb(0x74899E,0.48f);
+                list.bordered_rect({x,y+7,39,23},11,Color::rgb(0xFFFFFF,0),
+                    2.0f,fallback);
+                list.rounded_rect({x+13,y+11,4,13},1,fallback);
+                list.rounded_rect({x+8,y+15,14,4},1,fallback);
             }
+            const Color label_color=connected?Color::rgb(0xFDFBF7,alpha):
+                Color::rgb(0x8897AB,0.55f);
             translated_text(list,context_.fonts.regular,
-                std::to_string(i+1)+(status<0?" ?":""),x+43,y+26,14,color);
+                std::to_string(i+1)+(status<0?" ?":""),x+43,y+26,14,label_color);
             if(connected){
-                // Small warm status LED, not a second neon border.
-                list.rounded_rect({x+43,y+35,8,3},1.5f,Color::rgb(0xE8D19F,0.85f));
-                // Battery information is absent from our verified ScePad sample.
-                // Draw a gauge only after an actually valid battery reading exists.
+                list.rounded_rect({x+43,y+35,8,3},1.5f,
+                    Color::rgb(0x7DEAFF,0.80f*alpha));
+                // No invented battery percentage; only render validated readings.
                 const int battery=controllers_.battery[i];
                 if(battery>=0 && battery<=100){
-                    list.bordered_rect({x,y+46,35,10},2,Color::rgb(0xFFFFFF,0),1.0f,
+                    list.bordered_rect({x,y+46,35,10},2,
+                        Color::rgb(0xFFFFFF,0),1.0f,
                         Color::rgb(0xEEE3D2,0.70f));
                     list.rounded_rect({x+35,y+49,3,4},1,Color::rgb(0xEEE3D2,0.65f));
                     const float inner_width=31.0f*static_cast<float>(battery)/100.0f;
                     if(inner_width>0)
                         list.rounded_rect({x+2,y+48,inner_width,6},1,
-                            Color::rgb(0xE8D19F,0.85f));
+                            Color::rgb(0x7DEAFF,0.85f));
                     translated_text(list,context_.fonts.regular,
-                        std::to_string(battery)+"%",x+43,y+56,13,color);
+                        std::to_string(battery)+"%",x+43,y+56,13,label_color);
                     if(controllers_.charging[i]==1)
                         translated_text(list,context_.fonts.semibold,"+",x+32,y+44,13,
                             Color::rgb(0xE8D19F));
@@ -2166,23 +2184,25 @@ private:
     }
     void draw_platform_bar(gfx::DrawList &list) const {
         if(sidebar_items_.empty())return;
-        // Seven visible capsules within the longer, centered platform rail.
+        // Eight visible capsules centered around the 1920px canvas midpoint.
         // Count is NEVER clipped; shorten only the platform name if needed.
-        constexpr int visible=7;
-        constexpr float pill_width=148.0f;
-        constexpr float pill_step=155.0f;
+        constexpr int visible=8;
+        constexpr float pill_width=142.0f;
+        constexpr float pill_step=147.0f;
         constexpr float text_offset=36.0f;
         constexpr float text_budget=pill_width-text_offset-6.0f;
         // The rendered rail and navigation share sidebar_items_: no ghost tabs.
         const int n=static_cast<int>(sidebar_items_.size());
         const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
-        glass_card(list,{296,106,1122,58},22);
+        constexpr float rail_width=1200.0f;
+        constexpr float rail_x=kFanCentreX-rail_width*0.5f;
+        glass_card(list,{rail_x,106,rail_width,58},22);
         for(int slot=0;slot<visible;++slot){
             const int index=first+slot;
             if(index>=n)break;
             const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
             const bool active=index==tab_;
-            const float x=310.0f+slot*pill_step;
+            const float x=rail_x+12.0f+slot*pill_step;
             const Rect pill{x,115,pill_width,40};
             if(active){
                 list.glow({x-2,113,pill_width+4,44},17,12,Color::rgb(0x00A2FF,0.38f));
@@ -2220,26 +2240,36 @@ private:
                 list.rounded_rect({std::floor(x+pill_width+3.0f),124,1,22},0.5f,
                     Color::rgb(0x3B4D68,0.5f));
         }
-        if(first>0)translated_text(list,context_.fonts.semibold,"<",298,142,20,Color::rgb(0x8CDFFF));
-        if(first+visible<n)translated_text(list,context_.fonts.semibold,">",1405,142,20,Color::rgb(0x8CDFFF));
+        if(first>0)translated_text(list,context_.fonts.semibold,"<",rail_x+1,142,20,Color::rgb(0x8CDFFF));
+        if(first+visible<n)translated_text(list,context_.fonts.semibold,">",rail_x+rail_width-17,142,20,Color::rgb(0x8CDFFF));
     }
     void draw_storage_widgets(gfx::DrawList &list) const {
         // Only previously fetched data is rendered here; no socket/FS calls.
         const auto one=[&](const ulg::shadow_storage::Volume &data,
                            bool connected,const char* title,
-                           const char* offline,const char* icon_path,float x){
+                           const char* offline,bool usb_icon,float x){
             const Rect panel{x,177,225,91};
-            // Real ShadowMount bytes; delicate glass matches the launcher UI.
-            list.rounded_rect({x+2,179,221,90},16,Color::rgb(0x071525,0.20f));
-            list.gradient_rect(panel,15,Color::rgb(0x243C58,0.42f),
-                Color::rgb(0x102039,0.66f));
-            list.bordered_rect(panel,15,Color::rgb(0xFFFFFF,0),0.9f,
-                Color::rgb(0x9AC8DD,0.43f));
-            list.rounded_rect({x+15,181,196,1},0.5f,
-                Color::rgb(0xB9EDFF,0.19f));
-            const auto icon=covers_.get(icon_path);
-            if(icon)list.image(icon,{std::floor(x+13.0f),192,28,28},
-                gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+            // Exactly the same Frosted Petrol / Transparent policy as settings.
+            glass_card(list,panel,15);
+            // DrawList geometry keeps the icons crisp in either theme, no bitmap.
+            const float ix=std::floor(x+15.0f),iy=std::floor(193.0f);
+            const Color steel=Color::rgb(0xA8E9FF,0.94f);
+            if(!usb_icon){
+                // Internal NVMe-like solid-state module / chip carrier.
+                list.bordered_rect({ix+3,iy+1,23,25},4,Color::rgb(0xFFFFFF,0),1.7f,steel);
+                list.bordered_rect({ix+8,iy+7,13,12},2,Color::rgb(0xFFFFFF,0),1.4f,steel);
+                for(int v=0;v<3;++v){
+                    list.rounded_rect({ix,iy+5+v*8,3,2},1,steel);
+                    list.rounded_rect({ix+26,iy+5+v*8,3,2},1,steel);
+                }
+            }else{
+                // External SSD enclosure, USB connection and status light.
+                list.bordered_rect({ix+1,iy+8,28,18},5,Color::rgb(0xFFFFFF,0),1.7f,steel);
+                list.rounded_rect({ix+5,iy+17,20,2},1,steel);
+                list.rounded_rect({ix+22,iy+21,3,3},1.5f,Color::rgb(0x42E6C9));
+                list.rounded_rect({ix+13,iy+1,4,9},1,steel);
+                list.rounded_rect({ix+9,iy,12,3},1,steel);
+            }
             translated_text(list,context_.fonts.semibold,title,
                 std::floor(x+48),201,15,Color::rgb(0xF1F9FF));
             // Capacity only when the local API provided validated, real bytes.
@@ -2269,11 +2299,11 @@ private:
         const auto &info=shadow_storage_;
         one(info.internal,true,"Interner Speicher",
             info.http_ok?"Speicher nicht gemeldet":"System bereit",
-            "/app0/assets/themes/storage_internal.png",1431);
+            false,1431);
         const bool usb_connected=info.http_ok?info.usb.valid:storage_widgets_.usb_connected;
         one(info.usb,usb_connected,"Externer USB",
             usb_connected?"USB verbunden":"Nicht verbunden",
-            "/app0/assets/themes/storage_usb.png",1668);
+            true,1668);
     }
     void draw_detail(app::Frame &frame) const {
         auto &list=frame.overlay;const auto &fonts=context_.fonts;
@@ -2730,7 +2760,7 @@ private:
                 emulator_boot_settings_.direct_boot?"Direktstart aktiv":"Nur Emulator-Menue",
                 theme_settings_.frosted_glass?"Frosted Petrol":"Transparent",
                 music_settings_.enabled?"Musik: AN":"Musik: AUS",
-                std::string("BGH V1.1.18  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
+                std::string("BGH V1.1.19  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
                 "Auswahl: "+gallery_selection_.background,
                 "Auswahl: "+gallery_selection_.logo
             };
@@ -3046,7 +3076,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.18 Settings Hub",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.19 Visual Polish",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -3209,6 +3239,8 @@ private:
     std::vector<std::size_t> indices_;
     std::set<std::string> favorites_;
     ulg::ControllerStatus controllers_;
+    std::array<int,4> last_pad_visual_state_{{-1,-1,-1,-1}};
+    std::array<float,4> pad_connect_pulse_start_{{-1.0f,-1.0f,-1.0f,-1.0f}};
     ulg::storage_widgets::Snapshot storage_widgets_{};
     ulg::shadow_storage::Snapshot shadow_storage_{};
     float next_shadow_poll_=8.0f;

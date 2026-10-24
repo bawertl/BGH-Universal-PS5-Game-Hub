@@ -18,8 +18,8 @@ def test_diagnostic_observes_existing_calls_only():
     assert 'controllers_.diagnostic_pad(3)' in UI
     assert 'controllers_.observe_primary(input.connected);' in UI
     assert 'next_controller_poll_=clock_+1.0f;' in UI
-    assert 'BGH V1.1.18-SETTINGS-HUB' in UI
-    assert 'bgh-v1.1.18-settings-hub' in WF
+    assert 'BGH V1.1.19-VISUAL-POLISH' in UI
+    assert 'bgh-v1.1.19-visual-polish' in WF
     assert 'statvfs(' not in UI
 
 def test_existing_auxiliary_pad_mock(tmp_path):

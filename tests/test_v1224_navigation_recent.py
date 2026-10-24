@@ -88,11 +88,11 @@ int main(int argc,char **argv){
 def test_workflow_branch_artifact_and_native_package_paths():
     build = (ROOT/'tooling/build_native_ps5.sh').read_text()
     # Current release integration supersedes the old V1.1.9 CI naming.
-    assert 'branches: [bgh-v1.1.18-settings-hub]' in WORKFLOW
-    assert 'BGH-V1-1-18-SETTINGS-HUB-PPSA99079' in WORKFLOW
-    assert 'V1_1_18_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_18_${TITLE_ID}_PS5_TEST.zip' in build
-    assert "bgh-v1.1.18-settings-hub" in WORKFLOW
+    assert 'branches: [bgh-v1.1.19-visual-polish]' in WORKFLOW
+    assert 'BGH-V1-1-19-VISUAL-POLISH-PPSA99079' in WORKFLOW
+    assert 'V1_1_19_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_19_${TITLE_ID}_PS5_TEST.zip' in build
+    assert "bgh-v1.1.19-visual-polish" in WORKFLOW
 
 
 def test_real_ui_kit_l3_action_uses_supported_left_stick_glyph():

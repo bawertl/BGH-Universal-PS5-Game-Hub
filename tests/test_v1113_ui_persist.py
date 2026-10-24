@@ -15,15 +15,16 @@ def test_gallery_restore_in_regular_update_not_enter_or_settings():
     assert 'refresh_gallery_paths();' in part
     assert part.index('load_selection')<part.index('if(clock_>=next_storage_poll_)')
 
-def test_seven_pills_fit_and_count_is_last():
+def test_eight_pills_fit_and_count_is_last():
     bar=UI.split('void draw_platform_bar(',1)[1].split('void draw_storage_widgets(',1)[0]
-    assert 'pill_width=148.0f' in bar
-    assert 'pill_step=155.0f' in bar
-    assert 'const float x=310.0f+slot*pill_step;' in bar
+    assert 'constexpr int visible=8;' in bar
+    assert 'pill_width=142.0f' in bar
+    assert 'pill_step=147.0f' in bar
+    assert 'const float x=rail_x+12.0f+slot*pill_step;' in bar
     assert 'std::string display=label+suffix;' in bar
     assert 'const std::string suffix=" | "+count;' in bar
     assert 'label.pop_back();' in bar
-    assert 310+6*155+148 <= 1418
+    assert 360+12+7*147+142 <= 1560
 
 def test_pad_diagnostics_do_not_add_probe_or_unverified_state():
     assert 'last_get' in PAD and 'last_open' in PAD and 'last_read' in PAD
@@ -38,6 +39,6 @@ def test_pad_diagnostics_do_not_add_probe_or_unverified_state():
 def test_storage_and_build_startup_guards_retained():
     assert 'statvfs(' not in UI
     assert 'statvfs(' not in (ROOT/'native_ps5/bgh_storage_metrics.hpp').read_text()
-    assert 'V1_1_18_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'bgh-v1.1.18-settings-hub' in WF
+    assert 'V1_1_19_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'bgh-v1.1.19-visual-polish' in WF
     assert 'PPSA99079' in WF
