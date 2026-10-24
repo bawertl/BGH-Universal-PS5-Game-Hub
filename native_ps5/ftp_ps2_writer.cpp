@@ -4,6 +4,7 @@
 #include "ftp_ps2_writer.hpp"
 #include "ftp_readonly.hpp"
 #include <arpa/inet.h>
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdint>
@@ -149,10 +150,16 @@ Ps2FtpWriteStatus ftp_stage_ps2_request(const std::string& payload,int port) {
         result.message="FTP PS5SX2-Ordner nicht lesbar (MLSD/CWD)";
         return result;
     }
-    for(const auto& entry:listing.entries){
-        if(entry.name==kFile){
+    // The launcher owns only this one-shot PS5SX2 request filename. An old
+    // request from a previous session must not prevent the next game launch.
+    // Keep the authoritative listing guard, but do not treat an existing
+    // regular request file as a permanent error.
+    const bool existing=std::any_of(listing.entries.begin(),listing.entries.end(),
+        [](const FtpEntry &entry){return entry.name==kFile && !entry.folder;});
+    for(const auto &entry:listing.entries){
+        if(entry.name==kFile && entry.folder){
             result.ftp_reply=550;
-            result.message="disc-launch.txt existiert im FTP-Zielordner; nicht ueberschrieben";
+            result.message="PS2-Startdatei ist ein Verzeichnis; nicht veraendert";
             return result;
         }
     }
@@ -162,11 +169,25 @@ Ps2FtpWriteStatus ftp_stage_ps2_request(const std::string& payload,int port) {
     }
     int data=ftp.passive_socket();
     if(data<0){result.message="FTP PS2-PASV fehlgeschlagen";return result;}
-    const int start=ftp.command(std::string("STOR ")+kFile);
+    int start=ftp.command(std::string("STOR ")+kFile);
     result.ftp_reply=start;
     if(start!=125 && start!=150){
         ::close(data);
-        result.message="FTP STOR abgelehnt";return result;
+        // Some FTP servers forbid overwrite but allow deletion of the single
+        // fixed request file. Only retry for a known existing request, with an
+        // explicit 550 refusal. Never delete any other name or game file.
+        if(!existing || start!=550 || ftp.command(std::string("DELE ")+kFile)!=250){
+            result.message="FTP STOR abgelehnt; bestehende Datei nicht geaendert";
+            return result;
+        }
+        data=ftp.passive_socket();
+        if(data<0){result.message="FTP PS2-PASV nach DELE fehlgeschlagen";return result;}
+        start=ftp.command(std::string("STOR ")+kFile);
+        result.ftp_reply=start;
+        if(start!=125 && start!=150){
+            ::close(data);
+            result.message="FTP PS2-STOR nach DELE abgelehnt";return result;
+        }
     }
     const bool sent=send_all(data,payload);
     // EOF lets the FTP daemon commit the uploaded text file.

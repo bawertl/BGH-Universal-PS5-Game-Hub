@@ -78,7 +78,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.19-VISUAL-POLISH [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.20-PS2-RPCS3-ICONS [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -124,6 +124,7 @@ const char* emulator_platform_for_title(const std::string &id){
     if(id=="PPSA99203")return "PS2";
     if(id=="PPSA99008")return "Switch";
     if(id=="PPSA50011")return "Xbox 360";
+    if(id=="PPSA99303")return "PS3";
     return nullptr;
 }
 ulg::LaunchPlan emulator_menu_plan(const std::string &platform){
@@ -549,6 +550,11 @@ public:
         for(const char* pad_icon:{"/app0/assets/ui/pad_active.png",
                                   "/app0/assets/ui/pad_inactive.png"})
             if(!covers_.has(pad_icon))covers_.load(pad_icon);
+        // Two new theme-storage PNGs, decoded outside the rendering loop.
+        // Keep the geometry fallback if either image is not yet ready.
+        for(const char* icon:{"/app0/assets/themes/storage_internal.png",
+                              "/app0/assets/themes/storage_usb.png"})
+            if(!covers_.has(icon))covers_.load(icon);
         // One tiny bundled icon per frame; never synchronously load a whole
         // future-platform icon pack during scrolling.
         for(const auto &p:platform_registry_.entries){
@@ -730,7 +736,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.19";
+        const std::string release_label="BGH V1.1.20";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2071,8 +2077,8 @@ private:
             const int status=controllers_.state[i];
             const bool connected=status==1;
             const float elapsed=clock_-pad_connect_pulse_start_[i];
-            // Three short, crisp blinks in the first 0.6 seconds after connection.
-            const bool blink_dim=connected && elapsed>=0.0f && elapsed<0.6f &&
+            // Ten distinct connection blinks over two seconds; no changes to Pad state.
+            const bool blink_dim=connected && elapsed>=0.0f && elapsed<2.0f &&
                 (static_cast<int>(elapsed/0.1f)%2==1);
             const float alpha=blink_dim?0.31f:1.0f;
             const char* asset=connected?"/app0/assets/ui/pad_active.png":
@@ -2254,7 +2260,13 @@ private:
             // DrawList geometry keeps the icons crisp in either theme, no bitmap.
             const float ix=std::floor(x+15.0f),iy=std::floor(193.0f);
             const Color steel=Color::rgb(0xA8E9FF,0.94f);
-            if(!usb_icon){
+            const char* art=usb_icon?"/app0/assets/themes/storage_usb.png":
+                "/app0/assets/themes/storage_internal.png";
+            const auto tex=covers_.get(art);
+            if(tex){
+                list.image(tex,{ix-2,iy-3,35,35},gfx::kFullUv,
+                    Color::rgb(0xFFFFFF),0);
+            }else if(!usb_icon){
                 // Internal NVMe-like solid-state module / chip carrier.
                 list.bordered_rect({ix+3,iy+1,23,25},4,Color::rgb(0xFFFFFF,0),1.7f,steel);
                 list.bordered_rect({ix+8,iy+7,13,12},2,Color::rgb(0xFFFFFF,0),1.4f,steel);
@@ -2760,7 +2772,7 @@ private:
                 emulator_boot_settings_.direct_boot?"Direktstart aktiv":"Nur Emulator-Menue",
                 theme_settings_.frosted_glass?"Frosted Petrol":"Transparent",
                 music_settings_.enabled?"Musik: AN":"Musik: AUS",
-                std::string("BGH V1.1.19  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
+                std::string("BGH V1.1.20  |  ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
                 "Auswahl: "+gallery_selection_.background,
                 "Auswahl: "+gallery_selection_.logo
             };
@@ -3076,7 +3088,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.19 Visual Polish",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.20 PS2 RPCS3 Fix",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

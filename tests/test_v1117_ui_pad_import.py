@@ -48,9 +48,9 @@ def test_visual_changes_but_no_game_launch_regressions():
 
 
 def test_current_version_and_build():
-    assert 'BGH V1.1.19-VISUAL-POLISH' in UI
-    assert 'bgh-v1.1.19-visual-polish' in WORKFLOW
-    assert 'V1_1_19_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in UI
+    assert 'bgh-v1.1.20-ps2-rpcs3-icons' in WORKFLOW
+    assert 'V1_1_20_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'APP_IMPORT_STUBS' in OVERLAY
 
 

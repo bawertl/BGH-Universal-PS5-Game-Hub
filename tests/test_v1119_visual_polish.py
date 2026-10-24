@@ -18,6 +18,7 @@ def test_dualsense_artwork_and_transition_only():
     assert 'list.glow(' not in controllers
     assert 'pad_connect_pulse_start_[i]' in controllers
     assert 'elapsed/0.1f' in controllers
+    assert 'elapsed<2.0f' in controllers
     assert 'pad_active.png' in controllers and 'pad_inactive.png' in controllers
     assert 'controllers_.observe_primary(input.connected);' in update
     assert 'controllers_.poll();' in update
@@ -61,5 +62,5 @@ def test_fan_artwork_only_and_launch_paths_preserved():
         'make_registered_ps4_launch_plan(g.title_id)',
         'ulg::send_launch(plan)'):
         assert launch in UI
-    assert 'BGH V1.1.19-VISUAL-POLISH' in UI
-    assert 'branches: [bgh-v1.1.19-visual-polish]' in WF
+    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in UI
+    assert 'branches: [bgh-v1.1.20-ps2-rpcs3-icons]' in WF

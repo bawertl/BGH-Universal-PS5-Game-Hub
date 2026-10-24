@@ -77,7 +77,7 @@ int main(){
 
 def test_gui_auto_emulator_tab_and_existing_rom_dispatch_preserved():
     code=(NATIVE/'universal_launcher.cpp').read_text()
-    assert 'Meine Emulatoren' in code
+    assert 'Emulatoren' in code and 'emulator_platform_for_title' in code
     assert 'ulg::emulator_cards::sync(catalogue_,platform_registry_,detected_emulators_)' in code
     assert 'detected_emulators_' in code
     assert 'const auto result=ulg::send_launch(menu_plan);' in code

@@ -37,9 +37,10 @@ int main(int argc,char**argv){
     return out
 
 class FTPMock:
-    def __init__(self, initial=None, reject_stor=False, corrupt_retr=False, deny_listing=False):
+    def __init__(self, initial=None, reject_stor=False, corrupt_retr=False, deny_listing=False, reject_existing=False):
         self.files=dict(initial or {})
         self.reject_stor=reject_stor
+        self.reject_existing=reject_existing
         self.corrupt_retr=corrupt_retr
         self.deny_listing=deny_listing
         self.commands=[]
@@ -112,7 +113,7 @@ class FTPMock:
                         passive.close();passive=None
                         answer('226 Done')
                     elif cmd=='STOR disc-launch.txt':
-                        if self.reject_stor:
+                        if self.reject_stor or (self.reject_existing and 'disc-launch.txt' in self.files):
                             answer('550 Read-only')
                             if passive:passive.close();passive=None
                             continue
@@ -167,14 +168,25 @@ def test_ftp_upload_emits_exact_selected_full_path_and_verifies(helper):
         assert 'RETR /data/PCSX2/logs/disc-launch.txt' in server.commands
         assert not any(c.startswith(('DELE','SITE','MKD','RMD')) for c in server.commands)
 
-def test_request_existing_is_never_overwritten_or_deleted(helper):
+def test_existing_one_shot_request_is_safely_replaced_and_verified(helper):
     original=b'/mnt/usb1/PS5SX2/games/virtuafighter4.chd\n'
     with FTPMock({'disc-launch.txt':original}) as server:
         out=call(helper,server.port)
-        assert out.startswith('0|550|0|'),out
-        assert server.files['disc-launch.txt']==original
-        assert 'STOR disc-launch.txt' not in server.commands
+        assert out.startswith('1|226|0|'),out
+        assert server.files['disc-launch.txt']==(GAME+'\n').encode()
+        assert server.commands.count('STOR disc-launch.txt')==1
         assert not any(c.startswith('DELE ') for c in server.commands)
+
+def test_overwrite_refused_fallback_only_deletes_fixed_request(helper):
+    old=b'/mnt/usb1/PS5SX2/games/old.iso\n'
+    with FTPMock({'disc-launch.txt':old,'unrelated-save.bin':b'preserve'},reject_existing=True) as server:
+        out=call(helper,server.port)
+        assert out.startswith('1|226|0|'),out
+        assert server.files['disc-launch.txt']==(GAME+'\n').encode()
+        assert server.files['unrelated-save.bin']==b'preserve'
+        assert server.commands.count('DELE disc-launch.txt')==1
+        assert server.commands.count('STOR disc-launch.txt')==2
+        assert not any(c.startswith(('DELE unrelated','RMD','SITE','MKD')) for c in server.commands)
 
 def test_clean_on_forwarder_failure_if_unchanged(helper):
     with FTPMock() as server:
@@ -224,9 +236,9 @@ def test_ps5_ps4_launch_protocol_unchanged_except_v127_prelaunch_history():
     assert 'ulg::send_launch(ps2_plan)' in ps2
     assert 'ulg::cancel_ps5sx2_disc_launch(request)' in ps2
     assert 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' in ps2
-    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in src
+    assert 'BGH V1.1.20-PS2-RPCS3-ICONS' in src
     assert 'ftp_stage_ps2_request' in (NATIVE/'ps2_autostart.hpp').read_text()
     assert 'O_CREAT' not in (NATIVE/'ps2_autostart.hpp').read_text()
     overlay=(ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert "project/'native_ps5'/'ftp_ps2_writer.cpp'" in overlay
-    assert 'bgh-v1.1.9' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
+    assert 'bgh-v1.1.20-ps2-rpcs3-icons' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
