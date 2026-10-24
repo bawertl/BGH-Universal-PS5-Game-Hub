@@ -12,6 +12,10 @@
 #include <unistd.h>
 #include <vector>
 
+// Test builds can redirect only the BGH-owned import cache to a temp folder.
+#ifndef BGH_GALLERY_CACHE_ROOT
+#define BGH_GALLERY_CACHE_ROOT "/download0/hui/ulg_v04/user_themes"
+#endif
 namespace ulg {
 namespace bgh_gallery {
 enum class Kind { background, logo };
@@ -29,7 +33,7 @@ inline bool valid_filename(const std::string& filename) {
     if (filename.empty() || filename.size() > 96 || filename[0] == '.') return false;
     for (const unsigned char c : filename) {
         if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-              (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_')) return false;
+              (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_' || c == ' ')) return false;
     }
     const auto point = filename.find_last_of('.');
     if (point == std::string::npos) return false;
@@ -41,6 +45,13 @@ inline bool valid_filename(const std::string& filename) {
 }
 // FTP-writable directories inside the installed PPSA99079 title.
 // The two previous paths remain read-only discovery fallbacks for older users.
+// Copies fetched from the already-running local read-only FTP service reside
+// in the title's writable private area, never under a game directory.
+inline const char* imported_folder(Kind kind) {
+    return kind == Kind::background ?
+        BGH_GALLERY_CACHE_ROOT "/backgrounds" :
+        BGH_GALLERY_CACHE_ROOT "/logos";
+}
 inline const char* upload_folder(Kind kind) {
     return kind == Kind::background ?
         "/data/homebrew/PPSA99079/user_themes/backgrounds" :
@@ -70,8 +81,8 @@ inline std::vector<ThemeItem> list(Kind kind) {
     std::vector<ThemeItem> result = builtins(kind);
     // Prefer the writable install folder, with /app0 and the old user folder
     // supported for existing selections. Duplicate filenames keep one ID.
-    const char* folders[] = {upload_folder(kind), app0_upload_folder(kind),
-                             legacy_upload_folder(kind)};
+    const char* folders[] = {imported_folder(kind), upload_folder(kind),
+                             app0_upload_folder(kind), legacy_upload_folder(kind)};
     for (const char* dir : folders) {
         DIR* dp = ::opendir(dir);
         if (!dp) continue; // No directory is not an error and never blocks boot.
@@ -153,8 +164,8 @@ inline bool remove_user_image(Kind kind, const std::string& id,
     if (!find(kind,id,image) || !image.user_supplied) return false;
     // Restrict deletion to the three known theme directories (never assets).
     bool approved = false;
-    for (const char* folder : {upload_folder(kind),app0_upload_folder(kind),
-                                legacy_upload_folder(kind)}) {
+    for (const char* folder : {imported_folder(kind),upload_folder(kind),
+                                app0_upload_folder(kind),legacy_upload_folder(kind)}) {
         if (image.path == std::string(folder) + "/" + filename) approved = true;
     }
     if (!approved) return false;

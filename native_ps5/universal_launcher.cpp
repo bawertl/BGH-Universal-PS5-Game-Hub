@@ -17,6 +17,7 @@
 #include "concepts/ftp_readonly.hpp"
 #include "controller_status.hpp"
 #include "bgh_theme_gallery.hpp"
+#include "bgh_gallery_ftp.hpp"
 #include "bgh_nextgen_layout.hpp"
 #include "storage_widgets.hpp"
 #include "storage_shadowmount.hpp"
@@ -78,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.21";
+constexpr const char *kBuildLabel = "BGH V1.1.22";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -736,7 +737,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.21";
+        const std::string release_label="BGH V1.1.22";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2557,6 +2558,14 @@ private:
                     (selected_tile_==4)?(music_settings_.enabled?0:1):0;
                 gallery_row_=settings_subview_==7?1:0;
                 gallery_delete_armed_=false;
+                if(settings_subview_==6 || settings_subview_==7){
+                    const auto kind=settings_subview_==6?
+                        ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+                    const auto report=ulg::bgh_gallery::import_from_local_ftp(kind);
+                    gallery_message_=report.detail;
+                    // Refresh only after the import; never touch game caches.
+                    refresh_gallery_paths();
+                }
                 feedback.play(audio::Cue::open);
             }
             return;
@@ -2604,6 +2613,12 @@ private:
             if(input.is_pressed(Action::north)){
                 const auto id=background?gallery_selection_.background:gallery_selection_.logo;
                 if(id.rfind("user:",0)!=0){gallery_message_="Vorinstallierte Motive sind geschuetzt";gallery_delete_armed_=false;return;}
+                ulg::bgh_gallery::ThemeItem source{};
+                if(ulg::bgh_gallery::find(kind,id,source) &&
+                   source.path.rfind(ulg::bgh_gallery::imported_folder(kind),0)==0){
+                    gallery_message_="FTP-Bild bitte im Upload-Ordner loeschen";
+                    gallery_delete_armed_=false;return;
+                }
                 if(!gallery_delete_armed_){gallery_message_="Dreieck erneut: eigenes Motiv loeschen";gallery_delete_armed_=true;return;}
                 const auto previous=gallery_selection_;
                 if(background)gallery_selection_.background="showroom";
@@ -2883,7 +2898,7 @@ private:
             }
         }
         translated_text(list,fonts.regular,
-            background?"Eigene Bilder: /data/bgh/themes/backgrounds":"Eigene Bilder: /data/bgh/themes/logos",
+            background?"FTP: /data/homebrew/PPSA99079/user_themes/backgrounds":"FTP: /data/homebrew/PPSA99079/user_themes/logos",
             197,741,20,kMuted);
         if(!gallery_message_.empty())translated_text(list,fonts.regular,gallery_message_,197,828,20,kAccent);
     }
@@ -3088,7 +3103,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.21",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.22",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
