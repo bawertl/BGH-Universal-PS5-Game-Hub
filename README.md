@@ -1,3 +1,14 @@
+# BGH V1.1.17 – UI polish und Controller-Import-Test (PS5)
+
+**Basis:** `bgh-v1.1.16-pad-diagnostics` → **Testbranch:** `bgh-v1.1.17-ui-pad-import`. **PS5-ID:** `PPSA99079` unverändert.
+
+**Änderungen:** Pixelausrichtung für Serifenglyphen (ohne Vergrößerung), synchronisierte Musik-/Versions-Baseline, drei Utility-Tabs nur aus der oberen Leiste ausgeblendet (Navigation und gespeicherte Daten unverändert), dezentere Glasoptik der Speicher-Widgets, gleicher aktiver Blauton für Konsole und Spielen-Button. Galerie-Konfiguration wird im ersten normalen Update und damit vor dem ersten Dashboard-Frame geladen; bis dahin ist die Fläche neutral, nie das falsche Alpenbild. Keine Konfigurationsdatei im Konstruktor geöffnet.
+
+**Controller:** `dlsym(RTLD_DEFAULT)` wird nur für die optionalen Pad-Abfragen ersetzt durch explizite PS5-Import-Stubs für `libScePad` und `libSceUserService`. Der etablierte primäre UI-Kit-Controller bleibt unberührt. 5-Sekunden-Aufschub und 1-Sekunden-Diagnoseintervall bleiben bestehen; zusätzliche physische Pads sind **noch nicht auf PS5 getestet**. PS5-GitHub-Link und Geräteproben sind erforderlich. Bereits von V1.1.16 bekannte Diagnosefelder werden beibehalten. Ein fehlender Pad-Import-Stub muss als Buildfehler gemeldet und darf nicht durch eine Fake-Funktion ersetzt werden.
+
+**Schutz:** ShadowMountPlus-HTTP, Startpläne für PS5/PS4/PS2/Switch/X360, Katalogpfade, Covercache, Favoriten und Verlauf bleiben unverändert. Kein `statvfs()` im Launcher.
+
+---
 # BGH V1.1.16 – Passive DualSense-Diagnose (PS5-Testversion)
 
 **Ausgangsbranch:** `bgh-v1.1.15-shadowmount-json-fix` → **neuer Branch:** `bgh-v1.1.16-pad-diagnostics`. **App-ID/PS5-Ordner:** `PPSA99079` unverändert.

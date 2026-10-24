@@ -178,7 +178,9 @@ std::span<const ConceptFactory> concept_registry() {
                 '# Native PS5 registered-title launch, explicit controller action only\n'
                 'APP_DEFINITIONS += BGH_TARGET_PS5=1\n'
                 'APP_IMPORT_STUBS += .deps/native/ps5-payload-sdk/target/lib/libSceSystemService.so\n'
-                'APP_IMPORT_STUBS += .deps/native/ps5-payload-sdk/target/lib/libSceUserService.so\n')
+                'APP_IMPORT_STUBS += .deps/native/ps5-payload-sdk/target/lib/libSceUserService.so\n'
+                '# Multi-controller APIs, linked through official SDK import stub\n'
+                'APP_IMPORT_STUBS += .deps/native/ps5-payload-sdk/target/lib/libScePad.so\n')
         # Must appear AFTER the defaults and BEFORE the override APP_INCLUDE_PATHS.
         where='OPENGL_SDK := .deps/ps5-opengl/current'
         if where in original:

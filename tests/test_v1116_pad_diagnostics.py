@@ -7,9 +7,9 @@ UI=(ROOT/'native_ps5/universal_launcher.cpp').read_text()
 WF=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 
 def test_diagnostic_observes_existing_calls_only():
-    assert 'last_initial_result=initial_(&initial_user);' in PAD
-    assert 'last_login_result=users_(logged.data());' in PAD
-    assert 'last_login_users=logged;' in PAD
+    assert 'last_initial_result=sceUserServiceGetInitialUser(&initial_user);' in PAD
+    assert 'last_login_result=sceUserServiceGetLoginUserIdList(users.data());' in PAD
+    assert 'last_login_users=users;' in PAD
     assert '++poll_count;' in PAD
     assert 'read_pad(initial_user,0,index,index)' in PAD
     assert 'controllers_.diagnostic_users()' in UI
@@ -18,13 +18,13 @@ def test_diagnostic_observes_existing_calls_only():
     assert 'controllers_.diagnostic_pad(3)' in UI
     assert 'controllers_.observe_primary(input.connected);' in UI
     assert 'next_controller_poll_=clock_+1.0f;' in UI
-    assert 'BGH V1.1.16-PAD-DIAG' in UI
-    assert 'bgh-v1.1.16-pad-diagnostics' in WF
+    assert 'BGH V1.1.17-UI-PAD-TEST' in UI
+    assert 'bgh-v1.1.17-ui-pad-import' in WF
     assert 'statvfs(' not in UI
 
 def test_existing_auxiliary_pad_mock(tmp_path):
     exe=tmp_path/'monitor'
-    subprocess.run(['g++','-std=c++20','-Wall','-Wextra','-Werror','-rdynamic',
-        '-I'+str(ROOT/'native_ps5'),str(ROOT/'tests/controller_monitor_v1112_harness.cpp'),
-        '-ldl','-o',str(exe)],check=True)
+    subprocess.run(['g++','-std=c++20','-Wall','-Wextra','-Werror',
+        '-DBGH_TARGET_PS5=1','-I'+str(ROOT/'native_ps5'),str(ROOT/'tests/controller_direct_v1117_harness.cpp'),
+        '-o',str(exe)],check=True)
     subprocess.run([str(exe)],check=True)

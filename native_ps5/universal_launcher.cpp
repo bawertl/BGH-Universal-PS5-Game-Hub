@@ -63,6 +63,10 @@ using gfx::Rect;
 const Color kInk = Color::rgb(0xF3E8D7);
 const Color kMuted = Color::rgb(0xD5CCBE);
 const Color kAccent = Color::rgb(0xC5D8B5);
+// Single palette shared by the selected platform capsule and Play action.
+const Color kActiveTabStart = Color::rgb(0x005EBD,0.88f);
+const Color kActiveTabEnd = Color::rgb(0x007BD5,0.91f);
+const Color kActiveTabBorder = Color::rgb(0x7DEAFF);
 const Color kSage = Color::rgb(0xCBD8B4);
 const Color kWarmLine = Color::rgb(0xE9C17B);
 constexpr std::array<const char *,8> kPlatforms={
@@ -73,7 +77,7 @@ constexpr std::array<const char *,4> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.16-PAD-DIAG [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.17-UI-PAD-TEST [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -489,10 +493,11 @@ public:
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
-        // Restore persisted background/logo once during normal frames, not in
-        // enter()/constructor (V1.1.11 startup guard). Never depend on opening
-        // Settings; start after initial renderer and input have settled.
-        if(!gallery_selection_loaded_after_boot_ && clock_>=2.0f){
+        // First normal update (with active renderer), before any dashboard draw.
+        // Do not move file IO to constructor/enter: V1.1.11 startup hotfix.
+        // If a host ever draws before updating, draw() shows neutral backdrop,
+        // never a misleading default landscape before the saved selection.
+        if(!gallery_selection_loaded_after_boot_){
             gallery_selection_loaded_after_boot_=true;
             if(!ulg::bgh_gallery::load_selection("/download0/hui/ulg_v04/gallery.cfg",gallery_selection_))
                 (void)ulg::bgh_gallery::load_selection("/data/bgh/gallery.cfg",gallery_selection_);
@@ -668,13 +673,15 @@ public:
         frame.backdrop.time=0.0f;
         auto &list=frame.scene;
         const auto &fonts=context_.fonts;
-        // Existing landscape and saved artwork stay intact. No replacement wallpaper.
-        const auto background=covers_.get(gallery_background_path());
+        // Until the saved gallery selection is restored, display a neutral
+        // backdrop. Never flash the factory Alps image over a custom choice.
+        const auto background=gallery_selection_loaded_after_boot_?
+            covers_.get(gallery_background_path()):0;
         if(background)list.image(background,{0,0,1920,1080},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
         else list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x102033));
         list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x030815,0.33f));
         list.gradient_rect({0,0,1920,194},0,Color::rgb(0x080F1D,0.88f),Color::rgb(0x0A1B29,0.11f));
-        const auto brand=covers_.get(gallery_logo_path());
+        const auto brand=gallery_selection_loaded_after_boot_?covers_.get(gallery_logo_path()):0;
         if(brand && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(brand,{30,18,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
         const auto wordmark=covers_.get("/app0/assets/bgh_wordmark.png");
         if(wordmark && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(wordmark,{109,33,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
@@ -705,9 +712,10 @@ public:
         ui::HintLayout hint_layout;hint_layout.cy=1042;hint_layout.size=23;
         hint_layout.text_size=16;hint_layout.item_gap=20;
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
-        serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
+        // Both footer labels share an identical baseline and discrete pixels.
+        serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.16";
+        const std::string release_label="BGH V1.1.17";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -1152,7 +1160,11 @@ private:
             if(!g){for(const auto &item:ulg::kSerifAtlasGlyphs)if(item.cp=='?'){g=&item;break;}}
             if(!g)continue;
             if(max_width>0.0f && cursor+g->advance*scale>x+max_width)break;
-            list.image(tex,{cursor,baseline-ulg::kSerifAtlasBaseline*scale,g->w*scale,g->h*scale},
+            // Snap glyph position to logical pixels; do not change font size
+            // or quantize font advances, which would distort kerning.
+            list.image(tex,{std::floor(cursor+0.5f),
+                std::floor(baseline-ulg::kSerifAtlasBaseline*scale+0.5f),
+                g->w*scale,g->h*scale},
                 {g->x/ulg::kSerifAtlasW,g->y/ulg::kSerifAtlasH,g->w/ulg::kSerifAtlasW,g->h/ulg::kSerifAtlasH},tint,0);
             cursor+=g->advance*scale;
         }
@@ -1957,9 +1969,9 @@ private:
              (g.platform=="PS2" || g.platform=="Switch" || g.platform=="Xbox 360"));
         const Rect launch_button{870,819,180,45};
         list.glow({launch_button.x-6,launch_button.y-6,launch_button.w+12,launch_button.h+12},
-            18,12,Color::rgb(0x00CFFF,0.25f));
-        list.gradient_rect(launch_button,15,Color::rgb(0x005C88,0.85f),Color::rgb(0x102D50,0.88f));
-        list.bordered_rect(launch_button,15,Color::rgb(0xFFFFFF,0),1.4f,Color::rgb(0x7AEAFF));
+            18,12,Color::rgb(0x00A2FF,0.30f));
+        list.gradient_rect(launch_button,15,kActiveTabStart,kActiveTabEnd);
+        list.bordered_rect(launch_button,15,Color::rgb(0xFFFFFF,0),1.4f,kActiveTabBorder);
         const ui::Hint start_hint[]={{ui::Button::cross,hint(menu_mode?"Menue":"Spielen")}};
         ui::HintLayout start_layout;
         start_layout.cy=launch_button.y+launch_button.h*0.5f;
@@ -2157,20 +2169,32 @@ private:
         constexpr float pill_step=138.0f;
         constexpr float text_offset=36.0f;
         constexpr float text_budget=pill_width-text_offset-6.0f;
-        const int n=static_cast<int>(sidebar_items_.size());
-        const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
+        // Hide utility views ONLY in top rail. They remain reachable via the
+        // regular sidebar/navigation; favorites/history data are untouched.
+        std::vector<int> rail;
+        int rail_selected=-1;
+        for(int i=0;i<static_cast<int>(sidebar_items_.size());++i){
+            const auto &id=sidebar_items_[static_cast<std::size_t>(i)].id;
+            if(id=="Apps" || id=="Favoriten" || id=="Zuletzt")continue;
+            if(i==tab_)rail_selected=static_cast<int>(rail.size());
+            rail.push_back(i);
+        }
+        const int n=static_cast<int>(rail.size());
+        const int anchor=rail_selected>=0?rail_selected:0;
+        const int first=std::clamp(anchor-visible/2,0,std::max(0,n-visible));
         glass_card(list,{430,106,1010,58},22);
         for(int slot=0;slot<visible;++slot){
-            const int index=first+slot;
-            if(index>=n)break;
+            const int rail_index=first+slot;
+            if(rail_index>=n)break;
+            const int index=rail[static_cast<std::size_t>(rail_index)];
             const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
             const bool active=index==tab_;
             const float x=442.0f+slot*pill_step;
             const Rect pill{x,115,pill_width,40};
             if(active){
                 list.glow({x-2,113,pill_width+4,44},17,12,Color::rgb(0x00A2FF,0.38f));
-                list.gradient_rect(pill,17,Color::rgb(0x005EBD,0.88f),Color::rgb(0x007BD5,0.91f));
-                list.bordered_rect(pill,17,Color::rgb(0xFFFFFF,0),1.1f,Color::rgb(0x7DEAFF));
+                list.gradient_rect(pill,17,kActiveTabStart,kActiveTabEnd);
+                list.bordered_rect(pill,17,Color::rgb(0xFFFFFF,0),1.1f,kActiveTabBorder);
             }
             if(entry.is_platform && !entry.icon.empty()){
                 const auto tex=covers_.get(std::string("/app0/assets/platforms/")+entry.icon);
@@ -2199,7 +2223,7 @@ private:
             translated_text(list,context_.fonts.regular,display,
                 std::floor(x+text_offset),140.0f,text_size,
                 active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB));
-            if(slot<visible-1 && index+1<n)
+            if(slot<visible-1 && rail_index+1<n)
                 list.rounded_rect({std::floor(x+137.0f),124,1,22},0.5f,
                     Color::rgb(0x3B4D68,0.5f));
         }
@@ -2212,7 +2236,14 @@ private:
                            bool connected,const char* title,
                            const char* offline,const char* icon_path,float x){
             const Rect panel{x,177,216,91};
-            glass_card(list,panel,15);
+            // Unified restrained glass style, same geometry and real bytes.
+            list.rounded_rect({x+2,179,212,90},16,Color::rgb(0x071525,0.23f));
+            list.gradient_rect(panel,15,Color::rgb(0x182D45,0.56f),
+                Color::rgb(0x12243B,0.78f));
+            list.bordered_rect(panel,15,Color::rgb(0xFFFFFF,0),0.9f,
+                Color::rgb(0x91B4D4,0.34f));
+            list.rounded_rect({x+15,181,185,1},0.5f,
+                Color::rgb(0xB9EDFF,0.24f));
             const auto icon=covers_.get(icon_path);
             if(icon)list.image(icon,{std::floor(x+13.0f),192,28,28},
                 gfx::kFullUv,Color::rgb(0xFFFFFF),0);
@@ -2226,15 +2257,15 @@ private:
                 (data.valid||connected)?Color::rgb(0x7DEAFF):
                 Color::rgb(0x8D9CAE),190);
             list.rounded_rect({x+13,248,190,5},2.5f,
-                Color::rgb(0x24354C,0.88f));
+                Color::rgb(0x203950,0.74f));
             if(data.valid && data.total>0){
                 const double fraction=std::clamp(
                     static_cast<double>(data.used)/static_cast<double>(data.total),
                     0.0,1.0);
                 const float width=static_cast<float>(190.0*fraction);
                 if(width>0.5f){
-                    list.glow({x+13,247,width,7},3,5,
-                        Color::rgb(0x00B5FF,0.25f));
+                    list.glow({x+13,247,width,7},2,3,
+                        Color::rgb(0x00B5FF,0.15f));
                     list.gradient_rect({x+13,248,width,5},2.5f,
                         Color::rgb(0x007BD5),Color::rgb(0x00E5FF));
                 }
@@ -2974,7 +3005,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.16 Controller-Diagnose",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.17 UI/Pad-Test",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
