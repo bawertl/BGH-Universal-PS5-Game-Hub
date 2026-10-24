@@ -30,9 +30,11 @@ int main() {
     assert(!remove_user_image(Kind::background,"lake",selection,true));
     assert(!remove_user_image(Kind::background,"user:../../etc/passwd",selection,true));
     assert(!remove_user_image(Kind::background,"user:image.png",selection,false));
+    // PS5 13.60 startup guard: this helper must not touch statvfs at all.
     auto v = ulg::bgh_storage::probe("/tmp");
-    assert(v.known && v.capacity_bytes>0);
-    assert(v.percent()>=0 && v.percent()<=100.0);
-    assert(ulg::bgh_storage::label(v).find("GB")!=std::string::npos);
+    assert(!v.known && v.capacity_bytes==0);
+    assert(!ulg::bgh_storage::internal().known);
+    assert(!ulg::bgh_storage::external().known);
+    assert(ulg::bgh_storage::label(v)=="Nicht verfuegbar");
     return 0;
 }
