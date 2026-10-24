@@ -30,6 +30,9 @@ int main(){
     assert(m.state[1]==1);
     assert(m.state[2]==0);
     assert(m.state[3]==-1);
+    assert(m.probe_summary(1)=="11/--/0");
+    assert(m.probe_summary(2)=="-1/22/0");
+    assert(m.probe_summary(3)=="-1/-1/--");
     assert(m.battery[1]==-1);
     assert(get_type_error==0);
     assert(close_calls==1);

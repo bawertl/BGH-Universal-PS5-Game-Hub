@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #if defined(BGH_TARGET_PS5)
 #include <dlfcn.h>
 #endif
@@ -15,6 +16,17 @@ public:
     std::array<int,4> state{{-1,-1,-1,-1}};
     std::array<int,4> battery{{-1,-1,-1,-1}};
     std::array<int,4> charging{{-1,-1,-1,-1}};
+    // Diagnostic fields are last return values, not connected/battery evidence.
+    // -999 means no call was made. Read-state struct offsets remain unverified
+    // for firmware 13.60 and need a physical two-pad test.
+    std::array<int,4> last_get{{-999,-999,-999,-999}};
+    std::array<int,4> last_open{{-999,-999,-999,-999}};
+    std::array<int,4> last_read{{-999,-999,-999,-999}};
+    std::string probe_summary(unsigned slot) const {
+        if(slot>=4)return "?";
+        const auto code=[](int value){return value==-999?std::string("--"):std::to_string(value);};
+        return code(last_get[slot])+"/"+code(last_open[slot])+"/"+code(last_read[slot]);
+    }
     ControllerStatus()=default;
     ControllerStatus(const ControllerStatus&)=delete;
     ControllerStatus& operator=(const ControllerStatus&)=delete;
@@ -37,6 +49,9 @@ public:
         // status or reads from its live input queue.
         for(unsigned slot=1;slot<4;++slot){
             state[slot]=-1;
+            last_get[slot]=-999;
+            last_open[slot]=-999;
+            last_read[slot]=-999;
             battery[slot]=-1;
             charging[slot]=-1;
         }
@@ -55,14 +70,14 @@ public:
         // Additional indices may be unsupported on particular PS5 builds;
         // leave those slots unknown rather than fabricate disconnected pads.
         for(int index=1;index<4;++index){
-            const int status=read_pad(initial_user,0,index);
+            const int status=read_pad(initial_user,0,index,index);
             if(status>=0)state[static_cast<unsigned>(index)]=status;
         }
         // Other signed-in users can own additional pads. Place confirmed
         // connected pads in remaining empty slots without touching the UI pad.
         for(const auto user:logged){
             if(user<0 || user==initial_user)continue;
-            const int status=read_pad(user,0,0);
+            const int status=read_pad(user,0,0,-1);
             if(status!=1)continue;
             for(unsigned slot=1;slot<4;++slot){
                 if(state[slot]!=1){state[slot]=1;break;}
@@ -85,16 +100,19 @@ private:
     Read read_=nullptr;
     Close close_=nullptr;
     bool resolved_=false;
-    int read_pad(std::int32_t user,int type,int index){
+    int read_pad(std::int32_t user,int type,int index,int diagnostic_slot){
         int handle=get_(user,type,index);
+        if(diagnostic_slot>=0)last_get[static_cast<unsigned>(diagnostic_slot)]=handle;
         bool owned=false;
         if(handle<0 && open_ && close_){
             handle=open_(user,type,index,nullptr);
+            if(diagnostic_slot>=0)last_open[static_cast<unsigned>(diagnostic_slot)]=handle;
             owned=handle>=0;
         }
         if(handle<0)return -1;
         alignas(8) unsigned char sample[120]{};
         const int result=read_(handle,sample);
+        if(diagnostic_slot>=0)last_read[static_cast<unsigned>(diagnostic_slot)]=result;
         if(owned)close_(handle);
         if(result!=0)return -1;
         std::int32_t connected=0;

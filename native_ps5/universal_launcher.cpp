@@ -72,7 +72,7 @@ constexpr std::array<const char *,4> kSettingsTabs = {
     "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.12-UI-POLISH [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.13-UI-PERSIST [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -486,7 +486,10 @@ public:
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
-        if(settings_ && settings_tab_==3 && !gallery_selection_loaded_after_boot_){
+        // Restore persisted background/logo once during normal frames, not in
+        // enter()/constructor (V1.1.11 startup guard). Never depend on opening
+        // Settings; start after initial renderer and input have settled.
+        if(!gallery_selection_loaded_after_boot_ && clock_>=2.0f){
             gallery_selection_loaded_after_boot_=true;
             if(!ulg::bgh_gallery::load_selection("/download0/hui/ulg_v04/gallery.cfg",gallery_selection_))
                 (void)ulg::bgh_gallery::load_selection("/data/bgh/gallery.cfg",gallery_selection_);
@@ -694,7 +697,7 @@ public:
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.12";
+        const std::string release_label="BGH V1.1.13";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2137,52 +2140,60 @@ private:
     }
     void draw_platform_bar(gfx::DrawList &list) const {
         if(sidebar_items_.empty())return;
-        // Preserve the registry-driven order and use catalogue, not indices_,
-        // so the numbers remain valid while navigating platform tabs.
+        // Seven capsules inside the 430..1440 top rail, 2 px spacing.
+        // Count is NEVER clipped; shorten only the platform name if needed.
         constexpr int visible=7;
+        constexpr float pill_width=136.0f;
+        constexpr float pill_step=138.0f;
+        constexpr float text_offset=36.0f;
+        constexpr float text_budget=pill_width-text_offset-6.0f;
         const int n=static_cast<int>(sidebar_items_.size());
         const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
-        glass_card(list,{450,106,972,58},22);
+        glass_card(list,{430,106,1010,58},22);
         for(int slot=0;slot<visible;++slot){
             const int index=first+slot;
             if(index>=n)break;
             const auto &entry=sidebar_items_[static_cast<std::size_t>(index)];
             const bool active=index==tab_;
-            const float x=461+slot*137.0f;
-            const Rect pill{x,115,127,40};
+            const float x=442.0f+slot*pill_step;
+            const Rect pill{x,115,pill_width,40};
             if(active){
-                list.glow({x-2,113,131,44},17,12,Color::rgb(0x00A2FF,0.38f));
+                list.glow({x-2,113,pill_width+4,44},17,12,Color::rgb(0x00A2FF,0.38f));
                 list.gradient_rect(pill,17,Color::rgb(0x005EBD,0.88f),Color::rgb(0x007BD5,0.91f));
                 list.bordered_rect(pill,17,Color::rgb(0xFFFFFF,0),1.1f,Color::rgb(0x7DEAFF));
             }
             if(entry.is_platform && !entry.icon.empty()){
                 const auto tex=covers_.get(std::string("/app0/assets/platforms/")+entry.icon);
-                if(tex)list.image(tex,{std::floor(x+7.0f),120,27,29},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-                else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
-            }else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
+                if(tex)list.image(tex,{std::floor(x+5.0f),120,27,29},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                else draw_platform_icon(list,entry.legacy_icon,x+7,119,Color::rgb(0xF6FAFF));
+            }else draw_platform_icon(list,entry.legacy_icon,x+7,119,Color::rgb(0xF6FAFF));
             const std::string name=entry.id=="Alle Spiele"?"Spiele":entry.label;
             const std::string count=std::to_string(count_games_for_entry(entry));
-            // The fixed capsule has only 80 px of text space. Prefer a short
-            // caption to drawing a clipped number or overflowing the next tab.
+            const std::string suffix=" | "+count;
             std::string label=name;
-            const float max_width=78.0f;
             float text_size=14.0f;
-            std::string display=label+" | "+count;
-            while(text_size>12.0f && serif_text_width(display,text_size)>max_width)
+            std::string display=label+suffix;
+            // Using the existing serif atlas width as a conservative bound.
+            // Reserve at least 6 px at the trailing edge of each capsule.
+            while(text_size>11.0f && serif_text_width(display,text_size)>text_budget)
                 text_size-=1.0f;
-            while(label.size()>2 && serif_text_width(display,text_size)>max_width){
-                label=label.substr(0,label.size()-1);
-                display=label+" | "+count;
+            while(!label.empty() && serif_text_width(display,text_size)>text_budget){
+                label.pop_back();
+                display=label+suffix;
             }
+            // Extremely large counts can exceed any fixed pill; display a
+            // compact numeric indicator, but keep the original count intact
+            // for normal library sizes.
+            if(serif_text_width(display,text_size)>text_budget)
+                display=count;
             translated_text(list,context_.fonts.regular,display,
-                std::floor(x+42.0f),140.0f,text_size,
+                std::floor(x+text_offset),140.0f,text_size,
                 active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB));
-            // Draw separator in the 10-pixel gap, not across the selected pill.
             if(slot<visible-1 && index+1<n)
-                list.rounded_rect({std::floor(x+131.0f),124,1,22},0.5f,
+                list.rounded_rect({std::floor(x+137.0f),124,1,22},0.5f,
                     Color::rgb(0x3B4D68,0.5f));
         }
-        if(first>0)serif_text(list,"<",438,142,20,Color::rgb(0x8CDFFF));
+        if(first>0)serif_text(list,"<",432,142,20,Color::rgb(0x8CDFFF));
         if(first+visible<n)serif_text(list,">",1425,142,20,Color::rgb(0x8CDFFF));
     }
     void draw_storage_widgets(gfx::DrawList &list) const {
@@ -2936,7 +2947,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.12 UI-Polish",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.13 UI-Persist",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -2964,10 +2975,17 @@ private:
         translated_text(list,fonts.regular,shorten("PROBE fallback: schreiben="+storage_status_label(probe_fallback_write_status_)+
             "  lesen="+storage_status_label(probe_fallback_read_status_)+
             "  aufraeumen="+probe_fallback_cleanup_status_,150),201,810,17,kInk);
+        // Probe return values from the existing periodic poll (no new PS5 calls).
+        // -999 = not called / symbol missing. Only on-console tests can
+        // establish whether additional controller indices work here.
+        translated_text(list,fonts.regular,
+            "PAD G/O/R C2="+controllers_.probe_summary(1)+
+            "  C3="+controllers_.probe_summary(2)+
+            "  C4="+controllers_.probe_summary(3),201,839,16,kAccent);
         translated_text(list,fonts.regular,"GESPEICHERTE REFERENZEN="+std::to_string(recent_list_.size())+
             "  PASSENDE KARTEN="+std::to_string(recent_card_count())+
             "  LETZTE ID="+(recent_list_.empty()?"leer":shorten(recent_list_.front(),45)),
-            201,864,17,kAccent);
+            201,886,16,kAccent);
     }
     void draw_browser(app::Frame &frame) const {
         frame.glass=true;auto &list=frame.overlay;const auto &fonts=context_.fonts;

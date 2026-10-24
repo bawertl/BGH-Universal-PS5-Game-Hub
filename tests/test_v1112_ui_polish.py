@@ -1,4 +1,4 @@
-"""V1.1.12 contract: UI changes only, no reintroduced startup blocker."""
+"""V1.1.13 contract: UI changes only, no reintroduced startup blocker."""
 from pathlib import Path
 import subprocess
 
@@ -40,7 +40,7 @@ def test_4_auxiliary_pads_not_polled_in_enter_or_every_frame():
     assert 'next_controller_poll_=clock_+1.0f;' in part
     assert 'next_controller_poll_=5.0f;' in UI
     assert 'sceUserServiceGetInitialUser' in PAD
-    assert 'read_pad(initial_user,0,index)' in PAD
+    assert 'read_pad(initial_user,0,index,index)' in PAD
     assert 'sample+0x4c' in PAD
     assert '0x54' not in PAD
 
@@ -75,18 +75,18 @@ def test_7_snap_fonts_and_correct_version():
     assert 'std::floor(1814.0f)' in UI
     assert 'std::floor(1861.0f)' in UI
     assert 'context_.fonts.regular,display' in UI
-    assert 'BGH V1.1.12-UI-POLISH' in UI
-    assert 'release_label="BGH V1.1.12"' in UI
-    assert 'Version: BGH V1.1.12' in UI
+    assert 'BGH V1.1.13-UI-PERSIST' in UI
+    assert 'release_label="BGH V1.1.13"' in UI
+    assert 'Version: BGH V1.1.13' in UI
 
 
 def test_release_workflow_builds_integrated_source_without_old_overwrite():
-    assert 'branches: [bgh-v1.1.12-ui-polish]' in WF
-    assert 'V1_1_12_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'V1_1_12_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.13-ui-persist]' in WF
+    assert 'V1_1_13_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'V1_1_13_PPSA99079_PS5_TEST.zip' in WF
     assert 'python3 tooling/bgh_apply_v1110.py' not in WF
     assert 'python3 tooling/bgh_startup_guard_v1111.py' not in WF
-    assert 'BGH V1.1.12-UI-POLISH' in WF
+    assert 'BGH V1.1.13-UI-PERSIST' in WF
     for needle in ('make_registered_ps5_launch_plan(g.title_id)',
                    'make_registered_ps4_launch_plan(g.title_id)',
                    'stage_ps5sx2_disc_launch(g.path)',
