@@ -23,6 +23,7 @@ struct Device {
 struct Snapshot {
     Device internal{},external{};
     unsigned usb_count=0;
+    bool usb_connected=false;
 };
 inline Device query(const char* path){
     Device out{};
@@ -52,6 +53,8 @@ inline Snapshot detect(){
         struct stat actual{};
         if(::stat(path,&actual)!=0 || !S_ISDIR(actual.st_mode))continue;
         if(have_base && actual.st_dev==base.st_dev)continue;
+        // A distinct mounted directory was observed. No capacity guessed.
+        out.usb_connected=true;
         const Device d=query(path);
         if(!d.valid)continue;
         // Multiple mount aliases of same external filesystem must not be summed.

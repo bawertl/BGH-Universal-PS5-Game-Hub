@@ -16,6 +16,8 @@
 #include "concepts/playtime_log.hpp"
 #include "concepts/ftp_readonly.hpp"
 #include "controller_status.hpp"
+#include "bgh_theme_gallery.hpp"
+#include "bgh_nextgen_layout.hpp"
 #include "storage_widgets.hpp"
 #include "ui/glyphs.hpp"
 #include "platform/ps5/system.hpp"
@@ -66,18 +68,18 @@ constexpr std::array<const char *,8> kPlatforms={
     "PS5/PS4","PS5","PS4","PS2","Switch","Xbox 360","PS1","PSP"
 };
 constexpr const char *kPathKeys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_-.<+";
-constexpr std::array<const char *,3> kSettingsTabs = {
-    "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe"
+constexpr std::array<const char *,4> kSettingsTabs = {
+    "Emulatoren & Spielordner", "Darstellung & Verhalten", "System & Hilfe", "Hintergruende & Logos"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.9-EMULATOR-AUTODETECTION UI-NEXTGEN-TEST [@BGH_GIT_COMMIT@]";
+constexpr const char *kBuildLabel = "BGH V1.1.12-UI-POLISH [@BGH_GIT_COMMIT@]";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
-constexpr float kGameListRight = 704.0f;
-constexpr float kScreenRight = 1920.0f;
-constexpr float kFanRightMargin = 54.0f;
-constexpr float kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f - 312.0f;
+[[maybe_unused]] constexpr float kGameListRight = 704.0f;
+[[maybe_unused]] constexpr float kScreenRight = 1920.0f;
+[[maybe_unused]] constexpr float kFanRightMargin = 54.0f;
+constexpr float kFanCentreX = 960.0f;
 constexpr float kFanCentreY = 455.0f;
 constexpr float kFanHeaderHeightRatio = 0.162f;
 constexpr std::array<const char *, 9> kTabs = {
@@ -164,7 +166,7 @@ Color platform_color(const std::string &p){
     if(p=="Homebrew")return Color::rgb(0xDAC6ED);
     return Color::rgb(0xB3BBCB);
 }
-bool fan_cover_uses_case_header(const std::string &platform){
+[[maybe_unused]] bool fan_cover_uses_case_header(const std::string &platform){
     return platform=="PS5" || platform=="PS4" || platform=="Switch";
 }
 const char* fan_cover_header_asset(const std::string &platform){
@@ -290,6 +292,31 @@ private:
     std::deque<std::string> order_;
 };
 class UniversalLauncher final : public app::Concept {
+    ulg::bgh_gallery::Selection gallery_selection_{"lake","legacy"};
+    int gallery_row_=0;
+    bool gallery_delete_armed_=false;
+    std::string gallery_message_;
+    std::string gallery_background_cache_="/app0/assets/premium_lake_background.png";
+    std::string gallery_logo_cache_="/app0/assets/bgh_logo.png";
+    bool gallery_selection_loaded_after_boot_=false;
+    void refresh_gallery_paths(){
+        ulg::bgh_gallery::ThemeItem v;
+        if(ulg::bgh_gallery::find(ulg::bgh_gallery::Kind::background,gallery_selection_.background,v))
+            gallery_background_cache_=v.path;
+        else gallery_background_cache_="/app0/assets/premium_lake_background.png";
+        if(ulg::bgh_gallery::find(ulg::bgh_gallery::Kind::logo,gallery_selection_.logo,v))
+            gallery_logo_cache_=v.path;
+        else gallery_logo_cache_.clear();
+    }
+    const std::string& gallery_background_path() const {return gallery_background_cache_;}
+    const std::string& gallery_logo_path() const {return gallery_logo_cache_;}
+    void save_gallery(){
+        refresh_gallery_paths();
+        const bool a=ulg::bgh_gallery::save_selection("/download0/hui/ulg_v04/gallery.cfg",gallery_selection_);
+        const bool b=ulg::bgh_gallery::save_selection("/data/bgh/gallery.cfg",gallery_selection_);
+        gallery_message_=(a||b)?"Design gespeichert":"Design konnte nicht gespeichert werden";
+    }
+
 public:
     explicit UniversalLauncher(app::Context &context) : context_(context) {
         // All writes are restricted to this title's own storage, never game directories.
@@ -311,6 +338,7 @@ public:
         prepare_directory("/download0/hui/ulg_v08");
         prepare_directory(kEmulatorCoverFolder);
         refresh_storage_directory_status();
+
         roots_=ulg::configured_roots(kUserPathsFile,"/app0/assets/paths.conf");
         // Upgrade old combined V0.8 roots to independently editable PS5/PS4
         // internal and external paths. Only BGH preferences are ever written.
@@ -454,10 +482,16 @@ public:
         };
         return kInfo;
     }
-    void enter() override { clock_=0.0f; next_storage_poll_=30.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
+    void enter() override { clock_=0.0f; next_storage_poll_=30.0f; next_controller_poll_=5.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
+        if(settings_ && settings_tab_==3 && !gallery_selection_loaded_after_boot_){
+            gallery_selection_loaded_after_boot_=true;
+            if(!ulg::bgh_gallery::load_selection("/download0/hui/ulg_v04/gallery.cfg",gallery_selection_))
+                (void)ulg::bgh_gallery::load_selection("/data/bgh/gallery.cfg",gallery_selection_);
+            refresh_gallery_paths();
+        }
         if(clock_>=next_storage_poll_){storage_widgets_=ulg::storage_widgets::detect();next_storage_poll_=clock_+30.0f;}
         // Debounce new, synchronous cover decodes during fast navigation.
         // Bundled assets and the three recent cards are always serviced first.
@@ -467,17 +501,24 @@ public:
             (input.nav!=Direction::none || input.is_pressed(Action::page_prev) ||
              input.is_pressed(Action::page_next));
         cover_load_debounce_.advance(dt,navigation_event,selected_,tab_);
-        if(clock_>=next_controller_poll_){controllers_.poll();next_controller_poll_=clock_+1.0f;}
-        // Real connected status from the UI kit's primary DualSense, not a guess.
+        // Preserve V1.1.11 startup: optional Pad discovery begins only after
+        // 5 seconds and polls at most once per second, never during enter().
+        // UI-kit input remains the authority for controller 1.
         controllers_.observe_primary(input.connected);
+        if(clock_>=next_controller_poll_){
+            controllers_.poll();
+            next_controller_poll_=clock_+1.0f;
+        }
         // A single authoritative game index drives the list, fan and information.
         // Animation always follows the CURRENT target; quick key presses never queue tweens.
         const float target=static_cast<float>(selected_);
         visual_selection_=ulg::premium::approach(visual_selection_,target,dt,13.5f);
         list_scroll_=ulg::premium::approach(list_scroll_,
             ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows),dt,15.0f);
-        if(!covers_.has("/app0/assets/bgh_logo.png"))covers_.load("/app0/assets/bgh_logo.png");
-        if(!covers_.has("/app0/assets/premium_lake_background.png"))covers_.load("/app0/assets/premium_lake_background.png");
+        const auto new_logo=gallery_logo_path(); if(!new_logo.empty() && !covers_.has(new_logo))covers_.load(new_logo);
+        const auto new_background=gallery_background_path(); if(!new_background.empty() && !covers_.has(new_background))covers_.load(new_background);
+        for(const char* storage_icon:{"/app0/assets/themes/storage_internal.png","/app0/assets/themes/storage_usb.png"})
+            if(!covers_.has(storage_icon))covers_.load(storage_icon);
         if(!covers_.has("/app0/assets/ui/frosted_lake_backdrop.png"))covers_.load("/app0/assets/ui/frosted_lake_backdrop.png");
         if(!covers_.has("/app0/assets/ui/serif_atlas.png"))covers_.load("/app0/assets/ui/serif_atlas.png");
         // One tiny bundled icon per frame; never synchronously load a whole
@@ -615,31 +656,26 @@ public:
         auto &list=frame.scene;
         const auto &fonts=context_.fonts;
         // Existing landscape and saved artwork stay intact. No replacement wallpaper.
-        const auto background=covers_.get("/app0/assets/premium_lake_background.png");
+        const auto background=covers_.get(gallery_background_path());
         if(background)list.image(background,{0,0,1920,1080},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
         else list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x102033));
         list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x030815,0.33f));
         list.gradient_rect({0,0,1920,194},0,Color::rgb(0x080F1D,0.88f),Color::rgb(0x0A1B29,0.11f));
-        const auto brand=covers_.get("/app0/assets/bgh_logo.png");
-        if(brand)list.image(brand,{30,18,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
+        const auto brand=covers_.get(gallery_logo_path());
+        if(brand && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(brand,{30,18,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
         const auto wordmark=covers_.get("/app0/assets/bgh_wordmark.png");
-        if(wordmark)list.image(wordmark,{109,33,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-        else serif_text(list,"BawertL's Game Hub",113,68,27,kInk,320);
+        if(wordmark && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(wordmark,{109,33,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+        else if(ulg::bgh_gallery::logo_should_render(gallery_selection_))serif_text(list,"BawertL's Game Hub",113,68,27,kInk,320);
         // Reserved crest/crown asset slot; do not fabricate an official logo.
         draw_controllers(list);
         serif_text(list,current_time_label(),1681,49,23,Color::rgb(0xF3F8FF));
         serif_text(list,current_date_label(),1680,74,16,Color::rgb(0xCAD6E7));
         const auto search_icon=covers_.get("/app0/assets/ui/search.png");
-        if(search_icon)list.image(search_icon,{1814,22,30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
+        if(search_icon)list.image(search_icon,{std::floor(1814.0f),std::floor(22.0f),30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
         const auto settings_icon=covers_.get("/app0/assets/ui/settings.png");
-        if(settings_icon)list.image(settings_icon,{1861,22,30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
+        if(settings_icon)list.image(settings_icon,{std::floor(1861.0f),std::floor(22.0f),30,30},gfx::kFullUv,Color::rgb(0xE8F6FF),0);
         draw_platform_bar(list); // dynamic, horizontal NextGen capsule row
         draw_storage_widgets(list);
-        // Compact section label retains category clarity without the old sidebar.
-        const std::string section_title=active_sidebar_id()=="Emulatoren"?"Meine Emulatoren":
-            (active_sidebar_id()=="Apps"?"Meine Apps":"Meine Spiele");
-        serif_text(list,section_title,72,229,23,Color::rgb(0xECF7FF),282);
-        serif_text(list,std::to_string(indices_.size()),72,254,15,Color::rgb(0x90DFFE));
         if(indices_.empty()){
             serif_text(list,"Keine Eintraege in dieser Kategorie",616,531,36,kInk,1100);
         }else{
@@ -658,7 +694,7 @@ public:
         ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         serif_text(list,music_settings_.enabled?"Musik: AN":"Musik: AUS",1620,1035,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.9";
+        const std::string release_label="BGH V1.1.12";
         serif_text(list,release_label+" UI-TEST",1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -1755,13 +1791,13 @@ private:
         float h=410*scale;
         // The decoded source determines the aspect ratio of PS2/Xbox art.
         // Synthetic PS4/PS5/Switch cases keep their validated fixed layout.
-        const bool with_case_header=fan_cover_uses_case_header(g.platform);
+        const bool with_case_header=false; // V1.1.10: clean full artwork
         const auto cover_dimensions=covers_.size(g.cover_path);
         if(!with_case_header && covers_.has(g.cover_path))
             h=fan_native_card_height(cover_dimensions.first,cover_dimensions.second,w,h);
         // V1.0.0 uses a tighter five-cover hero fan: larger main cover, wider wings.
-        const float near_distance=std::min(depth,1.0f)*215.0f;
-        const float far_distance=std::max(0.0f,depth-1.0f)*145.0f;
+        const float near_distance=std::min(depth,1.0f)*251.55f;
+        const float far_distance=std::max(0.0f,depth-1.0f)*169.65f;
         const float distance=near_distance+far_distance;
         const float cx=kFanCentreX+std::copysign(distance,relative);
         const float cy=kFanCentreY+depth*18.0f;
@@ -1814,7 +1850,7 @@ private:
             const gfx::Rect image_uv=with_case_header?
                 uv_cover_fit(size.first,size.second,art_rect):gfx::kFullUv;
             list.image(image,image_rect,image_uv,
-                Color::rgb(0xFFFFFF,depth>1.0f?0.84f:1.0f),with_case_header?12:16);
+                Color::rgb(0xFFFFFF,depth>1.0f?0.70f:1.0f),with_case_header?12:16);
         } else {
             list.gradient_rect(card,18,Color::rgb(0x0F2541),platform_color(g.platform).with_alpha(0.65f));
             if(with_case_header){
@@ -1965,7 +2001,6 @@ private:
     }
     void draw_recent_cards(gfx::DrawList &list) const {
         serif_text(list,"Zuletzt gespielt",369,898,21,Color::rgb(0xF0F8FF));
-        serif_text(list,"Letzte Startauftraege",578,896,14,Color::rgb(0xC6D8E6),600);
         const auto recent=recent_indices();
         if(recent_save_error_)serif_text(list,"Verlauf konnte nicht gespeichert werden",1035,895,17,Color::rgb(0xFFD3A3));
         for(int i=0;i<3;++i){
@@ -2049,7 +2084,7 @@ private:
         }
         if(platform==8){
             const auto texture=covers_.get("/app0/assets/ui/clock.png");
-            if(texture){list.image(texture,{x-5,y-7,37,37},gfx::kFullUv,Color::rgb(0xFFFFFF),0);return;}
+            if(texture){list.image(texture,{std::floor(x+1.0f),std::floor(y+1.0f),24,24},gfx::kFullUv,Color::rgb(0xFFFFFF),0);return;}
             list.bordered_rect({x+1,y+2,23,23},12,Color::rgb(0xFFFFFF,0.0f),2,tint);
             list.rounded_rect({x+12,y+7,2,8},1,tint);
             list.rounded_rect({x+12,y+14,6,2},1,tint);return;
@@ -2067,20 +2102,43 @@ private:
         }
         if(platform==0 || platform==6){
             const auto texture=covers_.get(platform==0?"/app0/assets/ui/grid.png":"/app0/assets/ui/emulator.png");
-            if(texture){list.image(texture,{x-5,y-7,37,37},gfx::kFullUv,Color::rgb(0xFFFFFF),0);return;}
-            list.rounded_rect({x+1,y+3,10,10},3,tint);
-            list.rounded_rect({x+14,y+3,10,10},3,tint);
-            list.rounded_rect({x+1,y+16,10,10},3,tint);
-            list.rounded_rect({x+14,y+16,10,10},3,tint);return;
+            if(texture){
+                list.image(texture,{std::floor(x+1.0f),std::floor(y+6.0f),20,20},
+                    gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                return;
+            }
+            list.rounded_rect({x+1,y+6,8,8},2,tint);
+            list.rounded_rect({x+11,y+6,8,8},2,tint);
+            list.rounded_rect({x+1,y+16,8,8},2,tint);
+            list.rounded_rect({x+11,y+16,8,8},2,tint);return;
         }
         list.rounded_rect({x+3,y+2,18,25},5,tint);
         list.rounded_rect({x+7,y+6,10,14},2,Color::rgb(0x0F2340));
         list.rounded_rect({x+9,y+23,6,2},1,Color::rgb(0x0F2340));
     }
+    int count_games_for_entry(const SidebarItem &entry) const {
+        int count=0;
+        for(const auto &g:catalogue_.games){
+            if(entry.id=="Alle Spiele"){
+                if(g.platform!="Homebrew")++count;
+            }else if(entry.id=="Favoriten"){
+                if(favorites_.count(g.id)>0)++count;
+            }else if(entry.id=="Zuletzt"){
+                if(game_in_recent(g))++count;
+            }else if(entry.id=="Emulatoren"){
+                if(g.platform=="Homebrew" && is_emulator_app(g))++count;
+            }else if(entry.id=="Apps"){
+                if(g.platform=="Homebrew" && !is_emulator_app(g))++count;
+            }else if(g.platform==entry.id){
+                ++count;
+            }
+        }
+        return count;
+    }
     void draw_platform_bar(gfx::DrawList &list) const {
         if(sidebar_items_.empty())return;
-        // Build only from the saved active/configured platform registry.
-        // Favoriten and Zuletzt remain available; platform ordering is preserved.
+        // Preserve the registry-driven order and use catalogue, not indices_,
+        // so the numbers remain valid while navigating platform tabs.
         constexpr int visible=7;
         const int n=static_cast<int>(sidebar_items_.size());
         const int first=std::clamp(tab_-visible/2,0,std::max(0,n-visible));
@@ -2099,44 +2157,59 @@ private:
             }
             if(entry.is_platform && !entry.icon.empty()){
                 const auto tex=covers_.get(std::string("/app0/assets/platforms/")+entry.icon);
-                if(tex)list.image(tex,{x+7,120,27,29},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                if(tex)list.image(tex,{std::floor(x+7.0f),120,27,29},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
                 else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
             }else draw_platform_icon(list,entry.legacy_icon,x+9,119,Color::rgb(0xF6FAFF));
-            const std::string label=entry.id=="Alle Spiele"?"Spiele":entry.label;
-            serif_text(list,shorten(label,10),x+43,140,17,
-                active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB),84);
+            const std::string name=entry.id=="Alle Spiele"?"Spiele":entry.label;
+            const std::string count=std::to_string(count_games_for_entry(entry));
+            // The fixed capsule has only 80 px of text space. Prefer a short
+            // caption to drawing a clipped number or overflowing the next tab.
+            std::string label=name;
+            const float max_width=78.0f;
+            float text_size=14.0f;
+            std::string display=label+" | "+count;
+            while(text_size>12.0f && serif_text_width(display,text_size)>max_width)
+                text_size-=1.0f;
+            while(label.size()>2 && serif_text_width(display,text_size)>max_width){
+                label=label.substr(0,label.size()-1);
+                display=label+" | "+count;
+            }
+            translated_text(list,context_.fonts.regular,display,
+                std::floor(x+42.0f),140.0f,text_size,
+                active?Color::rgb(0xFFFFFF):Color::rgb(0xCEDDEB));
+            // Draw separator in the 10-pixel gap, not across the selected pill.
+            if(slot<visible-1 && index+1<n)
+                list.rounded_rect({std::floor(x+131.0f),124,1,22},0.5f,
+                    Color::rgb(0x3B4D68,0.5f));
         }
         if(first>0)serif_text(list,"<",438,142,20,Color::rgb(0x8CDFFF));
         if(first+visible<n)serif_text(list,">",1425,142,20,Color::rgb(0x8CDFFF));
     }
     void draw_storage_widgets(gfx::DrawList &list) const {
-        const auto one=[&](const ulg::storage_widgets::Device &dev,const char* title,float x){
+        // Draw consumes the cached snapshot; never probe the filesystem in a
+        // render frame and never reintroduce the unsafe PS5 statvfs path.
+        const auto one=[&](bool connected,const char* title,const char* status_text,
+                           const char* icon_path,float x){
             const Rect panel{x,177,216,91};
             glass_card(list,panel,15);
-            serif_text(list,title,x+13,201,16,Color::rgb(0xF1F9FF),190);
-            if(!dev.valid){
-                serif_text(list,"Nicht verfuegbar",x+13,229,14,Color::rgb(0xD3DCEB),190);
-                list.rounded_rect({x+13,244,190,6},3,Color::rgb(0x29374D,0.83f));
-                return;
+            const auto icon=covers_.get(icon_path);
+            if(icon)list.image(icon,{std::floor(x+13.0f),192,28,28},
+                gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+            serif_text(list,title,x+48,201,15,Color::rgb(0xF1F9FF),160);
+            serif_text(list,status_text,x+13,230,14,
+                connected?Color::rgb(0x7DEAFF):Color::rgb(0x8D9CAE),190);
+            list.rounded_rect({x+13,248,190,5},2.5f,Color::rgb(0x24354C,0.88f));
+            if(connected){
+                list.glow({x+13,247,190,7},3,5,Color::rgb(0x00B5FF,0.35f));
+                list.gradient_rect({x+13,248,190,5},2.5f,
+                    Color::rgb(0x007BD5),Color::rgb(0x00E5FF));
             }
-            const std::string amount=ulg::storage_widgets::format_gib(dev.used_bytes)+" / "+
-                ulg::storage_widgets::format_gib(dev.total_bytes);
-            serif_text(list,amount,x+13,228,14,Color::rgb(0xCFEBFA),190);
-            const float pct=dev.total_bytes?
-                std::min(1.0f,static_cast<float>(dev.used_bytes)/static_cast<float>(dev.total_bytes)):0.0f;
-            list.rounded_rect({x+13,244,190,7},3.5f,Color::rgb(0x24354C,0.88f));
-            if(pct>0){
-                list.glow({x+13,243,std::max(1.0f,190*pct),9},4,7,Color::rgb(0x00B5FF,0.28f));
-                list.gradient_rect({x+13,244,std::max(1.0f,190*pct),7},3.5f,
-                    Color::rgb(0x0055FF),Color::rgb(0x00D5FF));
-            }
-            serif_text(list,std::to_string(static_cast<int>(pct*100+0.5f))+"%",x+164,201,15,
-                Color::rgb(0x9DDEFF));
         };
-        one(storage_widgets_.internal,"Interner Speicher",1441);
-        const std::string usb_title=storage_widgets_.usb_count>1?
-            std::string("USB (")+std::to_string(storage_widgets_.usb_count)+")":"Externer USB";
-        one(storage_widgets_.external,usb_title.c_str(),1665);
+        one(true,"Interner Speicher","System bereit",
+            "/app0/assets/themes/storage_internal.png",1441);
+        const bool usb_connected=storage_widgets_.usb_connected;
+        one(usb_connected,"Externer USB",usb_connected?"USB verbunden":"Nicht verbunden",
+            "/app0/assets/themes/storage_usb.png",1665);
     }
     void draw_detail(app::Frame &frame) const {
         auto &list=frame.overlay;const auto &fonts=context_.fonts;
@@ -2396,7 +2469,40 @@ private:
             }
             return;
         }
-        if(settings_tab_!=3)return; // Legacy folder tab retired; preserve its helpers for compatibility.
+        if(settings_tab_==3){
+            if(input.nav==Direction::up){gallery_row_=std::max(0,gallery_row_-1);gallery_delete_armed_=false;return;}
+            if(input.nav==Direction::down){gallery_row_=std::min(1,gallery_row_+1);gallery_delete_armed_=false;return;}
+            const auto kind=gallery_row_==0?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+            if(input.is_pressed(Action::confirm)){
+                const auto choices=ulg::bgh_gallery::list(kind);
+                const std::string selected=gallery_row_==0?gallery_selection_.background:gallery_selection_.logo;
+                int pos=-1;
+                for(std::size_t i=0;i<choices.size();++i)
+                    if(choices[i].id==selected){pos=static_cast<int>(i);break;}
+                if(!choices.empty()){
+                    ulg::bgh_gallery::select(kind,choices[static_cast<std::size_t>((pos+1)%static_cast<int>(choices.size()))].id,gallery_selection_);
+                    save_gallery();
+                }
+                gallery_delete_armed_=false;
+                return;
+            }
+            if(input.is_pressed(Action::north)){
+                const std::string id=gallery_row_==0?gallery_selection_.background:gallery_selection_.logo;
+                if(id.rfind("user:",0)!=0){gallery_message_="Vorinstallierte Motive sind geschuetzt";gallery_delete_armed_=false;return;}
+                if(!gallery_delete_armed_){gallery_message_="Dreieck erneut: eigenes Bild loeschen";gallery_delete_armed_=true;return;}
+                const auto prev=gallery_selection_;
+                if(gallery_row_==0)gallery_selection_.background="showroom";
+                else gallery_selection_.logo="none";
+                const bool deleted=ulg::bgh_gallery::remove_user_image(kind,id,gallery_selection_,true);
+                if(!deleted)gallery_selection_=prev;
+                else save_gallery();
+                gallery_message_=deleted?"Eigenes Bild geloescht":"Loeschen fehlgeschlagen";
+                gallery_delete_armed_=false;
+                return;
+            }
+            return;
+        }
+        if(settings_tab_!=4)return; // Legacy folder tab retired; preserve its helpers for compatibility.
         // Inside the retired folder tab, L2/R2 preserved the old platform filter.
         if(input.is_pressed(Action::jump_prev)||input.is_pressed(Action::jump_next)){
             const int count=static_cast<int>(kPlatforms.size()+1);
@@ -2533,8 +2639,8 @@ private:
         translated_text(list,fonts.semibold,kBuildLabel,1230,133,15,kAccent);
         // Tab buttons visually echo the shoulder buttons; only one is active.
         for(std::size_t i=0;i<kSettingsTabs.size();++i){
-            const float x=184+static_cast<float>(i)*520.0f;
-            const Rect tab_rect{x,171,514,62};
+            const float x=184+static_cast<float>(i)*385.0f;
+            const Rect tab_rect{x,171,379,62};
             const bool active=settings_tab_==static_cast<int>(i);
             list.rounded_rect(tab_rect,15,active?Color::rgb(0x536B8B,0.93f):Color::rgb(0x263448,0.74f));
             list.bordered_rect(tab_rect,15,Color::rgb(0xFFFFFF,0),1.2f,
@@ -2544,7 +2650,8 @@ private:
         }
         if(settings_tab_==0)draw_settings_emulators(list);
         else if(settings_tab_==1)draw_settings_presentation(list);
-        else draw_settings_system(list);
+        else if(settings_tab_==2)draw_settings_system(list);
+        else draw_settings_theme_gallery(list);
         // A single, context-aware glyph legend at the bottom of Settings.
         // The emulator tab changes the X, triangle and touchpad actions as
         // focus enters its accordion; no contradictory duplicate text row.
@@ -2793,6 +2900,28 @@ private:
         if(!message.empty())translated_text(list,fonts.regular,
             shorten(message,110),190,932,18,kAccent);
     }
+    void draw_settings_theme_gallery(gfx::DrawList &list) const {
+        const auto& fonts=context_.fonts;
+        translated_text(list,fonts.display,"Hintergruende & Logos",190,293,35,kInk);
+        translated_text(list,fonts.regular,"X: Motiv wechseln  |  Dreieck zweimal: eigenes Motiv loeschen",190,334,21,kMuted);
+        const auto backgrounds=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
+        const auto logos=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::logo);
+        const auto label=[](const std::vector<ulg::bgh_gallery::ThemeItem>& choices,const std::string& id){
+            for(const auto& item:choices)if(item.id==id)return item.id;
+            return std::string("Nicht verfuegbar");
+        };
+        for(int i=0;i<2;++i){
+            const float y=392.0f+static_cast<float>(i)*160.0f;
+            list.bordered_rect({185,y,1540,135},18,Color::rgb(0x273A52,0.89f),2.0f,
+                i==gallery_row_?Color::rgb(0x06D5FF):Color::rgb(0xFFFFFF,0.13f));
+            const bool bg=i==0;
+            translated_text(list,fonts.semibold,bg?"Hintergrundbild":"BGH Logo",222,y+51,31,kInk);
+            translated_text(list,fonts.semibold,label(bg?backgrounds:logos,
+                bg?gallery_selection_.background:gallery_selection_.logo),775,y+53,25,kInk);
+        }
+        translated_text(list,fonts.regular,"Eigene Bilder per FTP nach /data/bgh/themes/backgrounds oder /data/bgh/themes/logos",190,757,18,kMuted);
+        translated_text(list,fonts.regular,gallery_message_,190,847,19,Color::rgb(0x79D8FF));
+    }
     void draw_settings_system(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
         list.rounded_rect({184,269,750,325},18,Color::rgb(0x263447,0.82f));
@@ -2807,7 +2936,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.9 Emulator-Erkennung",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.12 UI-Polish",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -2954,7 +3083,7 @@ private:
     ulg::ControllerStatus controllers_;
     ulg::storage_widgets::Snapshot storage_widgets_{};
     float next_storage_poll_=0.0f;
-    float next_controller_poll_=0.0f;
+    float next_controller_poll_=5.0f;
     bool recent_focus_=false;
     int recent_selected_=0;
     std::set<std::string> recent_;

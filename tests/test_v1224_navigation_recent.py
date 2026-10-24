@@ -38,7 +38,7 @@ def test_fallback_recent_storage_and_ui_guardrails_are_present():
     assert 'read_preferences(kFallbackRecentBackupFile' in SRC
     assert 'run_storage_probe(kPrimaryStateFolder,"storage_probe_v126_primary.bin"' in SRC
     assert 'run_storage_probe(kFallbackStateFolder,"storage_probe_v126_fallback.bin"' in SRC
-    assert 'Letzte Startauftraege' in SRC
+    assert 'Letzte Startauftraege' not in SRC  # removed in V1.1.12
     assert 'if(!launch_message_.empty())serif_text(list,shorten(launch_message_,92)' in SRC
 
 
@@ -87,11 +87,12 @@ int main(int argc,char **argv){
 
 def test_workflow_branch_artifact_and_native_package_paths():
     build = (ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
-    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
-    assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in build
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.9-nextgen-ui"' in WORKFLOW
+    # Current release integration supersedes the old V1.1.9 CI naming.
+    assert 'branches: [bgh-v1.1.12-ui-polish]' in WORKFLOW
+    assert 'BGH-V1-1-12-UI-POLISH-PPSA99079-TEST' in WORKFLOW
+    assert 'V1_1_12_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_12_${TITLE_ID}_PS5_TEST.zip' in build
+    assert "bgh-v1.1.12-ui-polish" in WORKFLOW
 
 
 def test_real_ui_kit_l3_action_uses_supported_left_stick_glyph():
