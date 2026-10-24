@@ -133,9 +133,8 @@ inline bool remove_user_image(Kind kind, const std::string& id,
     return ::unlink(path.c_str()) == 0;
 }
 inline bool logo_should_render(const Selection& sel) {
-    ThemeItem background;
-    return find(Kind::background,sel.background,background) &&
-           !background.contains_logo && sel.logo != "none";
+    // No opendir/lstat during every rendered frame.
+    return sel.logo != "none" && sel.background != "mountain_crown";
 }
 } // namespace bgh_gallery
 } // namespace ulg
