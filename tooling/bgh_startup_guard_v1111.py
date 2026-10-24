@@ -75,6 +75,15 @@ def patch():
         'if(clock_>=next_controller_poll_){controllers_.poll();next_controller_poll_=clock_+1.0f;}',
         '/* V1.1.11 safe mode: optional scePad monitor disabled until PS5 verification. */',
         'Disable optional Pad polling')
+    # -Werror=unused-private-field on the PS5 Clang build: the timer's
+    # only consumer was the just-disabled polling call. Remove the original
+    # member as well. Keep all other controller and launch state untouched.
+    s = once(s,
+        '    float next_controller_poll_=0.0f;\n',
+        '',
+        'Remove abandoned secondary-controller polling timer')
+    if 'next_controller_poll_' in s:
+        raise RuntimeError('Unused secondary-controller timer still present')
     if 'controllers_.observe_primary(input.connected);' not in s:
         raise RuntimeError('Primary UI-kit controller status missing')
 
