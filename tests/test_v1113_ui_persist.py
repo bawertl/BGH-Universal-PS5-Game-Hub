@@ -40,5 +40,5 @@ def test_storage_and_build_startup_guards_retained():
     assert 'statvfs(' not in UI
     assert 'statvfs(' not in (ROOT/'native_ps5/bgh_storage_metrics.hpp').read_text()
     assert 'V1_1_29_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'bgh-v1.1.29' in WF
+    assert 'bgh-v1.1.29-fix1' in WF
     assert 'PPSA99079' in WF

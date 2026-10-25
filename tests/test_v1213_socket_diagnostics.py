@@ -97,7 +97,7 @@ def test_only_manual_noninvasive_loopback_diagnostic():
     assert 'BGH V1.1.29' in gui
     assert "bool local_services_checked_=false" in gui
     assert 'PortProbeStage stage' in header
-    assert 'bgh-v1.1.29' in workflow
+    assert 'bgh-v1.1.29-fix1' in workflow
     assert 'V1_1_29_PPSA99079_PS5_TEST.zip' in workflow
 
 
