@@ -46,7 +46,7 @@ def test_preblurred_artifact_and_build_branch():
     assert 'frosted_lake_backdrop.png' in glass
     assert 'lake_uv{r.x/1920.0f,r.y/1080.0f,r.w/1920.0f,r.h/1080.0f}' in glass
     assert 'list.image(blurred,r,lake_uv' in glass
-    assert 'branches: [bgh-v1.1.26]' in WF
+    assert 'branches: [bgh-v1.1.26-fix1]' in WF
     assert 'BGH-V1-1-26-PPSA99079' in WF
     assert 'BGH V1.1.26' in CPP
 

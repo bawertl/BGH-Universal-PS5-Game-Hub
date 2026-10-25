@@ -241,4 +241,4 @@ def test_ps5_ps4_launch_protocol_unchanged_except_v127_prelaunch_history():
     assert 'O_CREAT' not in (NATIVE/'ps2_autostart.hpp').read_text()
     overlay=(ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert "project/'native_ps5'/'ftp_ps2_writer.cpp'" in overlay
-    assert 'bgh-v1.1.26' in (ROOT/'.github/workflows/ps5-build.yml').read_text()
+    assert 'bgh-v1.1.26-fix1' in (ROOT/'.github/workflows/ps5-build.yml').read_text()

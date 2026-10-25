@@ -90,7 +90,7 @@ def test_ps2_ftp_uses_exact_single_filename_and_keeps_verification():
 
 def test_release_identity_and_preserved_network_backends():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.26' in wf
+    assert 'bgh-v1.1.26-fix1' in wf
     assert 'BGH V1.1.26' in UI
     assert 'BGH V1.1.26' in UI
     assert 'PPSA99303' in UI

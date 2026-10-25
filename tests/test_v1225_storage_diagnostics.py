@@ -87,8 +87,8 @@ def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
 
 
 def test_workflow_is_v126_and_legacy_launch_checks_remain():
-    assert 'branches: [bgh-v1.1.26]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.26"' in WORKFLOW
+    assert 'branches: [bgh-v1.1.26-fix1]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.26-fix1"' in WORKFLOW
     assert 'BGH-V1-1-26-PPSA99079' in WORKFLOW
     assert 'V1_1_26_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'BGH V1.1.26' in SOURCE
