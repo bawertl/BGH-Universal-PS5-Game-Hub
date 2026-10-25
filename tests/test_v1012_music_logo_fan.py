@@ -23,12 +23,12 @@ def test_logo_real_files_and_gui_branding():
 
 def test_center_and_release_updated_without_touching_scroll_debounce():
     assert 'kFanCentreX = (kGameListRight + (kScreenRight-kFanRightMargin))*0.5f + 42.0f' in CPP
-    assert 'BGH V1.1.28' in CPP
+    assert 'BGH V1.1.29' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
     assert 'kQuietSeconds = 0.035f' in (ROOT/'native_ps5/cover_load_debounce.hpp').read_text()
     assert 'if(order_.size()>=256)' in CPP
-    assert 'branches: [bgh-v1.1.28]' in WF
-    assert 'BGH-V1-1-28-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.29]' in WF
+    assert 'BGH-V1-1-29-PPSA99079' in WF
 
 
 def test_audio_ogg_is_decodable_48k_stereo():

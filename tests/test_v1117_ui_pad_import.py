@@ -48,9 +48,9 @@ def test_visual_changes_but_no_game_launch_regressions():
 
 
 def test_current_version_and_build():
-    assert 'BGH V1.1.28' in UI
-    assert 'bgh-v1.1.28' in WORKFLOW
-    assert 'V1_1_28_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.29' in UI
+    assert 'bgh-v1.1.29' in WORKFLOW
+    assert 'V1_1_29_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'APP_IMPORT_STUBS' in OVERLAY
 
 

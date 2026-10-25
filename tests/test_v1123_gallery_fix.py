@@ -187,7 +187,7 @@ def test_theme_galleries_are_builtin_only_but_backend_import_helpers_remain():
     assert 'gallery_choices_=ulg::bgh_gallery::builtins(kind);' in source
     assert 'import_from_local_filesystem(kind)' not in source
     assert 'import_from_local_ftp(kind)' not in source
-    assert 'constexpr const char *kBuildLabel = "BGH V1.1.28"' in source
+    assert 'constexpr const char *kBuildLabel = "BGH V1.1.29"' in source
     header=(NATIVE/'bgh_theme_gallery.hpp').read_text()
     assert 'builtin_logo_preview' in header and 'logo_has_embedded_wordmark' in header
     assert 'lstat(path.c_str()' not in header

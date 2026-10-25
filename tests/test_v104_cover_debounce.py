@@ -77,8 +77,8 @@ def test_recent_cover_priority_and_refresh_unchanged():
 def test_new_header_is_shipped_and_version_consistent():
     assert '"cover_load_debounce.hpp"' in UI
     assert "'cover_load_debounce.hpp'" in (ROOT / 'tooling/install_ui_kit_overlay.py').read_text()
-    assert 'branches: [bgh-v1.1.28]' in WORKFLOW
-    assert 'BGH V1.1.28' in UI
+    assert 'branches: [bgh-v1.1.29]' in WORKFLOW
+    assert 'BGH V1.1.29' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'BGH-V1-1-28-PPSA99079' in WORKFLOW
-    assert 'V1_1_28_${TITLE_ID}_PS5_TEST.zip' in (ROOT / 'tooling/build_native_ps5.sh').read_text()
+    assert 'BGH-V1-1-29-PPSA99079' in WORKFLOW
+    assert 'V1_1_29_${TITLE_ID}_PS5_TEST.zip' in (ROOT / 'tooling/build_native_ps5.sh').read_text()
