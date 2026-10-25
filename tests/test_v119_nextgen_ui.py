@@ -39,7 +39,7 @@ def test_tabs_and_buttons_still_use_existing_platforms():
     assert 'music_settings_.enabled' in UI
 
 def test_feature_is_isolated_and_header_installed():
-    assert 'branches: [bgh-v1.1.26-fix1]' in WF
+    assert 'branches: [bgh-v1.1.27]' in WF
     assert "storage_widgets.hpp', concepts/'storage_widgets.hpp'" in OVERLAY
-    assert 'BGH V1.1.26' in UI
+    assert 'BGH V1.1.27' in UI
     assert 'UI-TEST' not in UI

@@ -60,10 +60,10 @@ def test_no_background_ftp_and_only_one_preview_per_frame():
 
 
 def test_branch_is_consistent_with_build_and_installer():
-    assert 'branches: [bgh-v1.1.26-fix1]' in WF
-    assert "bgh-v1.1.26-fix1" in WF and "GITHUB_REF_NAME" in WF
-    assert 'BGH V1.1.26' in UI
-    assert 'V1_1_26_' in BUILD and 'V1_1_26_' in WF
+    assert 'branches: [bgh-v1.1.27]' in WF
+    assert "bgh-v1.1.27" in WF and "GITHUB_REF_NAME" in WF
+    assert 'BGH V1.1.27' in UI
+    assert 'V1_1_27_' in BUILD and 'V1_1_27_' in WF
     assert 'PPSA99079' in WF
     assert 'tests/test_v1125_background_grid.py' in WF
-    assert 'BGH_V1.1.26_FIX1/' in WF
+    assert 'BGH_V1.1.27/' in WF

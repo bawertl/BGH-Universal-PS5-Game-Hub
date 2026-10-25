@@ -82,5 +82,5 @@ def test_package_sources_keep_audio_logo_path_and_workflow():
     assert "PPSA99079" in script
     assert "V1_1_9" in script
     workflow=(ROOT/".github/workflows/ps5-build.yml").read_text()
-    assert "bgh-v1.1.26-fix1" in workflow
-    assert "BGH-V1-1-26" in workflow
+    assert "bgh-v1.1.27" in workflow
+    assert "BGH-V1-1-27" in workflow

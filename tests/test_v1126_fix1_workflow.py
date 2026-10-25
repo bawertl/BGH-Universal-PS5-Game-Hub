@@ -12,12 +12,12 @@ BUILD = (ROOT / 'tooling/build_native_ps5.sh').read_text()
 
 
 def test_branch_name_and_visible_version_are_consistent():
-    assert 'branches: [bgh-v1.1.26-fix1]' in WORKFLOW
-    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.26-fix1'" in WORKFLOW
-    assert 'group: bgh-v1.1.26-fix1-${{ github.ref }}' in WORKFLOW
-    assert 'BGH V1.1.26' in UI
-    assert 'BGH V1.1.26-fix1' not in UI
-    assert 'V1_1_26_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'branches: [bgh-v1.1.27]' in WORKFLOW
+    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.27'" in WORKFLOW
+    assert 'group: bgh-v1.1.27-${{ github.ref }}' in WORKFLOW
+    assert 'BGH V1.1.27' in UI
+    assert 'BGH V1.1.27-fix1' not in UI
+    assert 'V1_1_27_${TITLE_ID}_PS5_TEST.zip' in BUILD
 
 
 def test_removed_ftp_gallery_imports_are_never_required_to_exist():
@@ -31,9 +31,9 @@ def test_removed_ftp_gallery_imports_are_never_required_to_exist():
 
 
 def test_backup_and_native_package_names_are_coherent():
-    assert 'build/backup/BGH_V1.1.26_FIX1/' in WORKFLOW
-    assert 'BGH_V1.1.26_FIX1_KOMPLETTPROJEKT.zip BGH_V1.1.26_FIX1)' in WORKFLOW
-    assert 'path: build/BGH_V1.1.26_FIX1_KOMPLETTPROJEKT.zip' in WORKFLOW
-    assert 'name: BGH-V1-1-26-FIX1-PPSA99079' in WORKFLOW
-    assert 'BGH_BawertLs_Game_Hub_V1_1_26_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'build/backup/BGH_V1.1.27/' in WORKFLOW
+    assert 'BGH_V1.1.27_KOMPLETTPROJEKT.zip BGH_V1.1.27)' in WORKFLOW
+    assert 'path: build/BGH_V1.1.27_KOMPLETTPROJEKT.zip' in WORKFLOW
+    assert 'name: BGH-V1-1-27-PPSA99079' in WORKFLOW
+    assert 'BGH_BawertLs_Game_Hub_V1_1_27_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'PPSA99079' in WORKFLOW

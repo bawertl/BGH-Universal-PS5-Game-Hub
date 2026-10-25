@@ -64,11 +64,11 @@ int main(){
 def test_bundle_contains_new_native_launch_and_preserves_other_components():
     src = (CPP/'universal_launcher.cpp').read_text()
     assert 'launch_registered_ps5(g.title_id)' in src
-    assert 'BGH V1.1.26' in src
+    assert 'BGH V1.1.27' in src
     assert 'ulg_v08/covers' in src
     assert 'kTabs' in src
     assert 'save_user_roots(roots_,kUserPathsFile)' in src
     workflow=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.26-fix1' in workflow
-    assert 'BGH_BawertLs_Game_Hub_V1_1_26_PPSA99079_PS5_TEST.zip' in workflow
-    assert 'V1_1_26_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'bgh-v1.1.27' in workflow
+    assert 'BGH_BawertLs_Game_Hub_V1_1_27_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'V1_1_27_PPSA99079_PS5_TEST.zip' in workflow

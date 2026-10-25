@@ -64,7 +64,7 @@ def test_closed_port_returns_connect_stage(probe_bin):
 
 def test_launch_and_cover_code_protected():
     code=(ROOT/"native_ps5/universal_launcher.cpp").read_text()
-    assert "BGH V1.1.26" in code
+    assert "BGH V1.1.27" in code
     assert "const auto bridge=ulg::send_launch(ps5_plan);" in code
     assert "if(bridge.status==ulg::LaunchStatus::queued)sys::quit();" in code
     assert 'format_port("2121 FTP",local_services_.ftp)' in code
