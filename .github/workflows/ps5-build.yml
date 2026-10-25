@@ -2,14 +2,14 @@ name: BGH V1.1.29
 
 on:
   push:
-    branches: [bgh-v1.1.29]
+    branches: [bgh-v1.1.29-fix1]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: bgh-v1.1.29-${{ github.ref }}
+  group: bgh-v1.1.29-fix1-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -49,7 +49,7 @@ jobs:
           # Make silent guard failures actionable in GitHub Actions logs.
           trap 'rc=$?; echo "::error::BGH Vorpruefung fehlgeschlagen in Zeile $LINENO: $BASH_COMMAND (Exit $rc)"; exit "$rc"' ERR
           echo "Pruefe BGH V1.1.29 auf Branch: $GITHUB_REF_NAME"
-          test "$GITHUB_REF_NAME" = 'bgh-v1.1.29'
+          test "$GITHUB_REF_NAME" = 'bgh-v1.1.29-fix1'
           # GitHub browser uploads can skip dotfiles (.keep). These files only
           # preserve otherwise-empty user gallery folders inside the PS5 ZIP.
           # Recreate missing placeholders instead of blocking the PS5 build.
@@ -107,7 +107,7 @@ jobs:
           if grep -Eq 'statvfs[[:space:]]*\(' native_ps5/universal_launcher.cpp native_ps5/bgh_storage_metrics.hpp; then
             echo 'BLOCKER: unsafe PS5 statvfs reintroduced'; exit 1
           fi
-          /usr/bin/python3 -m pytest -q tests/test_v1112_ui_polish.py tests/test_v1113_ui_persist.py tests/test_v114_shadowmount.py tests/test_v1116_pad_diagnostics.py tests/test_v1117_ui_pad_import.py tests/test_v1118_settings_hub.py tests/test_v1119_visual_polish.py tests/test_v1120_ps2_rpcs3_icons.py tests/test_v1217_ps2_autostart.py tests/test_v119_emulator_library_and_ps3_art.py tests/test_v1121_themes_footer.py tests/test_v1122_gallery_ftp.py tests/test_v1123_gallery_fix.py tests/test_v1124_builtin_background.py tests/test_v1125_background_grid.py tests/test_v1126_logo_gallery.py tests/test_v1126_fix1_workflow.py tests/test_v1127_ps5_home_icon.py tests/test_v1128_ps5_system_icon.py
+          /usr/bin/python3 -m pytest -q tests/test_v1112_ui_polish.py tests/test_v1113_ui_persist.py tests/test_v114_shadowmount.py tests/test_v1116_pad_diagnostics.py tests/test_v1117_ui_pad_import.py tests/test_v1118_settings_hub.py tests/test_v1119_visual_polish.py tests/test_v1120_ps2_rpcs3_icons.py tests/test_v1217_ps2_autostart.py tests/test_v119_emulator_library_and_ps3_art.py tests/test_v1121_themes_footer.py tests/test_v1122_gallery_ftp.py tests/test_v1123_gallery_fix.py tests/test_v1124_builtin_background.py tests/test_v1125_background_grid.py tests/test_v1126_logo_gallery.py tests/test_v1126_fix1_workflow.py tests/test_v1127_ps5_home_icon.py tests/test_v1128_ps5_system_icon.py tests/test_v1129_fix1_icon_hash.py
 
       - name: Build-check of actual patched native C++ code
         shell: bash
@@ -120,16 +120,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p build/backup/BGH_V1.1.29
-          cp -a native_ps5 tooling assets user_themes tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.29/
-          test -s build/backup/BGH_V1.1.29/tooling/bgh_startup_guard_v1111.py
-          (cd build/backup && zip -q -r ../BGH_V1.1.29_KOMPLETTPROJEKT.zip BGH_V1.1.29)
+          mkdir -p build/backup/BGH_V1.1.29_FIX1
+          cp -a native_ps5 tooling assets user_themes tests sce_sys .github README.md LICENSE build/backup/BGH_V1.1.29_FIX1/
+          test -s build/backup/BGH_V1.1.29_FIX1/tooling/bgh_startup_guard_v1111.py
+          (cd build/backup && zip -q -r ../BGH_V1.1.29_FIX1_KOMPLETTPROJEKT.zip BGH_V1.1.29_FIX1)
 
       - name: Upload full source backup
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-29-KOMPLETTPROJEKT
-          path: build/BGH_V1.1.29_KOMPLETTPROJEKT.zip
+          name: BGH-V1-1-29-FIX1-KOMPLETTPROJEKT
+          path: build/BGH_V1.1.29_FIX1_KOMPLETTPROJEKT.zip
           archive: false
           if-no-files-found: error
           retention-days: 14
@@ -229,7 +229,7 @@ jobs:
           python3 - <<'PY'
           import hashlib, json, pathlib, zipfile
           source = pathlib.Path('sce_sys/icon0.png').read_bytes()
-          expected_icon_sha256 = '794f5dd769055f2317441f784c3c7f02a6b4fdd681f589d94b239abac1db8fa1'
+          expected_icon_sha256 = '17b7104e4681ad78d86504259dd25a6e4ba70e0a59d1bdc46cff8d91e966ae7d'
           if hashlib.sha256(source).hexdigest() != expected_icon_sha256:
               raise SystemExit('FEHLER: Falsches oder altes PS5-BGH-Systemicon im Source')
           package = pathlib.Path('build/ps5/BGH_BawertLs_Game_Hub_V1_1_29_PPSA99079_PS5_TEST.zip')
@@ -300,7 +300,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-29-PPSA99079
+          name: BGH-V1-1-29-FIX1-PPSA99079
           path: build/ps5/BGH_BawertLs_Game_Hub_V1_1_29_PPSA99079_PS5_TEST.zip
           archive: false
           if-no-files-found: error
@@ -310,7 +310,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: BGH-V1-1-29-Build-Fehler
+          name: BGH-V1-1-29-FIX1-Build-Fehler
           path: build/native-ps5-build.log
           if-no-files-found: warn
           retention-days: 14
