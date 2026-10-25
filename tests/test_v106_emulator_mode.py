@@ -58,11 +58,11 @@ def test_menu_ui_and_version_in_sync():
     assert 'Spiele direkt starten' in panel
     assert 'Emulator-Startverhalten' in panel
     assert 'English' in panel and 'Deutsch' in panel
-    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in CPP
+    assert 'BGH V1.1.26' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
-    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
-    assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.26]' in WF
+    assert 'BGH-V1-1-26-PPSA99079' in WF
+    assert 'V1_1_26_PPSA99079_PS5_TEST.zip' in WF
 
 
 def test_native_state_roundtrip_and_corruption(tmp_path):

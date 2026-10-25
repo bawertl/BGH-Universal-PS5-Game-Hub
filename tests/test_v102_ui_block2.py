@@ -39,8 +39,8 @@ def test_switch_badge_restores_complete_left_icon():
 
 def test_release_1_0_2_is_consistent():
     build=(ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WORKFLOW
-    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in SRC and 'BGH V1.1.9-EMULATOR-AUTODETECTION' in WORKFLOW
-    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WORKFLOW
-    assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in build
+    assert 'branches: [bgh-v1.1.26]' in WORKFLOW
+    assert 'BGH V1.1.26' in SRC and 'BGH V1.1.26' in WORKFLOW
+    assert 'BGH-V1-1-26-PPSA99079' in WORKFLOW
+    assert 'V1_1_26_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_26_${TITLE_ID}_PS5_TEST.zip' in build

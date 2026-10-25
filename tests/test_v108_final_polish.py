@@ -76,8 +76,8 @@ def test_known_emulator_apps_use_menu_without_rom_or_history():
 
 
 def test_release_consistency():
-    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in UI
+    assert 'BGH V1.1.26' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.9-nextgen-ui]' in WF
-    assert 'BGH-V1-1-9-EMULATORS-PPSA99079-TEST' in WF
-    assert 'V1_1_9_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.26]' in WF
+    assert 'BGH-V1-1-26-PPSA99079' in WF
+    assert 'V1_1_26_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

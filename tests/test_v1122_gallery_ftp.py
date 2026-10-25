@@ -101,7 +101,7 @@ int main(int argc,char**argv){
 
 def test_no_network_during_per_frame_gallery_render():
     ui=(NATIVE/'universal_launcher.cpp').read_text()
-    # FTP import is retained only for logos, never for the background gallery.
+    # Gallery imports are never triggered from the background settings screen.
     assert 'else if(settings_subview_==7)' in ui
     bg_entry=ui.split('if(settings_subview_==6){',1)[1].split('}else if(settings_subview_==7){',1)[0]
     assert 'import_from_local_ftp' not in bg_entry

@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.25";
+constexpr const char *kBuildLabel = "BGH V1.1.26";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -548,12 +548,17 @@ public:
             ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows),dt,15.0f);
         const auto new_logo=gallery_logo_path(); if(!new_logo.empty() && !covers_.has(new_logo))covers_.load(new_logo);
         const auto new_background=gallery_background_path(); if(!new_background.empty() && !covers_.has(new_background))covers_.load(new_background);
-        // A single 384x216 gallery preview per update; none during normal play.
-        if(settings_ && settings_subview_==6){
+        // Gallery previews are loaded incrementally only while the respective
+        // settings screen is open; never during the normal browsing loop.
+        if(settings_ && (settings_subview_==6 || settings_subview_==7)){
+            const bool background=settings_subview_==6;
             for(const auto& item : gallery_choices_){
-                const std::string preview=ulg::bgh_gallery::builtin_background_preview(item.id);
-                if(!preview.empty() && !covers_.has(preview)){
-                    covers_.load(preview);break;
+                const std::string preview=background?
+                    ulg::bgh_gallery::builtin_background_preview(item.id):
+                    ulg::bgh_gallery::builtin_logo_preview(item.id);
+                const std::string source=!preview.empty()?preview:item.path;
+                if(!source.empty() && !covers_.has(source)){
+                    covers_.load(source);break;
                 }
             }
         }
@@ -716,10 +721,26 @@ public:
         list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x030815,0.33f));
         list.gradient_rect({0,0,1920,194},0,Color::rgb(0x080F1D,0.88f),Color::rgb(0x0A1B29,0.11f));
         const auto brand=gallery_selection_loaded_after_boot_?covers_.get(gallery_logo_path()):0;
-        if(brand && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(brand,{30,18,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
-        const auto wordmark=covers_.get("/app0/assets/bgh_wordmark.png");
-        if(wordmark && ulg::bgh_gallery::logo_should_render(gallery_selection_))list.image(wordmark,{109,33,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
-        else if(ulg::bgh_gallery::logo_should_render(gallery_selection_))serif_text(list,"BawertL's Game Hub",113,68,27,kInk,320);
+        if(brand && ulg::bgh_gallery::logo_should_render(gallery_selection_)){
+            if(ulg::bgh_gallery::logo_has_embedded_wordmark(gallery_selection_.logo)){
+                const auto dimensions=covers_.size(gallery_logo_path());
+                const float max_w=470.0f,max_h=112.0f;
+                float w=max_w,h=max_h;
+                if(dimensions.first>0 && dimensions.second>0){
+                    const float scale=std::min(max_w/static_cast<float>(dimensions.first),
+                                               max_h/static_cast<float>(dimensions.second));
+                    w=static_cast<float>(dimensions.first)*scale;
+                    h=static_cast<float>(dimensions.second)*scale;
+                }
+                const float x=28.0f,y=175.0f;
+                list.image(brand,{x,y+(max_h-h)*0.5f,w,h},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+            }else{
+                list.image(brand,{30,175,74,74},gfx::kFullUv,Color::rgb(0xFFFFFF),9);
+                const auto wordmark=covers_.get("/app0/assets/bgh_wordmark.png");
+                if(wordmark)list.image(wordmark,{109,190,323,52},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                else serif_text(list,"BawertL's Game Hub",113,225,27,kInk,320);
+            }
+        }
         // Reserved crest/crown asset slot; do not fabricate an official logo.
         draw_controllers(list);
         translated_text(list,fonts.semibold,current_time_label(),1681,49,23,Color::rgb(0xF3F8FF));
@@ -749,7 +770,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.25";
+        const std::string release_label="BGH V1.1.26";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2271,7 +2292,7 @@ private:
             // Exactly the same Frosted Petrol / Transparent policy as settings.
             glass_card(list,panel,15);
             // DrawList geometry keeps the icons crisp in either theme, no bitmap.
-            const float ix=std::floor(x+15.0f),iy=std::floor(193.0f);
+            const float ix=std::floor(x+15.0f),iy=std::floor(188.0f);
             const Color steel=Color::rgb(0xA8E9FF,0.94f);
             const char* art=usb_icon?"/app0/assets/themes/storage_usb.png":
                 "/app0/assets/themes/storage_internal.png";
@@ -2571,7 +2592,7 @@ private:
                 gallery_focus_=0;
                 gallery_delete_armed_=false;
                 if(settings_subview_==6){
-                    // BGH V1.1.25: nine bundled backgrounds only. No FTP,
+                    // BGH V1.1.26: bundled backgrounds and bundled logos only. No FTP,
                     // imported files or filesystem enumeration on tile open.
                     gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);
                     gallery_message_.clear();
@@ -2581,15 +2602,14 @@ private:
                         }
                     }
                 }else if(settings_subview_==7){
-                    // Preserve the previously working independent logo gallery.
                     const auto kind=ulg::bgh_gallery::Kind::logo;
-                    const auto direct=ulg::bgh_gallery::import_from_local_filesystem(kind);
-                    gallery_message_=direct.detail;
-                    if(direct.readable==0 || direct.cache_errors>0){
-                        const auto ftp=ulg::bgh_gallery::import_from_local_ftp(kind);
-                        gallery_message_+="  |  "+ftp.detail;
+                    gallery_choices_=ulg::bgh_gallery::builtins(kind);
+                    gallery_message_.clear();
+                    for(std::size_t i=0;i<gallery_choices_.size();++i){
+                        if(gallery_choices_[i].id==gallery_selection_.logo){
+                            gallery_focus_=static_cast<int>(i);break;
+                        }
                     }
-                    gallery_choices_=ulg::bgh_gallery::list(kind);
                     refresh_gallery_paths();
                 }
                 feedback.play(audio::Cue::open);
@@ -2620,59 +2640,23 @@ private:
         if(settings_subview_==6 || settings_subview_==7){
             const bool background=settings_subview_==6;
             const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
-            if(background){
-                // Move a visual selection (3x3). Commit/persist ONLY with X.
-                int delta=0;
-                if(input.nav==Direction::left && gallery_focus_%3>0)delta=-1;
-                else if(input.nav==Direction::right && gallery_focus_%3<2)delta=1;
-                else if(input.nav==Direction::up && gallery_focus_>=3)delta=-3;
-                else if(input.nav==Direction::down && gallery_focus_+3<static_cast<int>(gallery_choices_.size()))delta=3;
-                if(delta){gallery_focus_+=delta;feedback.play(audio::Cue::focus);return;}
-                if(input.is_pressed(Action::confirm) && gallery_focus_>=0 &&
-                   gallery_focus_<static_cast<int>(gallery_choices_.size())){
-                    const auto& chosen=gallery_choices_[static_cast<std::size_t>(gallery_focus_)];
-                    if(ulg::bgh_gallery::select(kind,chosen.id,gallery_selection_)){
-                        save_gallery();feedback.play(audio::Cue::select);
-                    }else feedback.play(audio::Cue::error);
-                }
-                return; // No triangle deletion or FTP import in backgrounds.
-            }
-            if(input.nav==Direction::left || input.nav==Direction::right ||
-               input.is_pressed(Action::confirm)){
-                const auto& choices=gallery_choices_;
-                const auto &selected=background?gallery_selection_.background:gallery_selection_.logo;
-                int pos=-1;
-                for(std::size_t i=0;i<choices.size();++i)
-                    if(choices[i].id==selected){pos=static_cast<int>(i);break;}
-                if(!choices.empty()){
-                    const int delta=input.nav==Direction::left?-1:1;
-                    const int count=static_cast<int>(choices.size());
-                    ulg::bgh_gallery::select(kind,choices[static_cast<std::size_t>((pos+count+delta)%count)].id,gallery_selection_);
+            const int columns=background?3:5;
+            int delta=0;
+            if(input.nav==Direction::left && gallery_focus_%columns>0)delta=-1;
+            else if(input.nav==Direction::right && gallery_focus_%columns<columns-1 &&
+                    gallery_focus_+1<static_cast<int>(gallery_choices_.size()))delta=1;
+            else if(input.nav==Direction::up && gallery_focus_>=columns)delta=-columns;
+            else if(input.nav==Direction::down &&
+                    gallery_focus_+columns<static_cast<int>(gallery_choices_.size()))delta=columns;
+            if(delta){gallery_focus_+=delta;feedback.play(audio::Cue::focus);return;}
+            if(input.is_pressed(Action::confirm) && gallery_focus_>=0 &&
+               gallery_focus_<static_cast<int>(gallery_choices_.size())){
+                const auto& chosen=gallery_choices_[static_cast<std::size_t>(gallery_focus_)];
+                if(ulg::bgh_gallery::select(kind,chosen.id,gallery_selection_)){
                     save_gallery();feedback.play(audio::Cue::select);
-                }
-                gallery_delete_armed_=false;
-                return;
+                }else feedback.play(audio::Cue::error);
             }
-            if(input.is_pressed(Action::north)){
-                const auto id=background?gallery_selection_.background:gallery_selection_.logo;
-                if(id.rfind("user:",0)!=0){gallery_message_="Vorinstallierte Motive sind geschuetzt";gallery_delete_armed_=false;return;}
-                ulg::bgh_gallery::ThemeItem source{};
-                if(ulg::bgh_gallery::find(kind,id,source) &&
-                   source.path.rfind(ulg::bgh_gallery::imported_folder(kind),0)==0){
-                    gallery_message_="FTP-Bild bitte im Upload-Ordner loeschen";
-                    gallery_delete_armed_=false;return;
-                }
-                if(!gallery_delete_armed_){gallery_message_="Dreieck erneut: eigenes Motiv loeschen";gallery_delete_armed_=true;return;}
-                const auto previous=gallery_selection_;
-                if(background)gallery_selection_.background="showroom";
-                else gallery_selection_.logo="none";
-                const bool deleted=ulg::bgh_gallery::remove_user_image(kind,id,gallery_selection_,true);
-                if(!deleted)gallery_selection_=previous;
-                else save_gallery();
-                gallery_message_=deleted?"Eigenes Bild geloescht":"Loeschen fehlgeschlagen";
-                if(deleted)gallery_choices_=ulg::bgh_gallery::list(kind);
-                gallery_delete_armed_=false;
-            }
+            return;
         }
     }
     void refresh_browser(){browser_=ulg::browse_folders(browser_path_);browser_selected_=0;}
@@ -2938,7 +2922,6 @@ private:
                 const auto tex=covers_.get(preview);
                 if(tex)list.image(tex,{x+7,y+4,380,214},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
                 else list.rounded_rect({x+8,y+5,378,212},7,Color::rgb(0x193650,0.85f));
-                // Bottom labels are embedded into the card, never another row.
                 list.rounded_rect({x+10,y+175,374,39},6,Color::rgb(0x071526,0.86f));
                 static constexpr const char* names[]={
                     "Bergsee", "Cyber Showroom", "Berge & Krone", "Gaming-Halle",
@@ -2956,29 +2939,54 @@ private:
             return;
         }
         translated_text(list,fonts.regular,
-            "X / Links / Rechts: Motiv wechseln  |  Dreieck zweimal: eigenes Bild loeschen",190,298,20,kMuted);
-        list.gradient_rect({195,351,1528,310},22,Color::rgb(0x253D57,0.72f),Color::rgb(0x14253E,0.89f));
-        list.bordered_rect({195,351,1528,310},22,Color::rgb(0xFFFFFF,0),1.3f,Color::rgb(0x86C8E7,0.45f));
-        translated_text(list,fonts.semibold,background?"Aktuelles Hintergrundbild":"Aktuelles BGH-Logo",245,420,29,kInk);
-        translated_text(list,fonts.semibold,selected,245,504,32,Color::rgb(0xA5EDFF));
-        translated_text(list,fonts.regular,"Verfuegbare Motive: "+std::to_string(choices.size()),245,574,21,kMuted);
-        const auto preview=covers_.get(background?gallery_background_path():gallery_logo_path());
-        if(preview){
-            const auto dimensions=covers_.size(background?gallery_background_path():gallery_logo_path());
-            if(dimensions.first>0 && dimensions.second>0){
-                const float sx=370.0f/static_cast<float>(dimensions.first);
-                const float sy=258.0f/static_cast<float>(dimensions.second);
-                const float scale=std::min(sx,sy);
-                const float w=static_cast<float>(dimensions.first)*scale;
-                const float h=static_cast<float>(dimensions.second)*scale;
-                list.image(preview,{1275+(370-w)*0.5f,372+(258-h)*0.5f,w,h},
-                    gfx::kFullUv,Color::rgb(0xFFFFFF),12);
+            "Logo mit Steuerkreuz waehlen  |  X: Logo dauerhaft uebernehmen",
+            248,255,20,kMuted);
+        static constexpr const char* logo_names[]={
+            "Standard BGH", "Kronenlogo", "Chrom Orbit", "Brush Neon", "Tech Krone",
+            "Gold Edel", "Controller", "Chrom Wappen", "Brush Blue", "Multikonsole",
+            "Gold Krone", "Neon Rahmen", "Chrom Krone", "Brush Krone", "Klassisch",
+            "Planet", "Edge Tech", "Kein Logo"
+        };
+        const int columns=5;
+        const int count=static_cast<int>(choices.size());
+        for(int i=0;i<count;++i){
+            const int row=i/columns,col=i%columns;
+            const float x=205.0f+col*299.0f;
+            const float y=282.0f+row*158.0f;
+            const Rect cell{x,y,276.0f,142.0f};
+            const bool focused=i==gallery_focus_;
+            const bool active=choices[static_cast<std::size_t>(i)].id==selected;
+            list.shadow({x,y+3,276,142},14,8,Color::rgb(0x000000,0.28f));
+            list.gradient_rect(cell,14,selected==choices[static_cast<std::size_t>(i)].id?
+                Color::rgb(0x173B57,0.93f):Color::rgb(0x132336,0.92f),Color::rgb(0x0D1928,0.96f));
+            list.rounded_rect({x+12,y+12,252,79},10,Color::rgb(0x071526,0.78f));
+            const auto& item=choices[static_cast<std::size_t>(i)];
+            const std::string preview=ulg::bgh_gallery::builtin_logo_preview(item.id);
+            const std::string source=!preview.empty()?preview:item.path;
+            if(item.id=="none"){
+                translated_text(list,fonts.semibold,"Kein Logo",x+79,y+58,22,Color::rgb(0xBFD6E7));
+            }else if(const auto tex=covers_.get(source); tex){
+                const auto dimensions=covers_.size(source);
+                if(dimensions.first>0 && dimensions.second>0){
+                    const float sx=230.0f/static_cast<float>(dimensions.first);
+                    const float sy=63.0f/static_cast<float>(dimensions.second);
+                    const float scale=std::min(sx,sy);
+                    const float w=static_cast<float>(dimensions.first)*scale;
+                    const float h=static_cast<float>(dimensions.second)*scale;
+                    list.image(tex,{x+23+(230.0f-w)*0.5f,y+20+(63.0f-h)*0.5f,w,h},
+                        gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                }
+            }else{
+                translated_text(list,fonts.regular,"Vorschau laedt...",x+72,y+59,18,kMuted);
             }
+            translated_text(list,fonts.semibold,logo_names[i<18?i:17],x+18,y+110,16,Color::rgb(0xF4FAFF));
+            if(active)translated_text(list,fonts.semibold,"AKTIV",x+204,y+110,14,Color::rgb(0x92F3C9));
+            list.bordered_rect(cell,14,Color::rgb(0xFFFFFF,0),
+                focused?3.5f:(active?2.0f:1.0f),
+                focused?Color::rgb(0x60E8FF):(active?Color::rgb(0x65CAAA):Color::rgb(0xA0B7CC,0.28f)));
         }
-        translated_text(list,fonts.regular,
-            "Bilder: /data/homebrew/PPSA99079/user_themes/logos",
-            197,741,20,kMuted);
-        if(!gallery_message_.empty())translated_text(list,fonts.regular,shorten(gallery_message_,150),197,828,19,kAccent);
+        if(!gallery_message_.empty())
+            translated_text(list,fonts.regular,shorten(gallery_message_,110),248,950,17,kAccent);
     }
     void draw_root_button_legend(gfx::DrawList &list) const {
         const ui::Hint hints[]={
@@ -3181,7 +3189,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.25",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.26",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

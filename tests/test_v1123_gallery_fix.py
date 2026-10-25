@@ -181,16 +181,16 @@ int main(int /*argc*/,char**argv){
     assert '4K_OK' in result.stdout
 
 
-def test_only_logo_gallery_keeps_legacy_file_import_and_ftp_fallback():
+def test_theme_galleries_are_builtin_only_but_backend_import_helpers_remain():
     source = (NATIVE / 'universal_launcher.cpp').read_text()
-    assert 'import_from_local_filesystem(kind)' in source
-    assert 'direct.readable==0 || direct.cache_errors>0' in source
-    assert 'import_from_local_ftp(kind)' in source
-    bg_entry=source.split('if(settings_subview_==6){',1)[1].split('}else if(settings_subview_==7){',1)[0]
-    assert 'import_from_local_ftp' not in bg_entry
-    assert 'import_from_local_filesystem' not in bg_entry
-    assert 'constexpr const char *kBuildLabel = "BGH V1.1.25"' in source
-    assert 'lstat(path.c_str()' not in (NATIVE/'bgh_theme_gallery.hpp').read_text()
+    assert 'gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);' in source
+    assert 'gallery_choices_=ulg::bgh_gallery::builtins(kind);' in source
+    assert 'import_from_local_filesystem(kind)' not in source
+    assert 'import_from_local_ftp(kind)' not in source
+    assert 'constexpr const char *kBuildLabel = "BGH V1.1.26"' in source
+    header=(NATIVE/'bgh_theme_gallery.hpp').read_text()
+    assert 'builtin_logo_preview' in header and 'logo_has_embedded_wordmark' in header
+    assert 'lstat(path.c_str()' not in header
     for needle in ('controllers_.poll();','ulg::shadow_storage::fetch_storage()',
                    'stage_ps5sx2_disc_launch(g.path)', 'make_registered_ps4_launch_plan(g.title_id)'):
         assert needle in source

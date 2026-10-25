@@ -80,10 +80,10 @@ def test_probe_only_on_square_in_native_game_detail():
 
 def test_preserve_unmodified_scanners_covers_launch_path_and_version():
     gui = (ROOT / "native_ps5/universal_launcher.cpp").read_text()
-    assert 'BGH V1.1.9-EMULATOR-AUTODETECTION' in gui
+    assert 'BGH V1.1.26' in gui
     assert 'const auto bridge=ulg::send_launch(ps5_plan);' in gui
     assert 'const auto native=ulg::launch_registered_ps5(g.title_id);' in gui
     assert 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' in gui
     workflow = (ROOT / ".github/workflows/ps5-build.yml").read_text()
-    assert 'bgh-v1.1.9' in workflow
-    assert 'V1_1_9_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'bgh-v1.1.26' in workflow
+    assert 'V1_1_26_PPSA99079_PS5_TEST.zip' in workflow

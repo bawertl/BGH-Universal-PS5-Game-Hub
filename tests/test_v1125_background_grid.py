@@ -1,4 +1,4 @@
-"""V1.1.25: nine true bundled backgrounds; visual selector is offline and explicit-save."""
+"""V1.1.26: nine true bundled backgrounds; visual selector is offline and explicit-save."""
 from pathlib import Path
 import re
 from PIL import Image
@@ -36,12 +36,13 @@ def test_every_background_is_embedded_and_all_previews_match():
 def test_3_by_3_grid_and_explicit_confirmation():
     assert 'int gallery_focus_=0;' in UI
     assert 'const int row=i/3,col=i%3;' in UI
-    assert 'if(input.nav==Direction::up && gallery_focus_>=3)delta=-3;' in UI
-    assert 'input.nav==Direction::down && gallery_focus_+3' in UI
+    assert 'const int columns=background?3:5;' in UI
+    assert 'if(input.nav==Direction::up && gallery_focus_>=columns)delta=-columns;' in UI
+    assert 'gallery_focus_+columns<static_cast<int>(gallery_choices_.size())' in UI
     assert 'if(delta){gallery_focus_+=delta;feedback.play(audio::Cue::focus);return;}' in UI
     assert 'if(input.is_pressed(Action::confirm) && gallery_focus_>=0' in UI
     assert 'save_gallery();feedback.play(audio::Cue::select);' in UI
-    assert 'if(background){' in UI and 'return; // No triangle deletion or FTP import in backgrounds.' in UI
+    assert 'if(background){' in UI
     assert 'gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);' in UI
     assert 'Motiv mit Steuerkreuz waehlen' in UI
     assert 'Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds' not in UI
@@ -53,16 +54,16 @@ def test_no_background_ftp_and_only_one_preview_per_frame():
     bg_open=UI.split('if(settings_subview_==6){',1)[1].split('}else if(settings_subview_==7){',1)[0]
     assert 'import_from_local_ftp' not in bg_open
     assert 'import_from_local_filesystem' not in bg_open
-    loading=UI.split('if(settings_ && settings_subview_==6){',1)[1].split('}',1)[0]
-    assert 'builtin_background_preview' in loading and 'covers_.load(preview);break;' in loading
+    loading=UI.split('if(settings_ && (settings_subview_==6 || settings_subview_==7)){',1)[1].split('}',1)[0]
+    assert 'builtin_background_preview' in loading and 'covers_.load(source);break;' in loading
     assert 'import_from_local_ftp' not in UI.split('void draw_settings_gallery_detail',1)[1]
 
 
 def test_branch_is_consistent_with_build_and_installer():
-    assert 'branches: [bgh-v1.1.25-background-gallery]' in WF
-    assert "bgh-v1.1.25-background-gallery" in WF and "GITHUB_REF_NAME" in WF
-    assert 'BGH V1.1.25' in UI
-    assert 'V1_1_25_' in BUILD and 'V1_1_25_' in WF
+    assert 'branches: [bgh-v1.1.26]' in WF
+    assert "bgh-v1.1.26" in WF and "GITHUB_REF_NAME" in WF
+    assert 'BGH V1.1.26' in UI
+    assert 'V1_1_26_' in BUILD and 'V1_1_26_' in WF
     assert 'PPSA99079' in WF
     assert 'tests/test_v1125_background_grid.py' in WF
-    assert 'BGH_V1.1.25/' in WF
+    assert 'BGH_V1.1.26/' in WF

@@ -84,16 +84,40 @@ inline std::vector<ThemeItem> builtins(Kind kind) {
     return {
         {"legacy", "/app0/assets/bgh_logo.png", false, false},
         {"crown", "/app0/assets/themes/logos/bgh_kronenlogo_freigestellt.png", false, false},
+        {"a01_chrom_orbit", "/app0/assets/themes/logos/a01_chrom_orbit.png", false, false},
+        {"a02_brush_neon", "/app0/assets/themes/logos/a02_brush_neon.png", false, false},
+        {"a03_tech_krone", "/app0/assets/themes/logos/a03_tech_krone.png", false, false},
+        {"a04_gold_edel", "/app0/assets/themes/logos/a04_gold_edel.png", false, false},
+        {"a05_controller", "/app0/assets/themes/logos/a05_controller.png", false, false},
+        {"b01_chrom_wappen", "/app0/assets/themes/logos/b01_chrom_wappen.png", false, false},
+        {"b02_brush_blue", "/app0/assets/themes/logos/b02_brush_blue.png", false, false},
+        {"b03_multikonsole", "/app0/assets/themes/logos/b03_multikonsole.png", false, false},
+        {"b04_gold_krone", "/app0/assets/themes/logos/b04_gold_krone.png", false, false},
+        {"b05_neon_rahmen", "/app0/assets/themes/logos/b05_neon_rahmen.png", false, false},
+        {"c01_chrom_krone", "/app0/assets/themes/logos/c01_chrom_krone.png", false, false},
+        {"c02_brush_krone", "/app0/assets/themes/logos/c02_brush_krone.png", false, false},
+        {"c03_klassisch", "/app0/assets/themes/logos/c03_klassisch.png", false, false},
+        {"c04_planet", "/app0/assets/themes/logos/c04_planet.png", false, false},
+        {"c05_edge_tech", "/app0/assets/themes/logos/c05_edge_tech.png", false, false},
         {"none", "", false, false},
     };
 }
-// The nine background thumbnails are bundled in the native PS5 title.
-// No filesystem scanning or FTP is needed to populate the selectable gallery.
+// The built-in thumbnails are bundled in the native PS5 title.
+// No filesystem scanning or FTP is needed to populate the selectable galleries.
 inline std::string builtin_background_preview(const std::string& id) {
     for (const auto& item : builtins(Kind::background))
         if (item.id == id)
             return "/app0/assets/themes/backgrounds/previews/" + id + ".png";
     return {};
+}
+inline std::string builtin_logo_preview(const std::string& id) {
+    for (const auto& item : builtins(Kind::logo))
+        if (item.id == id && id != "legacy" && id != "crown" && id != "none")
+            return "/app0/assets/themes/logos/previews/" + id + ".png";
+    return {};
+}
+inline bool logo_has_embedded_wordmark(const std::string& id) {
+    return id != "legacy" && id != "crown" && id != "none";
 }
 inline std::vector<ThemeItem> list(Kind kind) {
     std::vector<ThemeItem> result = builtins(kind);

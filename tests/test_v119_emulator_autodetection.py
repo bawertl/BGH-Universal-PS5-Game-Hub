@@ -92,5 +92,5 @@ def test_no_unverified_rom_launch_and_overlay_asset_present():
     assert "emulator_detection.hpp" in overlay
     assert "emulator_profiles.json" in overlay
     workflow = (ROOT / '.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.9' in workflow
+    assert 'bgh-v1.1.26' in workflow
     assert 'emulator_detection.hpp' in workflow
