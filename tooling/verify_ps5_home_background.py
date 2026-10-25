@@ -27,7 +27,7 @@ def verify_dds_bytes(data: bytes) -> None:
         12:HEIGHT,
         16:WIDTH,
         20:WIDTH * HEIGHT,  # BC7 one byte per input pixel
-        28:0,       # no mipmaps
+        28:1,       # exactly one base mip level; no additional mipmaps
         76:32,      # DDS_PIXELFORMAT size
         80:4,       # FOURCC
         108:0x1000, # DDSCAPS_TEXTURE

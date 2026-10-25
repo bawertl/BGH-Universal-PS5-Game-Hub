@@ -27,7 +27,7 @@ def test_storage_integration_does_not_touch_launch_services():
     assert 'fetch_storage(' not in render and '::stat(' not in render
     assert 'shadow_storage_.diagnostic' in UI
     assert 'BGH V1.1.30' in UI
-    assert 'branches: [bgh-v1.1.30]' in WF
+    assert 'branches: [bgh-v1.1.30-fix1]' in WF
     for hook in ('make_registered_ps5_launch_plan(g.title_id)',
                  'make_registered_ps4_launch_plan(g.title_id)',
                  'stage_ps5sx2_disc_launch(g.path)', 'ulg::send_launch(plan)'):

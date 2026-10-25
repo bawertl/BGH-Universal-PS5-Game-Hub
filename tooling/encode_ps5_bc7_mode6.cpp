@@ -124,7 +124,7 @@ void dds_header(std::ofstream& out){
     out.write("DDS ",4);
     le32(out,124);
     le32(out,0x81007); // caps | height | width | pixelformat | linearsize
-    le32(out,H);le32(out,W);le32(out,W*H);le32(out,0);le32(out,0);
+    le32(out,H);le32(out,W);le32(out,W*H);le32(out,0);le32(out,1); // single base mip level; no additional mipmaps
     for(int i=0;i<11;i++)le32(out,0);
     le32(out,32);le32(out,4);out.write("DX10",4);
     for(int i=0;i<5;i++)le32(out,0);
