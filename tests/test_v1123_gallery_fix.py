@@ -52,17 +52,17 @@ extern "C" int __wrap_lstat(const char*, struct stat*) {errno=EPERM; return -1;}
 int main(){
     using namespace ulg::bgh_gallery;
     auto before=list(Kind::background);
-    assert(before.size()==5);
+    assert(before.size()==10);
     assert(valid_filename("Urlaub (1).png"));
     assert(valid_filename("Fruehling & BGH.PNG"));
     assert(!valid_filename("../../escape.png"));
     assert(!valid_filename("eins/zwei.png"));
-    assert(before[4].id=="user:Meine Landschaft.png");
+    assert(before[9].id=="user:Meine Landschaft.png");
     auto imported=import_from_local_filesystem(Kind::background);
     assert(imported.readable==1 && imported.cached==1 && imported.cache_errors==0);
     auto after=list(Kind::background);
-    assert(after.size()==5 && after[4].id=="user:Meine Landschaft.png");
-    assert(after[4].path.find("private")!=std::string::npos);
+    assert(after.size()==10 && after[9].id=="user:Meine Landschaft.png");
+    assert(after[9].path.find("private")!=std::string::npos);
     Selection sel;
     assert(select(Kind::background,"user:Meine Landschaft.png",sel));
     std::cout<<"DIRECT_OK";
@@ -137,8 +137,8 @@ int main(int /*argc*/,char**argv){
     auto r=import_from_local_ftp(Kind::background,8,std::stoi(argv[1]));
     assert(r.ftp_ok && r.added==1 && r.failed==0);
     auto pics=list(Kind::background);
-    assert(pics.size()==5);
-    assert(pics[4].id=="user:Mein Bild.png");
+    assert(pics.size()==10);
+    assert(pics[9].id=="user:Mein Bild.png");
     std::cout<<"NLST_OK";
 }
 '''
@@ -181,12 +181,15 @@ int main(int /*argc*/,char**argv){
     assert '4K_OK' in result.stdout
 
 
-def test_only_gallery_entry_point_uses_file_import_and_ftp_fallback():
+def test_only_logo_gallery_keeps_legacy_file_import_and_ftp_fallback():
     source = (NATIVE / 'universal_launcher.cpp').read_text()
     assert 'import_from_local_filesystem(kind)' in source
     assert 'direct.readable==0 || direct.cache_errors>0' in source
     assert 'import_from_local_ftp(kind)' in source
-    assert 'constexpr const char *kBuildLabel = "BGH V1.1.24"' in source
+    bg_entry=source.split('if(settings_subview_==6){',1)[1].split('}else if(settings_subview_==7){',1)[0]
+    assert 'import_from_local_ftp' not in bg_entry
+    assert 'import_from_local_filesystem' not in bg_entry
+    assert 'constexpr const char *kBuildLabel = "BGH V1.1.25"' in source
     assert 'lstat(path.c_str()' not in (NATIVE/'bgh_theme_gallery.hpp').read_text()
     for needle in ('controllers_.poll();','ulg::shadow_storage::fetch_storage()',
                    'stage_ps5sx2_disc_launch(g.path)', 'make_registered_ps4_launch_plan(g.title_id)'):

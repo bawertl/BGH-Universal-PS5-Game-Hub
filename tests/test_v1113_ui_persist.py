@@ -39,6 +39,6 @@ def test_pad_diagnostics_do_not_add_probe_or_unverified_state():
 def test_storage_and_build_startup_guards_retained():
     assert 'statvfs(' not in UI
     assert 'statvfs(' not in (ROOT/'native_ps5/bgh_storage_metrics.hpp').read_text()
-    assert 'V1_1_24_${TITLE_ID}_PS5_TEST.zip' in BUILD
-    assert 'bgh-v1.1.24-gaming-hall' in WF
+    assert 'V1_1_25_${TITLE_ID}_PS5_TEST.zip' in BUILD
+    assert 'bgh-v1.1.25-background-gallery' in WF
     assert 'PPSA99079' in WF

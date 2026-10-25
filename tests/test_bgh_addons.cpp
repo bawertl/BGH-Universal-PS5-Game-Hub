@@ -15,9 +15,20 @@ int main() {
     assert(!valid_filename(".secret.png"));
     assert(valid_filename("mein_hintergrund.JPG"));
     assert(!valid_filename("cover.png/../"));
+    const auto all_backgrounds=builtins(Kind::background);
+    assert(all_backgrounds.size()==9);
+    for (const auto& item:all_backgrounds) {
+        assert(!item.user_supplied);
+        assert(!item.path.empty());
+        assert(builtin_background_preview(item.id).find("/app0/assets/themes/backgrounds/previews/")==0);
+    }
+    assert(builtin_background_preview("unrecognized").empty());
     Selection selection;
     assert(!logo_should_render(Selection{"mountain_crown","crown"}));
     assert(logo_should_render(selection));
+    assert(select(Kind::background,"mountain_crown",selection));
+    assert(select(Kind::background,"orbital_horizon",selection));
+    assert(selection.background=="orbital_horizon");
     assert(select(Kind::background,"mountain_crown",selection));
     assert(select(Kind::logo,"none",selection));
     assert(!logo_should_render(selection));

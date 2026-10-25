@@ -75,12 +75,25 @@ inline std::vector<ThemeItem> builtins(Kind kind) {
         {"showroom", "/app0/assets/themes/backgrounds/cyber_showroom.png", false, false},
         {"mountain_crown", "/app0/assets/themes/backgrounds/bgh_berg_cyber_mit_kronenlogo.png", false, true},
         {"gaming_hall", "/app0/assets/themes/backgrounds/gaming_hall_2k.png", false, false},
+        {"neon_corridor", "/app0/assets/themes/backgrounds/neon_corridor.jpg", false, false},
+        {"metal_blue", "/app0/assets/themes/backgrounds/metal_blue.jpg", false, false},
+        {"neon_wall", "/app0/assets/themes/backgrounds/neon_wall.jpg", false, false},
+        {"orbital_horizon", "/app0/assets/themes/backgrounds/orbital_horizon.jpg", false, false},
+        {"blue_hall", "/app0/assets/themes/backgrounds/blue_hall.jpg", false, false},
     };
     return {
         {"legacy", "/app0/assets/bgh_logo.png", false, false},
         {"crown", "/app0/assets/themes/logos/bgh_kronenlogo_freigestellt.png", false, false},
         {"none", "", false, false},
     };
+}
+// The nine background thumbnails are bundled in the native PS5 title.
+// No filesystem scanning or FTP is needed to populate the selectable gallery.
+inline std::string builtin_background_preview(const std::string& id) {
+    for (const auto& item : builtins(Kind::background))
+        if (item.id == id)
+            return "/app0/assets/themes/backgrounds/previews/" + id + ".png";
+    return {};
 }
 inline std::vector<ThemeItem> list(Kind kind) {
     std::vector<ThemeItem> result = builtins(kind);

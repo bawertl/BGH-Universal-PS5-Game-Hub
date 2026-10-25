@@ -26,11 +26,11 @@ def test_gallery_imports_from_ftp_when_app_cannot_open_remote_folder(tmp_path):
 int main(int argc,char**argv){
     const int port=std::stoi(argv[1]);
     const auto before=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
-    assert(before.size()==4);
+    assert(before.size()==9);
     const auto report=ulg::bgh_gallery::import_from_local_ftp(ulg::bgh_gallery::Kind::background,8,port);
     assert(report.ftp_ok && report.added==1 && report.failed==0);
     const auto after=ulg::bgh_gallery::list(ulg::bgh_gallery::Kind::background);
-    assert(after.size()==5);
+    assert(after.size()==10);
     assert(after.back().id=="user:Mein Bild.png");
     const auto twice=ulg::bgh_gallery::import_from_local_ftp(ulg::bgh_gallery::Kind::background,8,port);
     assert(twice.ftp_ok && twice.added==0 && twice.already==1);
@@ -101,8 +101,12 @@ int main(int argc,char**argv){
 
 def test_no_network_during_per_frame_gallery_render():
     ui=(NATIVE/'universal_launcher.cpp').read_text()
-    # Network import is only triggered when opening a gallery tile.
-    assert 'const auto ftp=ulg::bgh_gallery::import_from_local_ftp(kind);' in ui
+    # FTP import is retained only for logos, never for the background gallery.
+    assert 'else if(settings_subview_==7)' in ui
+    bg_entry=ui.split('if(settings_subview_==6){',1)[1].split('}else if(settings_subview_==7){',1)[0]
+    assert 'import_from_local_ftp' not in bg_entry
+    assert 'import_from_local_filesystem' not in bg_entry
     render=ui.split('void draw_settings_gallery_detail')[1].split('void draw_root_button_legend')[0]
     assert 'import_from_local_ftp' not in render
-    assert 'Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds' in render
+    assert 'Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds' not in render
+    assert 'Motiv mit Steuerkreuz waehlen' in render

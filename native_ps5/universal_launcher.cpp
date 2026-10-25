@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.24";
+constexpr const char *kBuildLabel = "BGH V1.1.25";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -301,7 +301,7 @@ private:
 };
 class UniversalLauncher final : public app::Concept {
     ulg::bgh_gallery::Selection gallery_selection_{"lake","legacy"};
-    int gallery_row_=0;
+    int gallery_focus_=0;
     bool gallery_delete_armed_=false;
     std::string gallery_message_;
     // Snapshot only when opening/changing the gallery. Never perform FTP or
@@ -548,6 +548,15 @@ public:
             ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows),dt,15.0f);
         const auto new_logo=gallery_logo_path(); if(!new_logo.empty() && !covers_.has(new_logo))covers_.load(new_logo);
         const auto new_background=gallery_background_path(); if(!new_background.empty() && !covers_.has(new_background))covers_.load(new_background);
+        // A single 384x216 gallery preview per update; none during normal play.
+        if(settings_ && settings_subview_==6){
+            for(const auto& item : gallery_choices_){
+                const std::string preview=ulg::bgh_gallery::builtin_background_preview(item.id);
+                if(!preview.empty() && !covers_.has(preview)){
+                    covers_.load(preview);break;
+                }
+            }
+        }
         if(!covers_.has("/app0/assets/ui/frosted_lake_backdrop.png"))covers_.load("/app0/assets/ui/frosted_lake_backdrop.png");
         if(!covers_.has("/app0/assets/ui/serif_atlas.png"))covers_.load("/app0/assets/ui/serif_atlas.png");
         // Two small bundled PNGs. Never decoded during draw_controllers().
@@ -740,7 +749,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.24";
+        const std::string release_label="BGH V1.1.25";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2559,20 +2568,27 @@ private:
                     (selected_tile_==2)?(emulator_boot_settings_.direct_boot?0:1):
                     (selected_tile_==3)?(theme_settings_.frosted_glass?0:1):
                     (selected_tile_==4)?(music_settings_.enabled?0:1):0;
-                gallery_row_=settings_subview_==7?1:0;
+                gallery_focus_=0;
                 gallery_delete_armed_=false;
-                if(settings_subview_==6 || settings_subview_==7){
-                    const auto kind=settings_subview_==6?
-                        ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
-                    // Prefer direct file reading, with a separately scoped FTP
-                    // fallback when the PS5 sandbox hides the install folder.
+                if(settings_subview_==6){
+                    // BGH V1.1.25: nine bundled backgrounds only. No FTP,
+                    // imported files or filesystem enumeration on tile open.
+                    gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);
+                    gallery_message_.clear();
+                    for(std::size_t i=0;i<gallery_choices_.size();++i){
+                        if(gallery_choices_[i].id==gallery_selection_.background){
+                            gallery_focus_=static_cast<int>(i);break;
+                        }
+                    }
+                }else if(settings_subview_==7){
+                    // Preserve the previously working independent logo gallery.
+                    const auto kind=ulg::bgh_gallery::Kind::logo;
                     const auto direct=ulg::bgh_gallery::import_from_local_filesystem(kind);
                     gallery_message_=direct.detail;
                     if(direct.readable==0 || direct.cache_errors>0){
                         const auto ftp=ulg::bgh_gallery::import_from_local_ftp(kind);
                         gallery_message_+="  |  "+ftp.detail;
                     }
-                    // Refresh only after the import; never touch game caches.
                     gallery_choices_=ulg::bgh_gallery::list(kind);
                     refresh_gallery_paths();
                 }
@@ -2604,6 +2620,23 @@ private:
         if(settings_subview_==6 || settings_subview_==7){
             const bool background=settings_subview_==6;
             const auto kind=background?ulg::bgh_gallery::Kind::background:ulg::bgh_gallery::Kind::logo;
+            if(background){
+                // Move a visual selection (3x3). Commit/persist ONLY with X.
+                int delta=0;
+                if(input.nav==Direction::left && gallery_focus_%3>0)delta=-1;
+                else if(input.nav==Direction::right && gallery_focus_%3<2)delta=1;
+                else if(input.nav==Direction::up && gallery_focus_>=3)delta=-3;
+                else if(input.nav==Direction::down && gallery_focus_+3<static_cast<int>(gallery_choices_.size()))delta=3;
+                if(delta){gallery_focus_+=delta;feedback.play(audio::Cue::focus);return;}
+                if(input.is_pressed(Action::confirm) && gallery_focus_>=0 &&
+                   gallery_focus_<static_cast<int>(gallery_choices_.size())){
+                    const auto& chosen=gallery_choices_[static_cast<std::size_t>(gallery_focus_)];
+                    if(ulg::bgh_gallery::select(kind,chosen.id,gallery_selection_)){
+                        save_gallery();feedback.play(audio::Cue::select);
+                    }else feedback.play(audio::Cue::error);
+                }
+                return; // No triangle deletion or FTP import in backgrounds.
+            }
             if(input.nav==Direction::left || input.nav==Direction::right ||
                input.is_pressed(Action::confirm)){
                 const auto& choices=gallery_choices_;
@@ -2799,7 +2832,7 @@ private:
                 theme_settings_.frosted_glass?"Frosted Petrol":"Transparent",
                 music_settings_.enabled?"Musik: AN":"Musik: AUS",
                 std::string("ShadowMount ")+(shadow_storage_.http_ok?"OK":"offline"),
-                "Auswahl: "+gallery_selection_.background,
+                "9 fest eingebaute Hintergruende",
                 "Auswahl: "+gallery_selection_.logo
             };
             // 4 columns x 2 rows, with generous TV-safe margins.
@@ -2843,7 +2876,7 @@ private:
         const bool gallery=settings_subview_==6 || settings_subview_==7;
         const ui::Hint hints[]={
             {ui::Button::dpad,hint(gallery?"Motiv":"Auswahl")},
-            {ui::Button::cross,hint(gallery?"Weiter":"Speichern")},
+            {ui::Button::cross,hint(gallery?"Speichern":"Speichern")},
             {ui::Button::circle,hint("Zurueck")}
         };
         ui::HintLayout layout;layout.cy=982;layout.size=24;layout.text_size=18;layout.item_gap=34;
@@ -2887,6 +2920,41 @@ private:
         const bool background=settings_subview_==6;
         const auto& choices=gallery_choices_;
         const auto selected=background?gallery_selection_.background:gallery_selection_.logo;
+        if(background){
+            translated_text(list,fonts.regular,
+                "Motiv mit Steuerkreuz waehlen  |  X: Hintergrund dauerhaft uebernehmen",
+                295,255,20,kMuted);
+            const int count=static_cast<int>(choices.size());
+            for(int i=0;i<count;++i){
+                const int row=i/3,col=i%3;
+                const float x=293.0f+col*484.0f;
+                const float y=278.0f+row*225.0f;
+                const Rect cell{x,y,394.0f,222.0f};
+                const bool focused=i==gallery_focus_;
+                const bool active=choices[static_cast<std::size_t>(i)].id==selected;
+                list.shadow({x,y+3,394,222},15,8,Color::rgb(0x000000,0.35f));
+                list.rounded_rect(cell,11,Color::rgb(0x071526,0.95f));
+                const std::string preview=ulg::bgh_gallery::builtin_background_preview(choices[static_cast<std::size_t>(i)].id);
+                const auto tex=covers_.get(preview);
+                if(tex)list.image(tex,{x+7,y+4,380,214},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                else list.rounded_rect({x+8,y+5,378,212},7,Color::rgb(0x193650,0.85f));
+                // Bottom labels are embedded into the card, never another row.
+                list.rounded_rect({x+10,y+175,374,39},6,Color::rgb(0x071526,0.86f));
+                static constexpr const char* names[]={
+                    "Bergsee", "Cyber Showroom", "Berge & Krone", "Gaming-Halle",
+                    "Neon-Korridor", "Metal Blue", "Neon-Wand", "Orbit", "Blue Hall"
+                };
+                const char* name=i<9?names[i]:"Motiv";
+                translated_text(list,fonts.semibold,name,x+23,y+202,19,Color::rgb(0xFFFFFF));
+                if(active)translated_text(list,fonts.semibold,"AKTIV",x+288,y+201,15,Color::rgb(0x92F3C9));
+                list.bordered_rect(cell,11,Color::rgb(0xFFFFFF,0),
+                    focused?4.0f:(active?2.0f:1.0f),
+                    focused?Color::rgb(0x60E8FF):(active?Color::rgb(0x65CAAA):Color::rgb(0xA0B7CC,0.32f)));
+            }
+            if(!gallery_message_.empty())
+                translated_text(list,fonts.regular,shorten(gallery_message_,105),315,960,17,kAccent);
+            return;
+        }
         translated_text(list,fonts.regular,
             "X / Links / Rechts: Motiv wechseln  |  Dreieck zweimal: eigenes Bild loeschen",190,298,20,kMuted);
         list.gradient_rect({195,351,1528,310},22,Color::rgb(0x253D57,0.72f),Color::rgb(0x14253E,0.89f));
@@ -2908,7 +2976,7 @@ private:
             }
         }
         translated_text(list,fonts.regular,
-            background?"Bilder: /data/homebrew/PPSA99079/user_themes/backgrounds":"Bilder: /data/homebrew/PPSA99079/user_themes/logos",
+            "Bilder: /data/homebrew/PPSA99079/user_themes/logos",
             197,741,20,kMuted);
         if(!gallery_message_.empty())translated_text(list,fonts.regular,shorten(gallery_message_,150),197,828,19,kAccent);
     }
@@ -3113,7 +3181,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.24",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.25",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
