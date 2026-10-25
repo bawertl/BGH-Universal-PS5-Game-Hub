@@ -46,12 +46,12 @@ def test_translation_coverage_version_and_hints():
     assert 'const char *hint(' in CPP
     assert 'ulg::tr_hint(label,language_settings_.english)' in CPP
     assert 'ulg::translate_ui(value,language_settings_.english)' in CPP
-    assert 'BGH V1.1.29' in CPP
+    assert 'BGH V1.1.30' in CPP
     assert "ui_localization.hpp" in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.29-fix1]' in WF
-    assert 'BGH-V1-1-29-FIX1-PPSA99079' in WF
-    assert 'V1_1_29_PPSA99079_PS5_TEST.zip' in WF
+    assert 'branches: [bgh-v1.1.30]' in WF
+    assert 'BGH-V1-1-30-PPSA99079' in WF
+    assert 'V1_1_30_PPSA99079_PS5_TEST.zip' in WF
 
 
 def test_language_binary_roundtrip_and_corruption(tmp_path):

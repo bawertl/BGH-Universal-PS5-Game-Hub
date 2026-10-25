@@ -72,7 +72,7 @@ def test_console_icons_have_no_distant_isolated_alpha_fragment():
         assert all(v<=2 for v in sizes[1:])
 
 def test_version_and_workflow():
-    assert 'BGH V1.1.29' in CPP
+    assert 'BGH V1.1.30' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.29-fix1]' in WF
-    assert 'BGH-V1-1-29-FIX1-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.30]' in WF
+    assert 'BGH-V1-1-30-PPSA99079' in WF

@@ -26,8 +26,8 @@ def test_new_home_icon_exact_file_is_present_and_square():
 
 
 def test_launcher_and_galleries_are_unchanged_in_function():
-    assert 'constexpr const char *kBuildLabel = "BGH V1.1.29";' in UI
-    assert 'const std::string release_label="BGH V1.1.29";' in UI
+    assert 'constexpr const char *kBuildLabel = "BGH V1.1.30";' in UI
+    assert 'const std::string release_label="BGH V1.1.30";' in UI
     assert 'gallery_choices_=ulg::bgh_gallery::builtins(kind);' in UI
     assert 'gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);' in UI
     assert 'stage_ps5sx2_disc_launch(g.path)' in UI
@@ -35,9 +35,9 @@ def test_launcher_and_galleries_are_unchanged_in_function():
 
 
 def test_git_workflow_packaging_checks_new_app_icon():
-    assert 'branches: [bgh-v1.1.29-fix1]' in WF
-    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.29-fix1\'' in WF
-    assert 'BGH_BawertLs_Game_Hub_V1_1_29_' in BUILD
+    assert 'branches: [bgh-v1.1.30]' in WF
+    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.30\'' in WF
+    assert 'BGH_BawertLs_Game_Hub_V1_1_30_' in BUILD
     assert 'cp "$PROJECT/sce_sys/icon0.png" "$KIT/sce_sys/icon0.png"' in BUILD
     assert "z.read(prefix + 'sce_sys/icon0.png') != source" in WF
     assert 'tests/test_v1127_ps5_home_icon.py' in WF

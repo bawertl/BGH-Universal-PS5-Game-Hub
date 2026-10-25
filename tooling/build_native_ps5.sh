@@ -66,7 +66,7 @@ if [[ "$actual_blob" != "$expected_blob" ]]; then
   exit 12
 fi
 python3 "$PROJECT/tooling/install_ui_kit_overlay.py" "$KIT"
-# BGH V1.1.29: package the selectable images, not just the default assets.
+# BGH V1.1.30: package the selectable images, not just the default assets.
 mkdir -p "$KIT/assets/themes"
 cp -a "$PROJECT/assets/themes/." "$KIT/assets/themes/"
 # The kit sources compile inside src/concepts, not native_ps5.
@@ -81,6 +81,13 @@ fi
 make -C "$KIT" init TITLE_ID="$TITLE_ID" APP_NAME="BGH - BawertL's Game Hub"
 # PS5-Home icon comes directly from Stefan's approved BGH logo.
 cp "$PROJECT/sce_sys/icon0.png" "$KIT/sce_sys/icon0.png"
+# PS5 home-screen selection and launch backgrounds: BC7 UNORM DX10 DDS, 3840x2160.
+for background in pic0.dds pic1.dds; do
+  test -s "$PROJECT/sce_sys/$background" || {
+    echo "BLOCKER: BGH PS5 background missing: sce_sys/$background" >&2; exit 15;
+  }
+  cp "$PROJECT/sce_sys/$background" "$KIT/sce_sys/$background"
+done
 # Upstream make fetches the versioned SDK, creates libc.prx, links and packages.
 make -C "$KIT" BUILD_JOBS="${BUILD_JOBS:-4}" app
 PACKAGE="$KIT/dist/$TITLE_ID"
@@ -104,7 +111,7 @@ SOURCE_ZIP="$KIT/dist/$TITLE_ID.zip"
 # preserving the native title's signed binaries and PS5 0777 archive modes.
 python3 "$PROJECT/tooling/append_user_theme_folders.py" \
   "$SOURCE_ZIP" "$TITLE_ID" "$PROJECT/user_themes"
-DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_29_${TITLE_ID}_PS5_TEST.zip"
+DEST="$OUT/BGH_BawertLs_Game_Hub_V1_1_30_${TITLE_ID}_PS5_TEST.zip"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$SOURCE_ZIP" "$TITLE_ID"
 cp -f -- "$SOURCE_ZIP" "$DEST"
 python3 "$PROJECT/tooling/verify_ps5_package.py" "$DEST" "$TITLE_ID"

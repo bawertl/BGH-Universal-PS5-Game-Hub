@@ -90,9 +90,9 @@ def test_ps2_ftp_uses_exact_single_filename_and_keeps_verification():
 
 def test_release_identity_and_preserved_network_backends():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.29-fix1' in wf
-    assert 'BGH V1.1.29' in UI
-    assert 'BGH V1.1.29' in UI
+    assert 'bgh-v1.1.30' in wf
+    assert 'BGH V1.1.30' in UI
+    assert 'BGH V1.1.30' in UI
     assert 'PPSA99303' in UI
     assert 'ulg::shadow_storage::fetch_storage()' in UI
     for name in ('launcher_client.cpp','ftp_scan.cpp','ps5_launch.cpp', 'controller_status.hpp'):

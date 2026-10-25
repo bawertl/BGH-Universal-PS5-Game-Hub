@@ -87,11 +87,11 @@ def test_original_five_platform_launch_block_keeps_all_core_launch_paths():
 
 
 def test_workflow_is_v126_and_legacy_launch_checks_remain():
-    assert 'branches: [bgh-v1.1.29-fix1]' in WORKFLOW
-    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.29-fix1"' in WORKFLOW
-    assert 'BGH-V1-1-29-FIX1-PPSA99079' in WORKFLOW
-    assert 'V1_1_29_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'BGH V1.1.29' in SOURCE
+    assert 'branches: [bgh-v1.1.30]' in WORKFLOW
+    assert '"$GITHUB_REF_NAME" != "bgh-v1.1.30"' in WORKFLOW
+    assert 'BGH-V1-1-30-PPSA99079' in WORKFLOW
+    assert 'V1_1_30_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'BGH V1.1.30' in SOURCE
     for token in ('stage_ps5sx2_disc_launch(g.path)',
                   'make_registered_ps5_launch_plan(g.title_id)',
                   'make_registered_ps4_launch_plan(g.title_id)',

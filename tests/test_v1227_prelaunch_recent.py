@@ -84,9 +84,9 @@ int main(int argc,char**argv){
 
 
 def test_consistent_release_markers():
-    assert 'branches: [bgh-v1.1.29-fix1]' in WORKFLOW
-    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.29-fix1'" in WORKFLOW
-    assert 'BGH V1.1.29' in SRC
-    assert 'BGH-V1-1-29-FIX1-PPSA99079' in WORKFLOW
-    assert 'BGH_BawertLs_Game_Hub_V1_1_29_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_29_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.30]' in WORKFLOW
+    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.30'" in WORKFLOW
+    assert 'BGH V1.1.30' in SRC
+    assert 'BGH-V1-1-30-PPSA99079' in WORKFLOW
+    assert 'BGH_BawertLs_Game_Hub_V1_1_30_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_30_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
