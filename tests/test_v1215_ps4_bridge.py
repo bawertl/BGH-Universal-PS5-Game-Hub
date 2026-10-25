@@ -131,4 +131,4 @@ def test_ps4_title_visible_and_manual_diagnostic_preserved():
     assert 'if(g.platform=="PS5" || g.platform=="PS4"){' in gui
     assert 'ulg::probe_local_launch_services();' in gui
     assert 'g.platform=="PS4" && ulg::make_registered_ps4_launch_plan(g.title_id).supported' in gui
-    assert 'BGH V1.1.27' in gui
+    assert 'BGH V1.1.28' in gui

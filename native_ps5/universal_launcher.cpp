@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.27";
+constexpr const char *kBuildLabel = "BGH V1.1.28";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -770,7 +770,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.27";
+        const std::string release_label="BGH V1.1.28";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -2592,7 +2592,7 @@ private:
                 gallery_focus_=0;
                 gallery_delete_armed_=false;
                 if(settings_subview_==6){
-                    // BGH V1.1.27: bundled backgrounds and bundled logos only. No FTP,
+                    // BGH V1.1.28: bundled backgrounds and bundled logos only. No FTP,
                     // imported files or filesystem enumeration on tile open.
                     gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);
                     gallery_message_.clear();
@@ -3189,7 +3189,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.27",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.28",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

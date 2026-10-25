@@ -102,7 +102,7 @@ def test_gui_and_workflow_contain_verified_v129_mechanics():
     assert 'settings_visible_roots()' in ui
     assert 'root.status == "ftp_ok" || root.status == "deaktiviert"' in lib
     assert 'game.platform=="PS5" && valid_native_id(game.title_id,"PPSA")' in ftp
-    assert 'bgh-v1.1.27' in workflow
+    assert 'bgh-v1.1.28' in workflow
     assert '|| true' not in workflow
 
 

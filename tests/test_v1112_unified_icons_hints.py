@@ -43,6 +43,6 @@ def test_folder_browser_and_editor_use_glyphs():
 
 def test_version_and_branch():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'branches: [bgh-v1.1.27]' in wf
-    assert 'BGH-V1-1-27-PPSA99079' in wf
-    assert 'BGH V1.1.27' in SRC
+    assert 'branches: [bgh-v1.1.28]' in wf
+    assert 'BGH-V1-1-28-PPSA99079' in wf
+    assert 'BGH V1.1.28' in SRC

@@ -113,7 +113,7 @@ def test_version_icons_and_source_are_packed():
         with Image.open(ROOT/'assets/platforms'/f'{name}.png') as image:
             assert image.mode=='RGBA' and image.size==(96,96)
             assert image.getchannel('A').getbbox() is not None
-    assert 'branches: [bgh-v1.1.27]' in WF
-    assert 'BGH-V1-1-27-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.28]' in WF
+    assert 'BGH-V1-1-28-PPSA99079' in WF
     assert 'test_v1111_universal_platform_manager.py' in WF
     assert 'platform_registry.hpp' in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()

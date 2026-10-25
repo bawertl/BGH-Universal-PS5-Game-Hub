@@ -74,8 +74,8 @@ int main(int argc,char**argv){
 
 
 def test_workflow_version_and_overlay():
-    assert 'branches: [bgh-v1.1.27]' in WF
-    assert 'BGH-V1-1-27-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.28]' in WF
+    assert 'BGH-V1-1-28-PPSA99079' in WF
     assert "platform_registry.hpp'" in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()
 
 

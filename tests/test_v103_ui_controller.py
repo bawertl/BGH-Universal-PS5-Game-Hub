@@ -10,11 +10,11 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 
 
 def test_version_consistency():
-    assert 'BGH V1.1.27' in UI
+    assert 'BGH V1.1.28' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.27]' in WORKFLOW
-    assert 'BGH-V1-1-27-PPSA99079' in WORKFLOW
-    assert 'V1_1_27_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.28]' in WORKFLOW
+    assert 'BGH-V1-1-28-PPSA99079' in WORKFLOW
+    assert 'V1_1_28_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
 
 
 def test_7_cover_fan_and_bolder_title():

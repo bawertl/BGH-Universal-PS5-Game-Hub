@@ -81,7 +81,7 @@ def test_ps2_ui_is_menu_only_and_uses_same_bridge():
     assert 'PS2-Spielpfad via disc-launch.txt; Quadrat: Menue' in gui
     assert 'p.target="PPSA99203";' in client
     assert 'make_ps5sx2_menu_launch_plan();' in header
-    assert 'BGH V1.1.27' in gui
+    assert 'BGH V1.1.28' in gui
 
 def test_launcher_tunnel_remains_passive_and_other_handlers_preserve_v127_launch_protocol():
     import hashlib
