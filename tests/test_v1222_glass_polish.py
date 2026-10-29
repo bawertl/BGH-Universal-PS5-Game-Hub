@@ -32,7 +32,7 @@ def test_launch_paths_remain_present():
     assert 'make_registered_ps5_launch_plan(g.title_id)' in SRC
 
 def test_build_versions_match():
-    assert 'bgh-v1.1.31-fix1' in WORKFLOW
+    assert 'bgh-v1.1.31-fix2' in WORKFLOW
     assert 'BGH V1.1.31' in SRC
     assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'V1_1_31_' in (ROOT/'tooling/build_native_ps5.sh').read_text()

@@ -44,7 +44,7 @@ def test_safe_fan_and_recent_geometry():
 def test_workflow_and_asset_version_consistent():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
     sh=(ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'bgh-v1.1.31-fix1' in wf
+    assert 'bgh-v1.1.31-fix2' in wf
     assert 'BGH V1.1.31' in wf
     assert 'BGH V1.1.31' in CPP
     assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in wf

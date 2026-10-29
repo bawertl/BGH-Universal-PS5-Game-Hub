@@ -37,8 +37,8 @@ def test_platform_badge_uses_actual_serif_metrics():
     assert 'kSerifAtlasGlyphs' in SRC and 'glyph->advance*scale' in SRC
 
 def test_branch_build_and_version_consistency():
-    assert 'branches: [bgh-v1.1.31-fix1]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.31-fix2]' in WORKFLOW
     assert 'BGH V1.1.31' in SRC
-    assert 'BGH-V1-1-31-FIX1-PPSA99079' in WORKFLOW
+    assert 'BGH-V1-1-31-FIX2-PPSA99079' in WORKFLOW
     assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'V1_1_31_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

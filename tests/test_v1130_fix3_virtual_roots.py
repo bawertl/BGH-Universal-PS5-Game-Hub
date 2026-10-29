@@ -21,5 +21,5 @@ def test_virtual_root_selection_and_ftp_prefill():
     assert 'if(input.is_pressed(Action::touch))' in UI
     assert 'browser_path_=end==0?"/":browser_path_.substr(0,end);' in UI
 def test_fix3_branch():
-    assert 'branches: [bgh-v1.1.31-fix1]' in WF
-    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.31-fix1\'' in WF
+    assert 'branches: [bgh-v1.1.31-fix2]' in WF
+    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.31-fix2\'' in WF
