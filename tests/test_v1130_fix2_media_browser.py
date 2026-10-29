@@ -20,5 +20,5 @@ def test_emulator_folder_opens_browser_and_manual_mode_remains():
 def test_usb_mount_poll_is_rate_limited_and_branch_matches():
     assert 'next_media_probe_=clock_+12.0f;' in UI
     assert 'if(changed)refresh();' in UI
-    assert 'branches: [bgh-v1.1.31]' in WF
-    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.31\'' in WF
+    assert 'branches: [bgh-v1.1.31-fix1]' in WF
+    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.31-fix1\'' in WF

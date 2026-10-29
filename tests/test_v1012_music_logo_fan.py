@@ -27,8 +27,8 @@ def test_center_and_release_updated_without_touching_scroll_debounce():
     assert 'release_label="BGH V1.1.9"' in CPP
     assert 'kQuietSeconds = 0.035f' in (ROOT/'native_ps5/cover_load_debounce.hpp').read_text()
     assert 'if(order_.size()>=256)' in CPP
-    assert 'branches: [bgh-v1.1.31]' in WF
-    assert 'BGH-V1-1-31-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.31-fix1]' in WF
+    assert 'BGH-V1-1-31-FIX1-PPSA99079' in WF
 
 
 def test_audio_ogg_is_decodable_48k_stereo():

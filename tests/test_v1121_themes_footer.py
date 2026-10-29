@@ -23,7 +23,7 @@ def test_short_version_and_crisp_native_font_rendering():
     assert 'translated_text(list,fonts.semibold,release_label,1720,1057,14' in UI
     for unsupported in ('UI-TEST','@BGH_GIT_COMMIT@','PS2-RPCS3-ICONS'):
         assert unsupported not in UI
-    assert 'branches: [bgh-v1.1.31]' in WORKFLOW
+    assert 'branches: [bgh-v1.1.31-fix1]' in WORKFLOW
 
 def test_approved_storage_images_are_really_transparent():
     for filename in ('storage_internal.png','storage_usb.png'):

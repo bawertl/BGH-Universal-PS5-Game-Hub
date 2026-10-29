@@ -65,5 +65,5 @@ int main(int,char**argv){
     subprocess.run([str(exe),str(tmp_path/'third.bin'),str(tmp_path/'second.bin')],check=True)
 
 def test_workflow_identity():
-    assert 'branches: [bgh-v1.1.31]' in WF
+    assert 'branches: [bgh-v1.1.31-fix1]' in WF
     assert 'BGH V1.1.31' in CPP

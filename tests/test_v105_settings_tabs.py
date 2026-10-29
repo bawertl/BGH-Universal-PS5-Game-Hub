@@ -64,7 +64,7 @@ def test_language_selectable_and_emulator_mode_is_separate():
 def test_version_and_workflow_match():
     assert 'BGH V1.1.31' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.31]' in WORKFLOW
-    assert 'BGH-V1-1-31-PPSA99079' in WORKFLOW
+    assert 'branches: [bgh-v1.1.31-fix1]' in WORKFLOW
+    assert 'BGH-V1-1-31-FIX1-PPSA99079' in WORKFLOW
     assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'V1_1_31_${TITLE_ID}_PS5_TEST.zip' in (ROOT / 'tooling/build_native_ps5.sh').read_text()

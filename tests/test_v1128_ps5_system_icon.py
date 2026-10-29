@@ -28,7 +28,7 @@ def test_system_icon_installed_with_title_id_and_matched_by_workflow():
     ui=(ROOT/'native_ps5/universal_launcher.cpp').read_text()
     assert 'cp "$PROJECT/sce_sys/icon0.png" "$KIT/sce_sys/icon0.png"' in shell
     assert "z.read(prefix + 'sce_sys/icon0.png') != source" in wf
-    assert 'branches: [bgh-v1.1.31]' in wf
+    assert 'branches: [bgh-v1.1.31-fix1]' in wf
     assert 'BGH V1.1.31' in ui
     assert 'PPSA99079' in wf and 'PPSA99079' in shell
     assert 'tests/test_v1128_ps5_system_icon.py' in wf

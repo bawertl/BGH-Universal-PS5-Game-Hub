@@ -596,11 +596,26 @@ public:
             if(!covers_.has(path)){covers_.load(path);break;}
         }
         load_next_visible_cover();
+        // Acknowledgement is intentionally not an activation: the warning
+        // returns until a real launch protocol is saved for the custom app.
+        if(emulator_setup_warning_open_){
+            if(input.is_pressed(Action::confirm) || input.is_pressed(Action::back) ||
+               input.is_pressed(Action::menu)){
+                emulator_setup_warning_open_=false;
+                feedback.play(audio::Cue::back);
+            }
+            return;
+        }
         if(input.is_pressed(Action::back)){
             if(path_editor_open_){path_editor_open_=false;emulator_path_edit_=false;feedback.play(audio::Cue::back);}
             else if(browser_open_){browser_open_=false;emulator_path_edit_=false;feedback.play(audio::Cue::back);}
             else if(search_open_){search_open_=false;feedback.play(audio::Cue::back);}
             else if(settings_){
+                if(settings_subview_==0 && has_unconfirmed_emulator_setup()){
+                    emulator_setup_warning_open_=true;
+                    feedback.play(audio::Cue::error);
+                    return;
+                }
                 if(settings_subview_>=0)settings_subview_=-1;
                 else settings_=false;
                 feedback.play(audio::Cue::back);
@@ -610,6 +625,11 @@ public:
             return;
         }
         if(input.is_pressed(Action::menu)){
+            if(settings_ && settings_subview_==0 && has_unconfirmed_emulator_setup()){
+                emulator_setup_warning_open_=true;
+                feedback.play(audio::Cue::error);
+                return;
+            }
             detail_=false;search_open_=false;browser_open_=false;path_editor_open_=false;
             settings_=!settings_;
             if(settings_){settings_subview_=-1;selected_tile_=0;settings_choice_=0;probe_recent_storage();}
@@ -792,6 +812,7 @@ public:
         if(browser_open_)draw_browser(frame);
         if(path_editor_open_)draw_path_editor(frame);
         if(search_open_)draw_search(frame);
+        if(emulator_setup_warning_open_)draw_emulator_setup_warning(frame.scene);
     }
 
 private:
@@ -1695,6 +1716,38 @@ private:
             if(root.platform==profile.id && root.path==profile.rom_folders[folder])
                 return root.enabled;
         return false;
+    }
+    // A custom application with unresolved AUTO ROM launch needs explicit
+    // protocol selection; known legacy default IDs remain automatically valid.
+    bool emulator_protocol_needs_confirmation(const ulg::PlatformEntry &p) const {
+        if(!p.is_emulator || !p.enabled || p.app_path.empty() ||
+           p.launch_protocol!="auto")return false;
+        const auto id=ulg::active_emulator_title_id(p);
+        if(id.empty())return true;
+        const auto &d=emulator_detection_for(p.id);
+        if(p.id=="Switch")return id!="PPSA99008";
+        if(p.id=="PS2" || p.id=="PS3" || p.id=="Xbox 360")
+            return d.status!=ulg::emulator_detection::Detection::Status::known_emulator;
+        return true;
+    }
+    bool has_unconfirmed_emulator_setup() const {
+        for(const auto &p:platform_registry_.entries)
+            if(emulator_protocol_needs_confirmation(p))return true;
+        return false;
+    }
+    void draw_emulator_setup_warning(gfx::DrawList &list) const {
+        const auto &fonts=context_.fonts;
+        list.rounded_rect({0,0,1920,1080},0,Color::rgb(0x020913,0.78f));
+        list.rounded_rect({352,300,1216,450},24,Color::rgb(0x19283B,0.99f));
+        list.bordered_rect({352,300,1216,450},24,Color::rgb(0xFFFFFF,0),2,
+                           Color::rgb(0xFFD47F,0.88f));
+        translated_text(list,fonts.display,"!!!  EMULATOR-EINRICHTUNG UNVOLLSTAENDIG  !!!",394,379,30,
+                        Color::rgb(0xFFD47F));
+        translated_text(list,fonts.semibold,"Ein Emulator wurde zugeordnet, aber seine Startmethode",404,448,24,kInk);
+        translated_text(list,fonts.semibold,"wurde noch nicht bestaetigt.",404,483,24,kInk);
+        translated_text(list,fonts.regular,"In Emulatoren & Spielordner: App-Zeile markieren und mit",404,554,22,kAccent);
+        translated_text(list,fonts.semibold,"DREIECK die passende Startmethode auswaehlen.",404,588,24,Color::rgb(0xFFD47F));
+        translated_text(list,fonts.regular,"X oder Kreis: Hinweis schliessen (erscheint bis zur Einrichtung erneut).",404,670,19,kMuted);
     }
     void update_emulator_settings(const InputFrame &input,app::Feedback &feedback){
         auto profiles=emulator_profile_indices();if(profiles.empty())return;
@@ -3196,6 +3249,9 @@ private:
                                             Color::rgb(0x7CE0C8,0.64f));
                 if(sub==0){
                     translated_text(list,fonts.semibold,"Emulator-Anwendung: "+application_name(p),249,y+29,20,kInk);
+                    if(emulator_protocol_needs_confirmation(p))
+                        translated_text(list,fonts.semibold,"!!! STARTMETHODE FEHLT - DREIECK !!!",1120,y+29,17,
+                                        Color::rgb(0xFFD47F));
                     translated_text(list,fonts.regular,
                         "Startmethode: "+p.launch_protocol+" | Titel-ID: "+(!emulator_detection_for(p.id).title_id.empty()?
                             emulator_detection_for(p.id).title_id:
@@ -3434,6 +3490,7 @@ private:
     std::vector<SidebarItem> sidebar_items_;
     std::string platform_settings_message_;
     int emulator_selected_=0;
+    bool emulator_setup_warning_open_=false;
     bool emulator_path_edit_=false;
     bool emulator_expanded_=false,emulator_edit_app_=false;
     int emulator_subselected_=-1;

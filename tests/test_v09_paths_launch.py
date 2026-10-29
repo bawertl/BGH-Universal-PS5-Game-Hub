@@ -69,6 +69,6 @@ def test_bundle_contains_new_native_launch_and_preserves_other_components():
     assert 'kTabs' in src
     assert 'save_user_roots(roots_,kUserPathsFile)' in src
     workflow=(ROOT/'.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.31' in workflow
+    assert 'bgh-v1.1.31-fix1' in workflow
     assert 'BGH_BawertLs_Game_Hub_V1_1_31_PPSA99079_PS5_TEST.zip' in workflow
     assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in workflow
