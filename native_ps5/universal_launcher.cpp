@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.30";
+constexpr const char *kBuildLabel = "BGH V1.1.31";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -633,7 +633,7 @@ public:
                 }
                 if(g.platform=="PS2"){
                     // Manual PS5SX2 menu fallback: Square sends NO game request.
-                    const auto result=ulg::send_launch(ulg::make_ps5sx2_menu_launch_plan());
+                    const auto result=ulg::send_launch(configured_menu_plan("PS2"));
                     launch_message_=result.message;
                     if(result.status==ulg::LaunchStatus::started || result.status==ulg::LaunchStatus::queued){
                         feedback.play(audio::Cue::launch);
@@ -644,7 +644,7 @@ public:
                 if(g.platform!="Switch" && g.platform!="Xbox 360")return;
                 // The direct system-service path was refused with 0x8094000F on
                 // actual hardware. The existing Forwarder handles the app switch.
-                const auto result=ulg::send_launch(emulator_menu_plan(g.platform));
+                const auto result=ulg::send_launch(configured_menu_plan(g.platform));
                 launch_message_=result.message;
                 if(result.status==ulg::LaunchStatus::queued ||
                    result.status==ulg::LaunchStatus::started){
@@ -666,8 +666,8 @@ public:
         if(recent_focus_){
             const auto recent=recent_indices();
             if(input.nav==Direction::up){recent_focus_=false;launch_in_progress_=false;return;}
-            if(input.nav==Direction::left)recent_selected_=std::max(0,recent_selected_-1);
-            if(input.nav==Direction::right)recent_selected_=std::min(2,recent_selected_+1);
+            if(input.nav==Direction::left)recent_selected_=(recent_selected_+2)%3;
+            if(input.nav==Direction::right)recent_selected_=(recent_selected_+1)%3;
             // L3 inspects the selected recent title; X launches it directly.
             if(input.is_pressed(Action::l3) || input.is_pressed(Action::confirm)){
                 const bool details=input.is_pressed(Action::l3);
@@ -709,7 +709,7 @@ public:
         }
         if(input.nav!=Direction::none && !indices_.empty()){
             const int delta=(input.nav==Direction::left || input.nav==Direction::up)?-1:1;
-            const int next=ulg::premium::step(selected_,delta,indices_.size());
+            const int next=(selected_+delta+static_cast<int>(indices_.size()))%static_cast<int>(indices_.size());
             if(next!=selected_){
                 if(std::abs(next-selected_)>1)visual_selection_=static_cast<float>(next);
                 selected_=next;launch_in_progress_=false;feedback.play(audio::Cue::focus);
@@ -785,7 +785,7 @@ public:
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.30";
+        const std::string release_label="BGH V1.1.31";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -866,11 +866,12 @@ private:
             launch_request_accepted_=false;
             auto menu_plan=ulg::LaunchPlan{};
             if(const char *known_platform=emulator_platform_for_title(selected_game.title_id))
-                menu_plan=emulator_menu_plan(known_platform); // proven legacy backends
+                menu_plan=configured_menu_plan(known_platform); // proven legacy backends
             if(!menu_plan.supported){
                 for(const auto &installed:detected_emulators_){
                     const auto &d=installed.second;
-                    if(d.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+                    if((d.status==ulg::emulator_detection::Detection::Status::known_emulator ||
+                        d.status==ulg::emulator_detection::Detection::Status::unidentified_app) &&
                        d.title_id==selected_game.title_id){
                         menu_plan.target=d.title_id;
                         menu_plan.supported=true;
@@ -904,7 +905,7 @@ private:
             launch_request_accepted_=false;
             // Menu-only start must not require the chosen ROM/USB to be present:
             // this request carries a registered app ID and zero arguments.
-            auto menu_plan=emulator_menu_plan(selected_game.platform);
+            auto menu_plan=configured_menu_plan(selected_game.platform);
             if(!menu_plan.supported){
                 const auto &d=emulator_detection_for(selected_game.platform);
                 if(d.status==ulg::emulator_detection::Detection::Status::known_emulator){
@@ -1049,7 +1050,7 @@ private:
                             " (FTP "+std::to_string(request.ftp_reply)+")");
                         feedback.play(audio::Cue::error);
                     }else{
-                        const auto ps2_plan=ulg::make_ps5sx2_menu_launch_plan();
+                        const auto ps2_plan=configured_menu_plan("PS2");
                         const auto previous_recent=recent_list_;
                         record_recent(g.id);
                         const auto bridge=ulg::send_launch(ps2_plan);
@@ -1494,7 +1495,7 @@ private:
         // blocked by the PS5 app sandbox although an existing FTP daemon sees it.
         // Reuse only the same read-only loopback FTP service as the game scanner.
         ulg::FtpReadonly ftp;
-        for(const auto &p:platform_registry_.entries)if(p.is_emulator){
+        for(auto &p:platform_registry_.entries)if(p.is_emulator){
             auto detected=ulg::emulator_detection::detect(p.app_path,p.id,emulator_profiles_);
             if(!p.app_path.empty() &&
                (detected.status==ulg::emulator_detection::Detection::Status::invalid_path ||
@@ -1510,6 +1511,13 @@ private:
                     from_ftp.status!=ulg::emulator_detection::Detection::Status::ftp_unavailable))
                     detected=from_ftp;
             }
+            if(!p.app_path.empty()){
+                const auto id=(detected.status==ulg::emulator_detection::Detection::Status::known_emulator ||
+                    detected.status==ulg::emulator_detection::Detection::Status::unidentified_app)
+                    ?detected.title_id:std::string();
+                p.detected_title_id=id;
+                p.detected_name=id.empty()?std::string():detected.name;
+            }
             detected_emulators_[p.id]=std::move(detected);
         }
     }
@@ -1523,33 +1531,61 @@ private:
     bool homebrew_menu_available(const ulg::Game &game) const {
         if(game.platform!="Homebrew")return false;
         if(const char *known=emulator_platform_for_title(game.title_id))
-            if(emulator_menu_plan(known).supported)return true;
+            if(configured_menu_plan(known).supported)return true;
         for(const auto &item:detected_emulators_){
             const auto &d=item.second;
-            if(d.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+            if((d.status==ulg::emulator_detection::Detection::Status::known_emulator ||
+                d.status==ulg::emulator_detection::Detection::Status::unidentified_app) &&
                d.title_id==game.title_id)return true;
         }
         return false;
     }
-    ulg::LaunchPlan configured_rom_launch(const ulg::Game &game) const {
-        auto plan=ulg::make_launch_plan(game.platform,game.path);
-        // Preserve all previously proven PS2/Switch/Xbox360 paths verbatim.
-        if(plan.supported)return plan;
-        const auto &d=emulator_detection_for(game.platform);
-        if(d.status!=ulg::emulator_detection::Detection::Status::known_emulator)return plan;
-        for(const auto &p:platform_registry_.entries)if(p.id==game.platform){
-            auto configured=ulg::emulator_detection::profile_rom_launch_plan(
-                game.platform,game.path,game.format,p.app_path,d,emulator_profiles_);
-            if(configured.supported){
-                ulg::LaunchPlan result;
-                result.target=configured.target;
-                result.argv=std::move(configured.argv);
-                result.supported=true;
-                return result;
-            }
+    ulg::LaunchPlan configured_menu_plan(const std::string &platform) const {
+        for(const auto &p:platform_registry_.entries)if(p.id==platform){
+            const auto id=ulg::active_emulator_title_id(p);
+            if(p.is_emulator && !id.empty())return ulg::make_emulator_menu_launch_plan(id);
+            if(!p.app_path.empty())return {}; // no fallback to old app
             break;
         }
-        return plan;
+        return emulator_menu_plan(platform);
+    }
+    ulg::LaunchPlan configured_rom_launch(const ulg::Game &game) const {
+        const auto it=std::find_if(platform_registry_.entries.begin(),platform_registry_.entries.end(),
+            [&](const auto &p){return p.id==game.platform;});
+        if(it==platform_registry_.entries.end() || !it->is_emulator)
+            return ulg::make_launch_plan(game.platform,game.path);
+        const auto &p=*it;
+        const auto id=ulg::active_emulator_title_id(p);
+        if(!p.app_path.empty() && id.empty()){
+            ulg::LaunchPlan missing;missing.reason="Konfigurierter Emulator nicht erkannt: "+p.app_path;
+            return missing;
+        }
+        const auto &d=emulator_detection_for(game.platform);
+        std::string protocol=p.launch_protocol;
+        if(protocol=="auto"){
+            if(game.platform=="Switch"){
+                // A new Switch emulator may use different argv: never assume Eden ABI.
+                protocol=(p.app_path.empty() || (d.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+                    id=="PPSA99008"))?"eden_rom_argv":"unknown";
+            }else if(game.platform=="Xbox 360")protocol="xbox_path_argv";
+            else if(game.platform=="PS3")protocol="rpcs3_boot_app0";
+            else if(game.platform=="PS2")protocol="ps2_disc_launch";
+            else protocol="unknown";
+        }
+        if(protocol=="menu_only")return ulg::make_emulator_menu_launch_plan(id);
+        if(protocol=="eden_rom_argv")return ulg::make_launch_plan("Switch",game.path,id);
+        if(protocol=="xbox_path_argv")return ulg::make_launch_plan("Xbox 360",game.path,id);
+        if(protocol=="ps2_disc_launch")return ulg::make_emulator_menu_launch_plan(id);
+        if(protocol=="rpcs3_boot_app0"){
+            // Existing RPCS3 integration handles staging; never fabricate /app0 paths.
+            auto plan=ulg::emulator_detection::profile_rom_launch_plan(
+                game.platform,game.path,game.format,p.app_path,d,emulator_profiles_);
+            if(plan.supported){ulg::LaunchPlan launch;launch.target=id;
+                launch.argv=std::move(plan.argv);launch.supported=true;return launch;}
+        }
+        ulg::LaunchPlan unsupported;
+        unsupported.reason="Startmethode nicht bestaetigt; in Emulator-Einstellungen waehlen";
+        return unsupported;
     }
     std::string application_name(const ulg::PlatformEntry &p) const {
         const auto &d=emulator_detection_for(p.id);
@@ -1563,14 +1599,16 @@ private:
     }
     void test_emulator_menu(const ulg::PlatformEntry &p,app::Feedback &feedback){
         const auto &d=emulator_detection_for(p.id);
-        if(d.status!=ulg::emulator_detection::Detection::Status::known_emulator){
-            platform_settings_message_="Kein bekanntes Emulatorprofil / Menue nicht freigegeben";
+        if(d.status!=ulg::emulator_detection::Detection::Status::known_emulator &&
+           d.status!=ulg::emulator_detection::Detection::Status::unidentified_app &&
+           ulg::active_emulator_title_id(p).empty()){
+            platform_settings_message_="Keine erkannte Emulator-App fuer Menue-Start";
             feedback.play(audio::Cue::error);return;
         }
         // Explicit Square key: no ROM arguments and no helper ELF execution.
         // A queued launch is an experiment, not proof of PS5 compatibility.
         ulg::LaunchPlan plan{};
-        plan.target=d.title_id;plan.supported=true;
+        plan=configured_menu_plan(p.id);
         const auto result=ulg::send_launch(plan);
         platform_settings_message_=result.message;
         if(result.status==ulg::LaunchStatus::started || result.status==ulg::LaunchStatus::queued){
@@ -1663,6 +1701,18 @@ private:
         emulator_selected_=std::clamp(emulator_selected_,0,static_cast<int>(profiles.size())-1);
         const auto index=profiles[static_cast<std::size_t>(emulator_selected_)];
         const auto &profile=platform_registry_.entries[index];
+        if(emulator_expanded_ && emulator_subselected_==0 && input.is_pressed(Action::north)){
+            static const char* const modes[]={"auto","menu_only","eden_rom_argv","xbox_path_argv",
+                                             "rpcs3_boot_app0","ps2_disc_launch"};
+            auto changed=platform_registry_;
+            auto &target=changed.entries[index];
+            std::size_t n=0;
+            for(;n<6;++n)if(target.launch_protocol==modes[n])break;
+            target.launch_protocol=modes[(n+1)%6];
+            feedback.play(persist_platform_registry(std::move(changed))?
+                audio::Cue::select:audio::Cue::error);
+            return;
+        }
         if(emulator_expanded_ && emulator_subselected_==0 && input.is_pressed(Action::west)){
             test_emulator_menu(profile,feedback);return;
         }
@@ -1776,6 +1826,8 @@ private:
         if(persist_platform_registry(std::move(candidate))){
             if(emulator_edit_app_){
                 refresh_emulator_detections();
+                // Commit detected title identity to ULGR|3 for subsequent boots.
+                (void)persist_platform_registry(platform_registry_);
                 rebuild(); // new verified emulator appears in the tab immediately
                 platform_settings_message_=ulg::emulator_detection::description(
                     emulator_detection_for(platform_registry_.entries[index].id));
@@ -1801,7 +1853,8 @@ private:
         if(game.platform!="Homebrew")return false;
         if(emulator_platform_for_title(game.title_id))return true;
         for(const auto &entry:detected_emulators_)
-            if(entry.second.status==ulg::emulator_detection::Detection::Status::known_emulator &&
+            if((entry.second.status==ulg::emulator_detection::Detection::Status::known_emulator ||
+                entry.second.status==ulg::emulator_detection::Detection::Status::unidentified_app) &&
                entry.second.title_id==game.title_id)return true;
         return false;
     }
@@ -1811,6 +1864,13 @@ private:
             ?catalogue_.games[indices_[static_cast<std::size_t>(selected_)]].id : std::string();
         // Inject verified new emulator applications into the in-memory view.
         // The cached catalogue and actual user ROMs are never modified on disk.
+        // Reclassify dynamically configured emulator apps before rendering views.
+        for(auto &g:catalogue_.games)if(g.platform=="PS5"){
+            for(const auto &p:platform_registry_.entries)if(p.is_emulator){
+                const auto id=ulg::active_emulator_title_id(p);
+                if(!id.empty() && g.title_id==id){g.platform="Homebrew";break;}
+            }
+        }
         ulg::emulator_cards::sync(catalogue_,platform_registry_,detected_emulators_);
         indices_.clear();
         counts_.fill(0);
@@ -2625,7 +2685,7 @@ private:
                 gallery_focus_=0;
                 gallery_delete_armed_=false;
                 if(settings_subview_==6){
-                    // BGH V1.1.30: bundled backgrounds and bundled logos only. No FTP,
+                    // BGH V1.1.31: bundled backgrounds and bundled logos only. No FTP,
                     // imported files or filesystem enumeration on tile open.
                     gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);
                     gallery_message_.clear();
@@ -3073,6 +3133,7 @@ private:
                     hints[count++]={ui::Button::left_stick,hint("Scan AN/AUS")};
             }
             hints[count++]={ui::Button::square,hint(app?"Menue testen":"Einklappen")};
+            if(app)hints[count++]={ui::Button::triangle,hint("Startmethode wechseln")};
         }else{
             hints[count++]={ui::Button::cross,hint("AN/AUS")};
             hints[count++]={ui::Button::square,hint(emulator_expanded_?"Einklappen":"Aufklappen")};
@@ -3136,7 +3197,7 @@ private:
                 if(sub==0){
                     translated_text(list,fonts.semibold,"Emulator-Anwendung: "+application_name(p),249,y+29,20,kInk);
                     translated_text(list,fonts.regular,
-                        "Titel-ID: "+(!emulator_detection_for(p.id).title_id.empty()?
+                        "Startmethode: "+p.launch_protocol+" | Titel-ID: "+(!emulator_detection_for(p.id).title_id.empty()?
                             emulator_detection_for(p.id).title_id:
                             (p.title_id.empty()?std::string("Nicht eingerichtet"):p.title_id))+
                         "    | Installationsordner: "+shorten(p.app_path.empty()?"nicht erforderlich / optional":p.app_path,43),
@@ -3227,7 +3288,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.30",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.31",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;

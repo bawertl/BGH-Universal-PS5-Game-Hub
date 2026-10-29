@@ -170,6 +170,7 @@ inline std::vector<Profile> built_in_profiles(){
     return {
         {"PS2","ps5sx2","PPSA99203","PS5SX2",{"eboot.bin"}},
         {"Switch","prosperoeden","PPSA99008","ProsperoEden",{"eboot.bin"}},
+        {"Switch","forgenx","PPSA99186","ForgeNX",{"eboot.bin"}},
         {"Xbox 360","ps5x360","PPSA50011","PS5X360",{"eboot.bin"}},
         {"PS3","rpcs3ps5","PPSA99303","RPCS3 PS5",{"eboot.bin","rpcs3ps5-launch.elf"},
          {"--boot","{game_app0}"},{"ps3_ordner","iso"}}

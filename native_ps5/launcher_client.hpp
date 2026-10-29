@@ -42,7 +42,7 @@ LocalPortProbe probe_loopback_tcp(unsigned short port, int timeout_ms = 300);
 LocalLaunchServices probe_local_launch_services();
 
 // Only documented targets. PS5SX2/PS5/PS4 intentionally excluded.
-LaunchPlan make_launch_plan(const std::string &platform, const std::string &game_path);
+LaunchPlan make_launch_plan(const std::string &platform, const std::string &game_path,const std::string &emulator_title_id="");
 // Native PS5 titles: request registered PPSA game through an ALREADY RUNNING
 // PS5 Forwarder Format launcher. No service installation or auto-injection.
 // Deliberately excludes BGH and known emulator/homebrew title IDs.
@@ -52,6 +52,7 @@ LaunchPlan make_registered_ps5_launch_plan(const std::string &title_id);
 LaunchPlan make_registered_ps4_launch_plan(const std::string &title_id);
 // PS2 menu-only experiment: request the registered PS5SX2 application.
 // Intentionally no game path/argv, no automatic ROM launch, no ELF injection.
+LaunchPlan make_emulator_menu_launch_plan(const std::string &title_id);
 LaunchPlan make_ps5sx2_menu_launch_plan();
 // Emulator application menu requests through the same already-running
 // 127.0.0.1:10199 Forwarder as PS5SX2; always without a ROM or argv.

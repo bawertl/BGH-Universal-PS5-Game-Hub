@@ -493,7 +493,7 @@ bool application_id(const std::string &id){
 }
 }
 bool is_emulator_title_id(const std::string &id){
-    return id=="PPSA99203" || id=="PPSA99008" || id=="PPSA50011" || id=="PPSA99303";
+    return id=="PPSA99203" || id=="PPSA99008" || id=="PPSA50011" || id=="PPSA99303" || id=="PPSA99186";
 }
 std::string classify_native_game(const std::string &folder,const NativeMetadata &meta,bool json_present,bool sfo_present){
     const auto id=meta.title_id.empty()?guess_id(folder):meta.title_id;

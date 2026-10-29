@@ -1,4 +1,4 @@
-"""BGH V1.1.30 PS5 home-screen hero background and build package guards."""
+"""BGH V1.1.31 PS5 home-screen hero background and build package guards."""
 import hashlib
 import subprocess
 import sys
@@ -45,5 +45,5 @@ def test_ps5_home_hero_integrated_into_real_ps5_package_build():
     assert "z.read(target) != source_bg" in workflow
     assert 'python3 tooling/verify_ps5_home_background.py' in workflow
     assert 'tests/test_v1130_ps5_home_background.py' in workflow
-    assert 'bgh-v1.1.30-fix3' in workflow
+    assert 'bgh-v1.1.31' in workflow
     assert 'cp -a native_ps5 tooling assets design' in workflow

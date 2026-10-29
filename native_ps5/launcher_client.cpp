@@ -107,7 +107,7 @@ LocalLaunchServices probe_local_launch_services(){
     return probes;
 }
 
-LaunchPlan make_launch_plan(const std::string &platform,const std::string &game_path){
+LaunchPlan make_launch_plan(const std::string &platform,const std::string &game_path,const std::string &emulator_title_id){
     LaunchPlan p;
     if(game_path.empty()||game_path.front()!='/'||game_path.size()>4000||game_path.find("/../")!=std::string::npos||game_path.find('\0')!=std::string::npos){
         p.reason="Ungültiger Spielpfad";return p;
@@ -118,6 +118,20 @@ LaunchPlan make_launch_plan(const std::string &platform,const std::string &game_
     }else if(platform=="Xbox 360"){
         p.target="PPSA50011";p.argv={game_path};p.supported=true;
     }else p.reason="Für diese Plattform keine verifizierte Startschnittstelle";
+    if(!emulator_title_id.empty()){
+        if(emulator_title_id.size()!=9 || emulator_title_id.compare(0,4,"PPSA")!=0 ||
+           emulator_title_id=="PPSA99079" ||
+           emulator_title_id.find_first_not_of("0123456789",4)!=std::string::npos){
+            p.supported=false;p.reason="Ungueltige Emulator-App-ID";
+        }else if(p.supported)p.target=emulator_title_id;
+    }
+    return p;
+}
+LaunchPlan make_emulator_menu_launch_plan(const std::string &id){
+    LaunchPlan p;
+    if(id.size()==9 && id.compare(0,4,"PPSA")==0 && id!="PPSA99079" &&
+       id.find_first_not_of("0123456789",4)==std::string::npos){p.target=id;p.supported=true;}
+    else p.reason="Ungueltige Emulator-App-ID";
     return p;
 }
 LaunchPlan make_registered_ps5_launch_plan(const std::string &title_id){
@@ -133,7 +147,8 @@ LaunchPlan make_registered_ps5_launch_plan(const std::string &title_id){
     // The ordinary library must never launch itself or emulator menu entries
     // through the PS5 game path. The emulator menu remains a separate action.
     if(title_id=="PPSA99079" || title_id=="PPSA99008" ||
-       title_id=="PPSA99203" || title_id=="PPSA50011"){
+       title_id=="PPSA99203" || title_id=="PPSA50011" ||
+       title_id=="PPSA99186" || title_id=="PPSA99303"){
         p.reason="Homebrew/Emulator ist kein PS5-Spiel";return p;
     }
     p.target=title_id;

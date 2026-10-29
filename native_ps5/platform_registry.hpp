@@ -17,9 +17,17 @@ struct PlatformEntry {
     std::vector<std::string> extensions;
     std::vector<std::string> rom_folders; // multiple local/USB paths per emulator
     std::string app_path; // optional install folder, NOT a Windows executable
+    std::string detected_title_id, detected_name, launch_protocol="auto";
     bool is_emulator=false, scan_supported=false, launch_supported=false, enabled=false;
     int sort_order=0;
 };
+inline std::string active_emulator_title_id(const PlatformEntry &p){
+    return p.app_path.empty()?p.title_id:p.detected_title_id;
+}
+inline bool valid_launch_protocol(const std::string &v){
+    return v=="auto" || v=="menu_only" || v=="eden_rom_argv" ||
+           v=="xbox_path_argv" || v=="rpcs3_boot_app0" || v=="ps2_disc_launch";
+}
 struct PlatformRegistry {
     std::vector<PlatformEntry> entries;
     std::uint32_t revision=0;
@@ -102,7 +110,11 @@ inline std::uint32_t platform_checksum(const std::string &data){
 // remains managed by the pre-existing user_paths.conf root manager.
 inline bool valid_platform_entry_paths(const PlatformEntry &p){
     if(!safe_platform_path(p.rom_folder) || !safe_platform_path(p.app_path) ||
-       p.rom_folders.size()>16)return false;
+       p.rom_folders.size()>16 || !valid_launch_protocol(p.launch_protocol) ||
+       p.detected_name.size()>180 || p.detected_name.find_first_of("\r\n|;")!=std::string::npos ||
+       (!p.detected_title_id.empty() && (p.detected_title_id.size()!=9 ||
+       p.detected_title_id.compare(0,4,"PPSA")!=0 ||
+       p.detected_title_id.find_first_not_of("0123456789",4)!=std::string::npos)))return false;
     std::vector<std::string> seen;
     for(const auto &folder:p.rom_folders){
         if(folder.empty() || !safe_platform_path(folder) ||
@@ -125,7 +137,7 @@ inline bool remove_profile_folder(PlatformEntry &p,std::size_t index){
     return true;
 }
 inline std::string platform_payload(const PlatformRegistry &registry){
-    std::string body="ULGR|2|"+std::to_string(registry.revision)+"\n";
+    std::string body="ULGR|3|"+std::to_string(registry.revision)+"\n";
     for(const auto &p:registry.entries){
         body+=p.id+"|"+(p.enabled?"1":"0")+"|"+std::to_string(p.sort_order)+"|"+
               p.rom_folder+"|"+p.app_path+"|";
@@ -133,7 +145,7 @@ inline std::string platform_payload(const PlatformRegistry &registry){
             if(i>0)body+=';';
             body+=p.rom_folders[i];
         }
-        body+='\n';
+        body+="|"+p.detected_title_id+"|"+p.detected_name+"|"+p.launch_protocol+"\n";
     }
     return body;
 }
@@ -172,7 +184,8 @@ inline bool read_platform_registry(const std::string &path,PlatformRegistry &out
     const auto header_end=body.find('\n');
     if(header_end==std::string::npos)return false;
     const bool old_format=body.compare(0,7,"ULGR|1|")==0;
-    if(!old_format && body.compare(0,7,"ULGR|2|")!=0)return false;
+    const bool third_format=body.compare(0,7,"ULGR|3|")==0;
+    if(!old_format && !third_format && body.compare(0,7,"ULGR|2|")!=0)return false;
     const std::string revision=body.substr(7,header_end-7);
     if(revision.empty() || revision.find_first_not_of("0123456789")!=std::string::npos)return false;
     const unsigned long rev=std::strtoul(revision.c_str(),nullptr,10);
@@ -191,7 +204,7 @@ inline bool read_platform_registry(const std::string &path,PlatformRegistry &out
             if(sep==std::string::npos)break;
             cursor=sep+1;
         }
-        if(fields.size()!=(old_format?4u:6u))return false;
+        if(fields.size()!=(old_format?4u:(third_format?9u:6u)))return false;
         const auto &id=fields[0],&enabled=fields[1],&ordinal=fields[2],&path_value=fields[3];
         if((enabled!="1"&&enabled!="0") || ordinal.empty() ||
            ordinal.find_first_not_of("0123456789")!=std::string::npos ||
@@ -207,6 +220,11 @@ inline bool read_platform_registry(const std::string &path,PlatformRegistry &out
         it->rom_folder=path_value;
         if(!old_format){
             it->app_path=fields[4];
+            if(third_format){
+                it->detected_title_id=fields[6];
+                it->detected_name=fields[7];
+                it->launch_protocol=fields[8];
+            }
             const auto &folders=fields[5];
             std::size_t cursor=0;
             while(cursor<folders.size()){

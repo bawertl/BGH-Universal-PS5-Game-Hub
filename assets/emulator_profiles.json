@@ -48,6 +48,15 @@
           "iso"
         ]
       }
+    },
+    {
+      "platform": "Switch",
+      "id": "forgenx",
+      "title_id": "PPSA99186",
+      "name": "ForgeNX",
+      "required_files": [
+        "eboot.bin"
+      ]
     }
   ]
 }

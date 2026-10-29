@@ -28,7 +28,7 @@ def test_no_unsupported_backends_or_changed_launch_routes():
     assert 'make_registered_ps5_launch_plan(g.title_id)' in CPP
     assert 'make_registered_ps4_launch_plan(g.title_id)' in CPP
     assert 'stage_ps5sx2_disc_launch(g.path)' in CPP
-    assert 'ulg::send_launch(emulator_menu_plan(' in CPP
+    assert 'configured_menu_plan(' in CPP
     assert 'kQuietSeconds = 0.035f' in (ROOT/'native_ps5/cover_load_debounce.hpp').read_text()
 
 
@@ -113,7 +113,7 @@ def test_version_icons_and_source_are_packed():
         with Image.open(ROOT/'assets/platforms'/f'{name}.png') as image:
             assert image.mode=='RGBA' and image.size==(96,96)
             assert image.getchannel('A').getbbox() is not None
-    assert 'branches: [bgh-v1.1.30-fix3]' in WF
-    assert 'BGH-V1-1-30-FIX3-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.31]' in WF
+    assert 'BGH-V1-1-31-PPSA99079' in WF
     assert 'test_v1111_universal_platform_manager.py' in WF
     assert 'platform_registry.hpp' in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()

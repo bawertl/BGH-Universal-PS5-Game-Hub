@@ -82,7 +82,8 @@ def test_gui_auto_emulator_tab_and_existing_rom_dispatch_preserved():
     assert 'detected_emulators_' in code
     assert 'const auto result=ulg::send_launch(menu_plan);' in code
     assert 'emulator_platform_for_title(selected_game.title_id)' in code
-    assert 'if(plan.supported)return plan;' in code
+    assert 'ulg::active_emulator_title_id(p)' in code
+    assert 'configured_rom_launch(const ulg::Game &game)' in code
     assert 'g.platform=="PS3"' in code
     assert 'kEmulatorCoverFolder' in code
 
