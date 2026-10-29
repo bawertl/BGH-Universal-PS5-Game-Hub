@@ -1595,7 +1595,8 @@ private:
             if(!input_path_.empty() && input_path_[0]=='/' && input_path_!="/"){
                 auto candidate=input_path_;
                 while(candidate.size()>1){
-                    if(ulg::browse_folders(candidate,1).state.status=="ok"){
+                    if(const auto state=ulg::browse_folders(candidate,1).state.status;
+                       state=="ok" || state=="ftp_ok"){
                         browser_path_=candidate;break;
                     }
                     const auto slash=candidate.find_last_of('/');
@@ -2720,10 +2721,15 @@ private:
             refresh_browser();feedback.play(audio::Cue::select);
         }
         if(input.is_pressed(Action::west)){
-            // Only the directory currently displayed is selected, never a game file.
+            // In the virtual root hub, select the highlighted storage location,
+            // never the inaccessible real filesystem root "/".
+            std::string chosen=browser_path_;
+            if(chosen=="/" && count>0)
+                chosen=browser_.entries[static_cast<std::size_t>(browser_selected_)].path;
+            if(chosen=="/"){set_message("Bitte zuerst einen Speicherort auswaehlen.");return;}
             edited_root_=-1;
-            if(emulator_path_edit_)save_emulator_path(browser_path_);
-            else add_root_path(browser_path_);
+            if(emulator_path_edit_)save_emulator_path(chosen);
+            else add_root_path(chosen);
             feedback.play(audio::Cue::select);
         }
         if(input.is_pressed(Action::touch)){

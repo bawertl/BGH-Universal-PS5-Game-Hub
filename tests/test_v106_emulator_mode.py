@@ -60,8 +60,8 @@ def test_menu_ui_and_version_in_sync():
     assert 'English' in panel and 'Deutsch' in panel
     assert 'BGH V1.1.30' in CPP
     assert 'release_label="BGH V1.1.9"' in CPP
-    assert 'branches: [bgh-v1.1.30-fix2]' in WF
-    assert 'BGH-V1-1-30-FIX2-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.30-fix3]' in WF
+    assert 'BGH-V1-1-30-FIX3-PPSA99079' in WF
     assert 'V1_1_30_PPSA99079_PS5_TEST.zip' in WF
 
 

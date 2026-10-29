@@ -104,45 +104,88 @@ std::vector<Root> configured_roots(const std::string &private_path,const std::st
     std::fclose(f);
     return corrupted?load_roots(packaged_path):roots;
 }
-BrowserResult browse_folders(const std::string &path,std::size_t max_entries){
-    BrowserResult out;out.path=path;out.state=path=="/"?RootState{"Browse",path,"ok",0,""}:probe_root({"Browse",path});
-    if(out.state.status!="ok"){
-        // Reuse user's existing ftpsrv: no elevation and no filesystem writes.
+BrowserResult browse_folders(const std::string &requested_path,std::size_t max_entries){
+    BrowserResult out;
+    out.path=requested_path.empty()?"/":requested_path;
+    const std::string &path=out.path;
+    max_entries=std::min(max_entries,std::size_t(256));
+
+    // The PS5 application sandbox cannot enumerate the real filesystem root.
+    // Offer useful mount locations without ever calling opendir("/").
+    if(path=="/"){
+        out.state={"Browse","/","ok",0,"Virtual PS5 storage roots"};
+        static constexpr const char *roots[]={
+            "/data","/data/homebrew","/user/app",
+            "/mnt/usb0","/mnt/usb1","/mnt/usb2","/mnt/usb3",
+            "/mnt/ext0","/mnt/ext1"};
         FtpReadonly ftp;
-        if(ftp.connect_local()){
-            const auto remote=ftp.list(path,std::min(max_entries,std::size_t(256)));
-            if(remote.ok){
-                out.state={"Browse",path,"ftp_ok",0,"FTP MLSD"};
-                for(const auto &e:remote.entries){
-                    if(!e.folder)continue;
-                    std::string candidate;
-                    if(child_path(path,e.name,candidate))out.entries.push_back({e.name,std::move(candidate)});
-                }
-                std::sort(out.entries.begin(),out.entries.end(),[](const BrowserEntry &a,const BrowserEntry &b){return a.name<b.name;});
+        const bool ftp_ready=ftp.connect_local();
+        for(const char *candidate:roots){
+            const std::string location(candidate);
+            // Keep core entries visible even if sandbox/FTP cannot inspect them.
+            const bool core=location=="/data" || location=="/data/homebrew" ||
+                            location=="/user/app" || location=="/mnt/usb0" ||
+                            location=="/mnt/usb1";
+            bool available=false;
+            DIR *dir=opendir(candidate);
+            if(dir){available=true;closedir(dir);}
+            if(!available && ftp_ready){
+                const auto remote=ftp.list(location,1);
+                available=remote.ok;
             }
+            if((core || available) && out.entries.size()<max_entries)
+                out.entries.push_back({location.substr(1),location});
         }
         return out;
     }
-    DIR *dir=opendir(path.c_str());
-    if(!dir){out.state=make_root_error("Browse",path,"opendir",errno);return out;}
-    max_entries=std::min(max_entries,std::size_t(256));
-    int read_error=0;
-    for(;;){
-        errno=0;
-        struct dirent *entry=readdir(dir);
-        if(!entry){read_error=errno;break;}
-        if(std::strcmp(entry->d_name,".")==0 || std::strcmp(entry->d_name,"..")==0)continue;
-        const std::string name=entry->d_name;
-        std::string candidate;
-        if(!child_path(path,name,candidate))continue;
-        struct stat st{};
-        if(lstat(candidate.c_str(),&st)!=0)continue;
-        if(!S_ISDIR(st.st_mode))continue;
-        if(out.entries.size()<max_entries)out.entries.push_back({name,std::move(candidate)});
+
+    // First use the fast native directory API when the jail permits it.
+    out.state=probe_root({"Browse",path});
+    if(out.state.status=="ok"){
+        DIR *dir=opendir(path.c_str());
+        if(dir){
+            int read_error=0;
+            for(;;){
+                errno=0;
+                struct dirent *entry=readdir(dir);
+                if(!entry){read_error=errno;break;}
+                if(std::strcmp(entry->d_name,".")==0 || std::strcmp(entry->d_name,"..")==0)continue;
+                const std::string name=entry->d_name;
+                std::string candidate;
+                if(!child_path(path,name,candidate))continue;
+                struct stat st{};
+                if(lstat(candidate.c_str(),&st)!=0 || !S_ISDIR(st.st_mode))continue;
+                if(out.entries.size()<max_entries)out.entries.push_back({name,std::move(candidate)});
+            }
+            closedir(dir);
+            if(read_error==0){
+                std::sort(out.entries.begin(),out.entries.end(),
+                    [](const BrowserEntry &a,const BrowserEntry &b){return a.name<b.name;});
+                return out;
+            }
+            out.state=make_root_error("Browse",path,"readdir",read_error);
+            out.entries.clear();
+        }else out.state=make_root_error("Browse",path,"opendir",errno);
     }
-    closedir(dir);
-    if(read_error!=0){out.state=make_root_error("Browse",path,"readdir",read_error);}
-    std::sort(out.entries.begin(),out.entries.end(),[](const BrowserEntry &a,const BrowserEntry &b){return a.name<b.name;});
+
+    // A process-level EPERM/EACCES (or missing container mount) is not proof
+    // that ftpsrv cannot read the location. Do not write or modify anything.
+    FtpReadonly ftp;
+    if(ftp.connect_local()){
+        const auto remote=ftp.list(path,max_entries);
+        if(remote.ok){
+            out.entries.clear();
+            out.state={"Browse",path,"ftp_ok",0,"FTP MLSD"};
+            for(const auto &e:remote.entries){
+                if(!e.folder)continue;
+                std::string candidate;
+                if(child_path(path,e.name,candidate))out.entries.push_back({e.name,std::move(candidate)});
+            }
+            std::sort(out.entries.begin(),out.entries.end(),
+                [](const BrowserEntry &a,const BrowserEntry &b){return a.name<b.name;});
+        }
+    }
     return out;
 }
+
 } // namespace ulg

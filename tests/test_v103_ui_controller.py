@@ -12,8 +12,8 @@ WORKFLOW=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 def test_version_consistency():
     assert 'BGH V1.1.30' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.30-fix2]' in WORKFLOW
-    assert 'BGH-V1-1-30-FIX2-PPSA99079' in WORKFLOW
+    assert 'branches: [bgh-v1.1.30-fix3]' in WORKFLOW
+    assert 'BGH-V1-1-30-FIX3-PPSA99079' in WORKFLOW
     assert 'V1_1_30_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
 
 

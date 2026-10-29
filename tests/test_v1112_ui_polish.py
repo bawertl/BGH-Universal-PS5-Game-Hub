@@ -85,7 +85,7 @@ def test_7_snap_fonts_and_correct_version():
 
 
 def test_release_workflow_builds_integrated_source_without_old_overwrite():
-    assert 'branches: [bgh-v1.1.30-fix2]' in WF
+    assert 'branches: [bgh-v1.1.30-fix3]' in WF
     assert 'V1_1_30_${TITLE_ID}_PS5_TEST.zip' in BUILD
     assert 'V1_1_30_PPSA99079_PS5_TEST.zip' in WF
     assert 'python3 tooling/bgh_apply_v1110.py' not in WF

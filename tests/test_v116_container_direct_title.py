@@ -64,7 +64,7 @@ def test_release_branch_and_cache():
     script = (ROOT/'tooling/build_native_ps5.sh').read_text()
     assert 'BGH V1.1.30' in ui
     assert 'library_v116_container_start_title.bin' in ui
-    assert 'branches: [bgh-v1.1.30-fix2]' in workflow
-    assert 'bgh-v1.1.30-fix2' in workflow
+    assert 'branches: [bgh-v1.1.30-fix3]' in workflow
+    assert 'bgh-v1.1.30-fix3' in workflow
     assert 'BGH_BawertLs_Game_Hub_V1_1_30' in workflow
     assert 'V1_1_30_${TITLE_ID}_PS5_TEST.zip' in script
