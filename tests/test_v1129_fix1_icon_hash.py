@@ -24,9 +24,9 @@ def test_source_checksum_equals_branding_guard_and_both_prior_icon_tests():
 
 
 def test_fix_branch_and_complete_package_guard():
-    assert 'branches: [bgh-v1.1.30-fix1]' in WORKFLOW
-    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.30-fix1'" in WORKFLOW
-    assert 'group: bgh-v1.1.30-fix1-${{ github.ref }}' in WORKFLOW
-    assert 'BGH_V1.1.30_FIX1_KOMPLETTPROJEKT.zip' in WORKFLOW
+    assert 'branches: [bgh-v1.1.30-fix2]' in WORKFLOW
+    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.30-fix2'" in WORKFLOW
+    assert 'group: bgh-v1.1.30-fix2-${{ github.ref }}' in WORKFLOW
+    assert 'BGH_V1.1.30_FIX2_KOMPLETTPROJEKT.zip' in WORKFLOW
     assert "z.read(prefix + 'sce_sys/icon0.png') != source" in WORKFLOW
     assert 'tests/test_v1129_fix1_icon_hash.py' in WORKFLOW

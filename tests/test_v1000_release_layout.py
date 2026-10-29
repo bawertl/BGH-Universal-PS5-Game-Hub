@@ -10,8 +10,8 @@ BUILD=(ROOT/'tooling/build_native_ps5.sh').read_text()
 
 def test_release_branding_and_branch():
     assert 'BGH V1.1.30' in CPP
-    assert 'bgh-v1.1.30-fix1' in WORKFLOW
-    assert 'BGH-V1-1-30-FIX1-PPSA99079' in WORKFLOW
+    assert 'bgh-v1.1.30-fix2' in WORKFLOW
+    assert 'BGH-V1-1-30-FIX2-PPSA99079' in WORKFLOW
     assert 'BGH_BawertLs_Game_Hub_V1_1_30_PPSA99079_PS5_TEST.zip' in WORKFLOW
     assert 'V1_1_30_${TITLE_ID}_PS5_TEST.zip' in BUILD
 

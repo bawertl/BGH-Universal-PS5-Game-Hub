@@ -35,8 +35,8 @@ def test_launcher_and_galleries_are_unchanged_in_function():
 
 
 def test_git_workflow_packaging_checks_new_app_icon():
-    assert 'branches: [bgh-v1.1.30-fix1]' in WF
-    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.30-fix1\'' in WF
+    assert 'branches: [bgh-v1.1.30-fix2]' in WF
+    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.30-fix2\'' in WF
     assert 'BGH_BawertLs_Game_Hub_V1_1_30_' in BUILD
     assert 'cp "$PROJECT/sce_sys/icon0.png" "$KIT/sce_sys/icon0.png"' in BUILD
     assert "z.read(prefix + 'sce_sys/icon0.png') != source" in WF

@@ -493,9 +493,9 @@ public:
         };
         return kInfo;
     }
-    void enter() override { clock_=0.0f; next_shadow_poll_=8.0f;
+    void enter() override { clock_=0.0f; next_shadow_poll_=8.0f; media_presence_.clear();
         shadow_storage_=ulg::shadow_storage::Snapshot{};
-        next_storage_poll_=30.0f; next_controller_poll_=5.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
+        next_storage_poll_=30.0f; next_media_probe_=12.0f; next_controller_poll_=5.0f; storage_widgets_=ulg::storage_widgets::detect(); visual_selection_=static_cast<float>(selected_);
         list_scroll_=ulg::premium::scroll_target(selected_,indices_.size(),kVisibleListRows); }
     void update(const InputFrame &input, float dt, app::Feedback &feedback) override {
         clock_ += dt;
@@ -510,6 +510,21 @@ public:
             refresh_gallery_paths();
         }
         if(clock_>=next_storage_poll_){storage_widgets_=ulg::storage_widgets::detect();next_storage_poll_=clock_+30.0f;}
+        // Poll only cheap root metadata, not the entire library, and only at
+        // bounded intervals. Never touch users' game files or system permissions.
+        if(clock_>=next_media_probe_ && !browser_open_ && !path_editor_open_ && !settings_){
+            next_media_probe_=clock_+12.0f;
+            bool changed=false;
+            for(const auto &root:roots_){
+                if(!root.enabled)continue;
+                struct stat st{};
+                const bool present=lstat(root.path.c_str(),&st)==0 && S_ISDIR(st.st_mode);
+                auto found=media_presence_.find(root.platform+"|"+root.path);
+                if(found!=media_presence_.end() && found->second!=present)changed=true;
+                media_presence_[root.platform+"|"+root.path]=present;
+            }
+            if(changed)refresh();
+        }
         // V1.1.15 experiment: only after 8 seconds, then <= once/minute.
         // Read-only HTTP POST to a *pre-existing* ShadowMountPlus daemon.
         // The socket has short timeouts; avoid requesting in enter()/draw().
@@ -1368,7 +1383,9 @@ private:
         auto fresh=ulg::scan(roots_,5,5000);
         // Existing localhost ftpsrv is an optional read-only fallback; no payload started.
         ulg::supplement_from_local_ftp(fresh,roots_,5,5000,2121,"/download0/hui/ulg_v04/covers");
-        catalogue_=ulg::merge_unavailable(std::move(fresh),catalogue_);
+        // Fix 2: never keep stale PS5/USB games from an earlier console or disconnected drive.
+        // The scan result is authoritative; preferences/recent history are stored separately.
+        catalogue_=std::move(fresh);
         apply_presentation();
         ulg::clean_catalogue(catalogue_,roots_);
         (void)ulg::write_catalogue_cache(catalogue_,kCacheFile);
@@ -1571,7 +1588,22 @@ private:
         input_path_=app_path?(p.app_path.empty()?"/":p.app_path):
             (folder<p.rom_folders.size()?p.rom_folders[folder]:"/");
         if(manual){path_key_=0;path_editor_open_=true;}
-        else {browser_open_=true;browser_path_="/";browser_selected_=0;refresh_browser();}
+        else {
+            browser_open_=true;
+            // Open the currently configured parent when accessible, otherwise root.
+            browser_path_="/";
+            if(!input_path_.empty() && input_path_[0]=='/' && input_path_!="/"){
+                auto candidate=input_path_;
+                while(candidate.size()>1){
+                    if(ulg::browse_folders(candidate,1).state.status=="ok"){
+                        browser_path_=candidate;break;
+                    }
+                    const auto slash=candidate.find_last_of('/');
+                    candidate=slash==0?"/":candidate.substr(0,slash);
+                }
+            }
+            browser_selected_=0;refresh_browser();
+        }
     }
     void remove_emulator_folder(std::size_t index){
         const auto profiles=emulator_profile_indices();
@@ -1677,7 +1709,7 @@ private:
                 return;
             }
             if(input.is_pressed(Action::confirm)){
-                begin_emulator_path_editor(app,folder,true);
+                begin_emulator_path_editor(app,folder,false);
                 feedback.play(audio::Cue::open);return;
             }
             if(input.is_pressed(Action::touch)){
@@ -1695,7 +1727,7 @@ private:
         }
         if(input.is_pressed(Action::north)){
             emulator_expanded_=true;emulator_subselected_=children-1; // '+ Ordner'
-            begin_emulator_path_editor(false,profile.rom_folders.size(),true);
+            begin_emulator_path_editor(false,profile.rom_folders.size(),false);
             feedback.play(audio::Cue::open);return;
         }
     }
@@ -3027,7 +3059,7 @@ private:
         if(detail){
             hints[count++]={ui::Button::cross,hint(app?"Anwendung bearbeiten":
                 add?"Ordner hinzufuegen":"Pfad bearbeiten")};
-            hints[count++]={ui::Button::touchpad,hint("Pfad eingeben")};
+            hints[count++]={ui::Button::touchpad,hint("Manuell eingeben")};
             if(folder){
                 hints[count++]={ui::Button::triangle,hint("Entfernen")};
                 if(!profiles.empty() &&
@@ -3358,6 +3390,8 @@ private:
     ulg::shadow_storage::Snapshot shadow_storage_{};
     float next_shadow_poll_=8.0f;
     float next_storage_poll_=0.0f;
+    float next_media_probe_=12.0f;
+    std::map<std::string,bool> media_presence_;
     float next_controller_poll_=5.0f;
     bool recent_focus_=false;
     int recent_selected_=0;

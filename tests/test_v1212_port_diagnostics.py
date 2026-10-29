@@ -85,5 +85,5 @@ def test_preserve_unmodified_scanners_covers_launch_path_and_version():
     assert 'const auto native=ulg::launch_registered_ps5(g.title_id);' in gui
     assert 'if(bridge.status==ulg::LaunchStatus::queued)sys::quit();' in gui
     workflow = (ROOT / ".github/workflows/ps5-build.yml").read_text()
-    assert 'bgh-v1.1.30-fix1' in workflow
+    assert 'bgh-v1.1.30-fix2' in workflow
     assert 'V1_1_30_PPSA99079_PS5_TEST.zip' in workflow
