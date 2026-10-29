@@ -39,8 +39,8 @@ def test_switch_badge_restores_complete_left_icon():
 
 def test_release_1_0_2_is_consistent():
     build=(ROOT/'tooling/build_native_ps5.sh').read_text()
-    assert 'branches: [bgh-v1.1.31-fix2]' in WORKFLOW
-    assert 'BGH V1.1.31' in SRC and 'BGH V1.1.31' in WORKFLOW
-    assert 'BGH-V1-1-31-FIX2-PPSA99079' in WORKFLOW
-    assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in WORKFLOW
-    assert 'V1_1_31_${TITLE_ID}_PS5_TEST.zip' in build
+    assert 'branches: [bgh-v1.1.32]' in WORKFLOW
+    assert 'BGH V1.1.32' in SRC and 'BGH V1.1.32' in WORKFLOW
+    assert 'BGH-V1-1-32-PPSA99079' in WORKFLOW
+    assert 'V1_1_32_PPSA99079_PS5_TEST.zip' in WORKFLOW
+    assert 'V1_1_32_${TITLE_ID}_PS5_TEST.zip' in build

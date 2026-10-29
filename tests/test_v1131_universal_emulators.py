@@ -1,4 +1,4 @@
-"""BGH V1.1.31: migration + emulator identity + carousel structural guards."""
+"""BGH V1.1.32: migration + emulator identity + carousel structural guards."""
 from pathlib import Path
 import subprocess
 
@@ -65,5 +65,5 @@ int main(int,char**argv){
     subprocess.run([str(exe),str(tmp_path/'third.bin'),str(tmp_path/'second.bin')],check=True)
 
 def test_workflow_identity():
-    assert 'branches: [bgh-v1.1.31-fix2]' in WF
-    assert 'BGH V1.1.31' in CPP
+    assert 'branches: [bgh-v1.1.32]' in WF
+    assert 'BGH V1.1.32' in CPP

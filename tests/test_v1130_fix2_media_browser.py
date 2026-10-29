@@ -12,13 +12,13 @@ def test_usb_cache_is_not_merged_into_fresh_scan():
 def test_emulator_folder_opens_browser_and_manual_mode_remains():
     assert 'begin_emulator_path_editor(app,folder,false);' in UI
     assert 'begin_emulator_path_editor(app,folder,true);' in UI
-    assert 'begin_emulator_path_editor(false,profile.rom_folders.size(),false);' in UI
+    assert 'const int children=static_cast<int>(profile.rom_folders.size())+2;' in UI
     assert 'browser_=ulg::browse_folders(browser_path_)' in UI
     assert 'save_emulator_path(chosen)' in UI
-    assert 'ui::Button::square,hint("Hier hinzufuegen")' in UI
+    assert 'ui::Button::square,hint("Diesen Ordner verwenden")' in UI
 
 def test_usb_mount_poll_is_rate_limited_and_branch_matches():
     assert 'next_media_probe_=clock_+12.0f;' in UI
     assert 'if(changed)refresh();' in UI
-    assert 'branches: [bgh-v1.1.31-fix2]' in WF
-    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.31-fix2\'' in WF
+    assert 'branches: [bgh-v1.1.32]' in WF
+    assert 'test "$GITHUB_REF_NAME" = \'bgh-v1.1.32\'' in WF

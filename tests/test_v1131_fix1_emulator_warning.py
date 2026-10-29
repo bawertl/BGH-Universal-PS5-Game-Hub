@@ -1,4 +1,4 @@
-"""BGH V1.1.31 Fix1: incomplete custom-emulator protocol warning."""
+"""BGH V1.1.32 Fix1: incomplete custom-emulator protocol warning."""
 from pathlib import Path
 S=(Path(__file__).resolve().parents[1]/'native_ps5/universal_launcher.cpp').read_text()
 W=(Path(__file__).resolve().parents[1]/'.github/workflows/ps5-build.yml').read_text()
@@ -11,7 +11,7 @@ def test_warning_is_contextual_and_not_a_global_block():
     assert 'has_unconfirmed_emulator_setup()' in S
     assert 'if(emulator_setup_warning_open_)' in S
     assert 'draw_emulator_setup_warning(frame.scene)' in S
-    assert '!!! STARTMETHODE FEHLT - DREIECK !!!' in S
+    assert '! Startmethode fehlt' in S
     assert 'test_v1131_fix1_emulator_warning.py' in W
 
 def test_existing_emulator_protocol_is_preserved():

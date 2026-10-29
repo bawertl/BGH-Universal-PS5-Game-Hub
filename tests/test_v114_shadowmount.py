@@ -26,8 +26,8 @@ def test_storage_integration_does_not_touch_launch_services():
     render = UI.split('void draw_storage_widgets(',1)[1].split('void draw_detail(',1)[0]
     assert 'fetch_storage(' not in render and '::stat(' not in render
     assert 'shadow_storage_.diagnostic' in UI
-    assert 'BGH V1.1.31' in UI
-    assert 'branches: [bgh-v1.1.31-fix2]' in WF
+    assert 'BGH V1.1.32' in UI
+    assert 'branches: [bgh-v1.1.32]' in WF
     for hook in ('make_registered_ps5_launch_plan(g.title_id)',
                  'make_registered_ps4_launch_plan(g.title_id)',
                  'stage_ps5sx2_disc_launch(g.path)', 'ulg::send_launch(plan)'):

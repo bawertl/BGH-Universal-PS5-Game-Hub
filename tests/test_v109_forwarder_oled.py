@@ -105,8 +105,8 @@ def test_oled_shadows_and_teal_glass_have_selected_only_glow():
 
 
 def test_version_ci_identity_is_consistent():
-    assert 'BGH V1.1.31' in UI
+    assert 'BGH V1.1.32' in UI
     assert 'release_label="BGH V1.1.9"' in UI
-    assert 'branches: [bgh-v1.1.31-fix2]' in WF
-    assert 'BGH-V1-1-31-FIX2-PPSA99079' in WF
-    assert 'V1_1_31_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()
+    assert 'branches: [bgh-v1.1.32]' in WF
+    assert 'BGH-V1-1-32-PPSA99079' in WF
+    assert 'V1_1_32_${TITLE_ID}_PS5_TEST.zip' in (ROOT/'tooling/build_native_ps5.sh').read_text()

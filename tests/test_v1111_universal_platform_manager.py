@@ -10,7 +10,7 @@ WF=(ROOT/'.github/workflows/ps5-build.yml').read_text()
 
 def test_new_settings_navigation_and_sidebar_are_global():
     assert 'return ulg::platform_order(platform_registry_);' in CPP
-    assert 'emulator_expanded_=!emulator_expanded_' in CPP
+    assert 'emulator_expanded_=true;' in CPP
     assert 'emulator_subselected_' in CPP
     assert 'begin_emulator_path_editor(app,folder,true)' in CPP
     assert 'remove_emulator_folder(folder)' in CPP
@@ -18,7 +18,7 @@ def test_new_settings_navigation_and_sidebar_are_global():
     assert 'p.enabled;' in REG
     assert '"PS5","PlayStation 5"' in REG
     assert '"PS4","PlayStation 4"' in REG
-    assert '"+ Weiteren Spieleordner hinzufuegen"' in CPP
+    assert '"+ Spieleordner hinzufuegen"' in CPP
 
 
 def test_no_unsupported_backends_or_changed_launch_routes():
@@ -113,7 +113,7 @@ def test_version_icons_and_source_are_packed():
         with Image.open(ROOT/'assets/platforms'/f'{name}.png') as image:
             assert image.mode=='RGBA' and image.size==(96,96)
             assert image.getchannel('A').getbbox() is not None
-    assert 'branches: [bgh-v1.1.31-fix2]' in WF
-    assert 'BGH-V1-1-31-FIX2-PPSA99079' in WF
+    assert 'branches: [bgh-v1.1.32]' in WF
+    assert 'BGH-V1-1-32-PPSA99079' in WF
     assert 'test_v1111_universal_platform_manager.py' in WF
     assert 'platform_registry.hpp' in (ROOT/'tooling/install_ui_kit_overlay.py').read_text()

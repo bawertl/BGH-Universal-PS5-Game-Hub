@@ -79,7 +79,7 @@ constexpr std::array<const char *,8> kSettingsTiles = {
     "Hintergrundmusik", "System & Hilfe", "Hintergrundbild", "BGH-Logo"
 };
 // 1920x1080 logical canvas; 54 px safe TV margins. All layout is data-driven.
-constexpr const char *kBuildLabel = "BGH V1.1.31";
+constexpr const char *kBuildLabel = "BGH V1.1.32";
 constexpr int kVisibleListRows = 9;
 constexpr float kListTop = 192.0f;
 constexpr float kListRowH = 79.0f;
@@ -611,6 +611,12 @@ public:
             else if(browser_open_){browser_open_=false;emulator_path_edit_=false;feedback.play(audio::Cue::back);}
             else if(search_open_){search_open_=false;feedback.play(audio::Cue::back);}
             else if(settings_){
+                if(settings_subview_==0 && emulator_expanded_){
+                    emulator_expanded_=false;
+                    emulator_subselected_=-1;
+                    feedback.play(audio::Cue::back);
+                    return;
+                }
                 if(settings_subview_==0 && has_unconfirmed_emulator_setup()){
                     emulator_setup_warning_open_=true;
                     feedback.play(audio::Cue::error);
@@ -801,11 +807,13 @@ public:
         };
         ui::HintLayout hint_layout;hint_layout.cy=1042;hint_layout.size=23;
         hint_layout.text_size=16;hint_layout.item_gap=20;
-        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
+        if(!settings_ && !browser_open_ && !path_editor_open_ && !search_open_ &&
+           !emulator_setup_warning_open_)
+            ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,8,35,false,hint_layout);
         // Both footer labels share an identical baseline and discrete pixels.
         translated_text(list,fonts.semibold,music_settings_.enabled?"Musik: AN":"Musik: AUS",1580,1057,16,
             Color::rgb(0xCBF4FF));
-        const std::string release_label="BGH V1.1.31";
+        const std::string release_label="BGH V1.1.32";
         translated_text(list,fonts.semibold,release_label,1720,1057,14,Color::rgb(0xD1E7F0));
         if(detail_)draw_detail(frame);
         if(settings_)draw_settings(frame);
@@ -1749,14 +1757,46 @@ private:
         translated_text(list,fonts.semibold,"DREIECK die passende Startmethode auswaehlen.",404,588,24,Color::rgb(0xFFD47F));
         translated_text(list,fonts.regular,"X oder Kreis: Hinweis schliessen (erscheint bis zur Einrichtung erneut).",404,670,19,kMuted);
     }
+    // Console-friendly controls: a platform tile grid opens one focused detail page.
+    // Existing editor, detection, ULGR|3 persistence and launch paths are reused.
     void update_emulator_settings(const InputFrame &input,app::Feedback &feedback){
-        auto profiles=emulator_profile_indices();if(profiles.empty())return;
-        emulator_selected_=std::clamp(emulator_selected_,0,static_cast<int>(profiles.size())-1);
+        auto profiles=emulator_profile_indices();
+        if(profiles.empty())return;
+        const int count=static_cast<int>(profiles.size());
+        emulator_selected_=std::clamp(emulator_selected_,0,count-1);
         const auto index=profiles[static_cast<std::size_t>(emulator_selected_)];
         const auto &profile=platform_registry_.entries[index];
-        if(emulator_expanded_ && emulator_subselected_==0 && input.is_pressed(Action::north)){
-            static const char* const modes[]={"auto","menu_only","eden_rom_argv","xbox_path_argv",
-                                             "rpcs3_boot_app0","ps2_disc_launch"};
+        if(!emulator_expanded_){
+            int next=emulator_selected_;
+            constexpr int columns=4;
+            if(input.nav==Direction::left && next%columns>0)--next;
+            else if(input.nav==Direction::right && next%columns<columns-1 && next+1<count)++next;
+            else if(input.nav==Direction::up && next>=columns)next-=columns;
+            else if(input.nav==Direction::down && next+columns<count)next+=columns;
+            if(next!=emulator_selected_){emulator_selected_=next;feedback.play(audio::Cue::focus);}
+            if(input.is_pressed(Action::confirm)){
+                emulator_expanded_=true;
+                emulator_subselected_=0;
+                feedback.play(audio::Cue::open);
+            }
+            return;
+        }
+        // Focus order: emulator, existing ROM folders, add folder.
+        const int children=static_cast<int>(profile.rom_folders.size())+2;
+        emulator_subselected_=std::clamp(emulator_subselected_,0,children-1);
+        if(input.nav==Direction::up){
+            emulator_subselected_=std::max(0,emulator_subselected_-1);
+            feedback.play(audio::Cue::focus);return;
+        }
+        if(input.nav==Direction::down){
+            emulator_subselected_=std::min(children-1,emulator_subselected_+1);
+            feedback.play(audio::Cue::focus);return;
+        }
+        const bool app=emulator_subselected_==0;
+        const std::size_t folder=static_cast<std::size_t>(std::max(0,emulator_subselected_-1));
+        if(app && input.is_pressed(Action::north)){
+            static const char* const modes[]={"auto","menu_only","eden_rom_argv",
+                "xbox_path_argv","rpcs3_boot_app0","ps2_disc_launch"};
             auto changed=platform_registry_;
             auto &target=changed.entries[index];
             std::size_t n=0;
@@ -1766,72 +1806,24 @@ private:
                 audio::Cue::select:audio::Cue::error);
             return;
         }
-        if(emulator_expanded_ && emulator_subselected_==0 && input.is_pressed(Action::west)){
+        if(app && input.is_pressed(Action::west)){
             test_emulator_menu(profile,feedback);return;
         }
-        if(input.is_pressed(Action::west)){
-            emulator_expanded_=!emulator_expanded_;
-            emulator_subselected_=-1;
-            feedback.play(audio::Cue::open);return;
-        }
-        if(input.is_pressed(Action::jump_prev)||input.is_pressed(Action::jump_next)){
-            auto candidate=platform_registry_;
-            if(ulg::move_platform(candidate,profile.id,input.is_pressed(Action::jump_next)?1:-1)){
-                if(persist_platform_registry(std::move(candidate))){
-                    profiles=emulator_profile_indices();
-                    for(std::size_t n=0;n<profiles.size();++n)
-                        if(platform_registry_.entries[profiles[n]].id==profile.id){
-                            emulator_selected_=static_cast<int>(n);break;
-                        }
-                }
-                feedback.play(audio::Cue::select);
-            }
-            return;
-        }
-        const int children=static_cast<int>(profile.rom_folders.size())+2; // app row + folders + add
-        if(input.nav==Direction::up){
-            if(emulator_expanded_ && emulator_subselected_>=0) --emulator_subselected_;
-            else {emulator_selected_=std::max(0,emulator_selected_-1);emulator_subselected_=-1;
-                emulator_expanded_=false;}
-            feedback.play(audio::Cue::focus);return;
-        }
-        if(input.nav==Direction::down){
-            if(emulator_expanded_ && emulator_subselected_<children-1) ++emulator_subselected_;
-            else {emulator_selected_=std::min(static_cast<int>(profiles.size())-1,emulator_selected_+1);
-                emulator_subselected_=-1;emulator_expanded_=false;}
-            feedback.play(audio::Cue::focus);return;
-        }
-        if(emulator_expanded_ && emulator_subselected_>=0){
-            const bool app=emulator_subselected_==0;
-            const std::size_t folder=static_cast<std::size_t>(std::max(0,emulator_subselected_-1));
-            if(input.is_pressed(Action::north) && !app && folder<profile.rom_folders.size()){
-                remove_emulator_folder(folder);feedback.play(audio::Cue::select);return;
-            }
-            if(input.is_pressed(Action::l3) && !app && folder<profile.rom_folders.size()){
-                feedback.play(toggle_emulator_folder_scan(profile,folder)?
-                    audio::Cue::select:audio::Cue::error);
-                return;
-            }
-            if(input.is_pressed(Action::confirm)){
-                begin_emulator_path_editor(app,folder,false);
-                feedback.play(audio::Cue::open);return;
-            }
-            if(input.is_pressed(Action::touch)){
-                begin_emulator_path_editor(app,folder,true);
-                feedback.play(audio::Cue::open);return;
-            }
-            return;
-        }
-        if(input.is_pressed(Action::confirm)){
-            auto candidate=platform_registry_;
-            candidate.entries[index].enabled=!candidate.entries[index].enabled;
-            feedback.play(persist_platform_registry(std::move(candidate))?
+        if(input.is_pressed(Action::l3) && !app && folder<profile.rom_folders.size()){
+            feedback.play(toggle_emulator_folder_scan(profile,folder)?
                 audio::Cue::select:audio::Cue::error);
             return;
         }
-        if(input.is_pressed(Action::north)){
-            emulator_expanded_=true;emulator_subselected_=children-1; // '+ Ordner'
-            begin_emulator_path_editor(false,profile.rom_folders.size(),false);
+        if(input.is_pressed(Action::north) && !app && folder<profile.rom_folders.size()){
+            remove_emulator_folder(folder);
+            feedback.play(audio::Cue::select);return;
+        }
+        if(input.is_pressed(Action::confirm)){
+            begin_emulator_path_editor(app,folder,false);
+            feedback.play(audio::Cue::open);return;
+        }
+        if(input.is_pressed(Action::touch)){
+            begin_emulator_path_editor(app,folder,true);
             feedback.play(audio::Cue::open);return;
         }
     }
@@ -1845,7 +1837,7 @@ private:
         auto candidate=platform_registry_;
         auto &profile=candidate.entries[index];
         if(emulator_edit_app_){
-            profile.app_path=path; // informational only: launch still uses known title IDs
+            profile.app_path=path; // ULGR|3 resolves the detected app identity on refresh
         }else{
             const bool existing=emulator_edit_folder_<profile.rom_folders.size();
             const std::string old=existing?profile.rom_folders[emulator_edit_folder_]:std::string();
@@ -2731,6 +2723,7 @@ private:
             if(next!=selected_tile_){selected_tile_=next;feedback.play(audio::Cue::focus);}
             if(input.is_pressed(Action::confirm)){
                 settings_subview_=selected_tile_;
+                if(settings_subview_==0){emulator_expanded_=false;emulator_subselected_=-1;}
                 settings_choice_=(selected_tile_==1)?(language_settings_.english?1:0):
                     (selected_tile_==2)?(emulator_boot_settings_.direct_boot?0:1):
                     (selected_tile_==3)?(theme_settings_.frosted_glass?0:1):
@@ -2738,7 +2731,7 @@ private:
                 gallery_focus_=0;
                 gallery_delete_armed_=false;
                 if(settings_subview_==6){
-                    // BGH V1.1.31: bundled backgrounds and bundled logos only. No FTP,
+                    // BGH V1.1.32: bundled backgrounds and bundled logos only. No FTP,
                     // imported files or filesystem enumeration on tile open.
                     gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);
                     gallery_message_.clear();
@@ -3157,132 +3150,111 @@ private:
     }
     void draw_emulator_button_legend(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
-        const bool detail=emulator_expanded_ && emulator_subselected_>=0;
-        const auto profiles=emulator_profile_indices();
-        bool app=false,folder=false,add=false;
-        if(detail && !profiles.empty() && emulator_selected_>=0 &&
-           emulator_selected_<static_cast<int>(profiles.size())){
-            const auto &p=platform_registry_.entries[profiles[static_cast<std::size_t>(emulator_selected_)]];
-            app=emulator_subselected_==0;
-            add=emulator_subselected_==static_cast<int>(p.rom_folders.size())+1;
-            folder=!app && !add;
-        }
-        // All enumerated buttons exist in ps5-homebrew-ui's ui/glyphs.hpp.
-        // Touchpad and both triggers are actual controller glyphs, not text.
-        const ui::Hint common[]={
-            {ui::Button::dpad,hint("Auswahl")}
-        };
-        ui::Hint hints[9]{};
-        int count=0;
-        for(const auto &entry:common)hints[count++]=entry;
-        if(detail){
-            hints[count++]={ui::Button::cross,hint(app?"Anwendung bearbeiten":
-                add?"Ordner hinzufuegen":"Pfad bearbeiten")};
-            hints[count++]={ui::Button::touchpad,hint("Manuell eingeben")};
-            if(folder){
-                hints[count++]={ui::Button::triangle,hint("Entfernen")};
-                if(!profiles.empty() &&
-                   platform_registry_.entries[profiles[static_cast<std::size_t>(emulator_selected_)]].scan_supported)
-                    hints[count++]={ui::Button::left_stick,hint("Scan AN/AUS")};
-            }
-            hints[count++]={ui::Button::square,hint(app?"Menue testen":"Einklappen")};
-            if(app)hints[count++]={ui::Button::triangle,hint("Startmethode wechseln")};
+        ui::Hint hints[6]{};int count=0;
+        hints[count++]={ui::Button::dpad,hint("Auswahl")};
+        if(!emulator_expanded_){
+            hints[count++]={ui::Button::cross,hint("Konsole oeffnen")};
+            hints[count++]={ui::Button::circle,hint("Einstellungen")};
         }else{
-            hints[count++]={ui::Button::cross,hint("AN/AUS")};
-            hints[count++]={ui::Button::square,hint(emulator_expanded_?"Einklappen":"Aufklappen")};
+            const auto profiles=emulator_profile_indices();
+            bool app=true,folder=false;
+            if(!profiles.empty()){
+                const auto &p=platform_registry_.entries[profiles[static_cast<std::size_t>(emulator_selected_)]];
+                app=emulator_subselected_==0;
+                folder=emulator_subselected_>0 &&
+                    emulator_subselected_<=static_cast<int>(p.rom_folders.size());
+            }
+            hints[count++]={ui::Button::cross,hint(app?"Emulator waehlen":"Ordner waehlen")};
+            if(app)hints[count++]={ui::Button::triangle,hint("Startmethode")};
+            else if(folder)hints[count++]={ui::Button::left_stick,hint("Scan AN/AUS")};
+            hints[count++]={ui::Button::circle,hint("Konsolen")};
         }
-        hints[count++]={ui::Button::l2,hint("Reihenfolge"),ui::Button::r2};
-        hints[count++]={ui::Button::circle,hint("Zurueck")};
-        ui::HintLayout layout;
-        layout.cy=983;
-        layout.size=19;
-        layout.text_size=15;
-        layout.item_gap=12;
-        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,count,
-            192,false,layout);
+        ui::HintLayout layout;layout.cy=979;layout.size=23;
+        layout.text_size=17;layout.item_gap=27;
+        ui::draw_hints(list,fonts,ui::GlyphStyle::dark(),hints,count,194,false,layout);
+    }
+    static std::string friendly_launch_method(const std::string &method){
+        if(method=="eden_rom_argv")return "Switch-Spiel direkt starten";
+        if(method=="xbox_path_argv")return "Spieledatei direkt starten";
+        if(method=="rpcs3_boot_app0")return "PS3-Spiel direkt starten";
+        if(method=="ps2_disc_launch")return "PS2-Spiel direkt starten";
+        if(method=="menu_only")return "Nur Emulator-Menue oeffnen";
+        return "Automatisch (wenn unterstuetzt)";
     }
     void draw_settings_emulators(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
-        translated_text(list,fonts.display,"Emulatoren & Spielordner verwalten",188,289,30,kInk);
-        translated_text(list,fonts.regular,
-            "Alle Konsolen sortieren, Spieleordner verwalten und Scanpfade einzeln aktivieren.",190,323,19,kAccent);
         const auto ordered=emulator_profile_indices();
+        if(ordered.empty())return;
         const int count=static_cast<int>(ordered.size());
-        const float list_top=339.0f;
-        const int visible=8;
-        const int first=emulator_expanded_?emulator_selected_:
-            std::clamp(emulator_selected_-visible+1,0,std::max(0,count-visible));
-        float y=list_top;
-        for(int n=first;n<count && y<884.0f;++n){
-            const auto &p=platform_registry_.entries[ordered[static_cast<std::size_t>(n)]];
-            const bool selected=n==emulator_selected_;
-            const float row_h=59.0f;
-            const Rect row{187,y,1531,row_h-4};
-            list.rounded_rect(row,12,selected?Color::rgb(0x22585A,0.86f):Color::rgb(0x202E40,0.79f));
-            if(selected)list.bordered_rect(row,12,Color::rgb(0xFFFFFF,0),1.2f,
-                                           Color::rgb(0x7CE0C8,0.68f));
-            const auto icon=covers_.get("/app0/assets/platforms/"+p.icon_path);
-            if(icon)list.image(icon,{199,y+7,39,39},gfx::kFullUv,
-                Color::rgb(0xFFFFFF,p.enabled?1.0f:0.5f),0);
-            translated_text(list,fonts.semibold,p.enabled?"AN":"AUS",253,y+35,18,
-                            p.enabled?Color::rgb(0x98E8CC):kMuted);
-            translated_text(list,fonts.semibold,p.display_name,314,y+35,21,kInk);
-            translated_text(list,fonts.regular,p.is_emulator?application_name(p):"Native Konsole",
-                            780,y+34,17,kMuted);
+        const int focus=std::clamp(emulator_selected_,0,count-1);
+        if(!emulator_expanded_){
+            translated_text(list,fonts.display,"Waehle deine Konsole",190,286,35,kInk);
             translated_text(list,fonts.regular,
-                std::to_string(p.rom_folders.size())+" Ordner",1324,y+34,18,kAccent);
-            translated_text(list,fonts.semibold,selected && emulator_expanded_?"v":" >",
-                            1650,y+35,20,kAccent);
-            y+=row_h;
-            if(!selected || !emulator_expanded_)continue;
-            // Accordion: the app identity always stays immediately below the
-            // platform row, then a scrollable window of roots and an add row.
-            const int sub_count=static_cast<int>(p.rom_folders.size())+2;
-            int sub_start=0;
-            if(emulator_subselected_>4)sub_start=emulator_subselected_-4;
-            const int sub_shown=std::min(6,sub_count-sub_start);
-            for(int sub=sub_start;sub<sub_start+sub_shown && y+75.0f<892.0f;++sub){
-                const bool focus=emulator_subselected_==sub;
-                const Rect detail{227,y+2,1443,69};
-                list.rounded_rect(detail,12,focus?Color::rgb(0x244E50,0.86f):Color::rgb(0x101E29,0.86f));
-                if(focus)list.bordered_rect(detail,12,Color::rgb(0xFFFFFF,0),1.1f,
-                                            Color::rgb(0x7CE0C8,0.64f));
-                if(sub==0){
-                    translated_text(list,fonts.semibold,"Emulator-Anwendung: "+application_name(p),249,y+29,20,kInk);
-                    if(emulator_protocol_needs_confirmation(p))
-                        translated_text(list,fonts.semibold,"!!! STARTMETHODE FEHLT - DREIECK !!!",1120,y+29,17,
-                                        Color::rgb(0xFFD47F));
-                    translated_text(list,fonts.regular,
-                        "Startmethode: "+p.launch_protocol+" | Titel-ID: "+(!emulator_detection_for(p.id).title_id.empty()?
-                            emulator_detection_for(p.id).title_id:
-                            (p.title_id.empty()?std::string("Nicht eingerichtet"):p.title_id))+
-                        "    | Installationsordner: "+shorten(p.app_path.empty()?"nicht erforderlich / optional":p.app_path,43),
-                        249,y+56,17,kMuted);
-                }else if(sub==sub_count-1){
-                    translated_text(list,fonts.semibold,"+ Weiteren Spieleordner hinzufuegen",250,y+42,21,kAccent);
-                }else{
-                    const auto &folder=p.rom_folders[static_cast<std::size_t>(sub-1)];
-                    translated_text(list,fonts.semibold,"Spieleordner "+std::to_string(sub),250,y+29,18,kInk);
-                    translated_text(list,fonts.regular,shorten(folder,91),250,y+55,17,kMuted);
-                    if(p.scan_supported){
-                        translated_text(list,fonts.semibold,
-                            profile_folder_enabled(p,static_cast<std::size_t>(sub-1))?"AN":"AUS",
-                            1560,y+55,16,kAccent);
-                    }
-                    if(focus){
-                        ui::draw_button(list,fonts,ui::GlyphStyle::dark(),ui::Button::triangle,
-                                        1422,y+24,22);
-                        translated_text(list,fonts.regular,"Entfernen",1455,y+30,16,kAccent);
-                    }
-                }
-                y+=75.0f;
+                "X: Konsole einrichten  |  Kreis: Einstellungen",194,326,20,kMuted);
+            constexpr int cols=4;
+            constexpr float x0=188.0f,y0=363.0f,w=367.0f,h=162.0f,gx=21.0f,gy=19.0f;
+            for(int n=0;n<count;++n){
+                const auto &p=platform_registry_.entries[ordered[static_cast<std::size_t>(n)]];
+                const float x=x0+static_cast<float>(n%cols)*(w+gx);
+                const float y=y0+static_cast<float>(n/cols)*(h+gy);
+                if(y+h>944.0f)break;
+                const bool chosen=n==focus;
+                const Rect tile{x,y,w,h};
+                list.rounded_rect(tile,20,chosen?Color::rgb(0x315C70,0.96f):Color::rgb(0x202F42,0.93f));
+                list.bordered_rect(tile,20,Color::rgb(0xFFFFFF,0),chosen?2.2f:1.0f,
+                    chosen?Color::rgb(0x91EBE4):Color::rgb(0x577187,0.55f));
+                const auto icon=covers_.get("/app0/assets/platforms/"+p.icon_path);
+                if(icon)list.image(icon,{x+20,y+23,73,73},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+                translated_text(list,fonts.semibold,shorten(p.display_name,20),x+104,y+66,24,kInk);
+                const bool ready=p.enabled && (!p.is_emulator || !emulator_protocol_needs_confirmation(p));
+                translated_text(list,fonts.semibold,p.enabled?(ready?"Bereit":"Einrichtung offen"):"Deaktiviert",
+                    x+21,y+118,18,ready?Color::rgb(0x91E9C1):Color::rgb(0xF4C789));
+                translated_text(list,fonts.regular,std::to_string(p.rom_folders.size())+" Spieleordner",
+                    x+195,y+118,17,kMuted);
+                if(chosen)translated_text(list,fonts.semibold,"X  Einrichten",x+21,y+148,17,kAccent);
             }
-            if(sub_count>6)translated_text(list,fonts.regular,
-                "Weitere Ordner: Hoch/Runter",1140,906,17,kAccent);
+            return;
         }
-        // Button actions are shown only in draw_emulator_button_legend().
+        const auto &p=platform_registry_.entries[ordered[static_cast<std::size_t>(focus)]];
+        const int children=static_cast<int>(p.rom_folders.size())+2;
+        const int sub=std::clamp(emulator_subselected_,0,children-1);
+        const auto icon=covers_.get("/app0/assets/platforms/"+p.icon_path);
+        list.rounded_rect({189,276,1533,125},20,Color::rgb(0x21374A,0.94f));
+        if(icon)list.image(icon,{215,297,79,79},gfx::kFullUv,Color::rgb(0xFFFFFF),0);
+        translated_text(list,fonts.display,p.display_name+" einrichten",318,327,31,kInk);
+        translated_text(list,fonts.regular,
+            p.enabled?"Konsole aktiviert":"Konsole deaktiviert",320,361,20,kAccent);
+        translated_text(list,fonts.regular,"Kreis: Zurueck zur Konsolenauswahl",1124,357,18,kMuted);
+        const int shown=5;
+        const int first=std::max(0,sub-shown+1);
+        for(int row=first;row<children && row<first+shown;++row){
+            const float y=423.0f+static_cast<float>(row-first)*91.0f;
+            const bool selected=row==sub;
+            const Rect tile{189,y,1533,82};
+            list.rounded_rect(tile,17,selected?Color::rgb(0x28576B,0.96f):Color::rgb(0x192D3E,0.94f));
+            if(selected)list.bordered_rect(tile,17,Color::rgb(0xFFFFFF,0),2,Color::rgb(0x8EE9E4));
+            if(row==0){
+                translated_text(list,fonts.semibold,"Emulator auswaehlen",212,y+31,24,kInk);
+                translated_text(list,fonts.regular,shorten(application_name(p),52),690,y+30,20,kAccent);
+                translated_text(list,fonts.regular,"Spielstart: "+friendly_launch_method(p.launch_protocol),212,y+65,18,kMuted);
+                if(emulator_protocol_needs_confirmation(p))
+                    translated_text(list,fonts.semibold,"! Startmethode fehlt",1225,y+62,18,Color::rgb(0xFFD47F));
+            }else if(row==children-1){
+                translated_text(list,fonts.semibold,"+ Spieleordner hinzufuegen",213,y+49,24,kAccent);
+                translated_text(list,fonts.regular,"X: Ordner aussuchen",1190,y+49,18,kMuted);
+            }else{
+                const auto &folder=p.rom_folders[static_cast<std::size_t>(row-1)];
+                translated_text(list,fonts.semibold,"Spieleordner "+std::to_string(row),212,y+30,23,kInk);
+                translated_text(list,fonts.regular,shorten(folder,93),212,y+62,19,kMuted);
+                if(p.scan_supported)translated_text(list,fonts.semibold,
+                    profile_folder_enabled(p,static_cast<std::size_t>(row-1))?"SCAN AN":"SCAN AUS",
+                    1430,y+48,18,kAccent);
+            }
+        }
+        if(children>shown)translated_text(list,fonts.regular,
+            "Eintrag "+std::to_string(sub+1)+" von "+std::to_string(children),1430,916,17,kMuted);
         if(!platform_settings_message_.empty())translated_text(list,fonts.semibold,
-            shorten(platform_settings_message_,105),193,933,16,kAccent);
+            shorten(platform_settings_message_,96),194,929,17,kAccent);
     }
     void draw_settings_roots(gfx::DrawList &list) const {
         const auto &fonts=context_.fonts;
@@ -3344,7 +3316,7 @@ private:
             "Options: Settings   |   Up/Down: Select option":
             "Options: Einstellungen   |   Hoch/Runter: Auswahl",207,550,20,kMuted);
         translated_text(list,fonts.semibold,"Systemstatus",977,314,29,kInk);
-        translated_text(list,fonts.regular,"Version: BGH V1.1.31",978,357,23,kAccent);
+        translated_text(list,fonts.regular,"Version: BGH V1.1.32",978,357,23,kAccent);
         translated_text(list,fonts.regular,"Spiele: "+std::to_string(counts_[0]),978,401,23,kInk);
         translated_text(list,fonts.regular,"Verlaufseintraege: "+std::to_string(recent_list_.size()),978,445,23,kInk);
         unsigned active=0;for(const auto &r:roots_)if(r.enabled)++active;
@@ -3397,7 +3369,7 @@ private:
     void draw_browser(app::Frame &frame) const {
         frame.glass=true;auto &list=frame.overlay;const auto &fonts=context_.fonts;
         list.rounded_rect({260,118,1400,828},35,Color::rgb(0x121A2C,0.99f));
-        translated_text(list,fonts.display,"Ordnerbrowser (nur lesend)",313,208,40,kInk);
+        translated_text(list,fonts.display,"Spieleordner auswaehlen",313,208,40,kInk);
         translated_text(list,fonts.semibold,shorten(browser_path_,75),311,270,22,kAccent);
         translated_text(list,fonts.regular,emulator_path_edit_?
             ("Plattform: "+platform_registry_.entries[emulator_profile_indices()[static_cast<std::size_t>(emulator_selected_)]].display_name):
@@ -3408,18 +3380,18 @@ private:
             translated_text(list,fonts.regular,"Pfad alternativ mit Bildschirmtastatur eingeben",315,492,21,kAccent);
         }else if(browser_.entries.empty())translated_text(list,fonts.semibold,"Keine Unterordner vorhanden",315,403,25,kMuted);
         else {
-            constexpr int visible=10;
+            constexpr int visible=7;
             const int first=std::max(0,browser_selected_-visible+1);
             for(int i=first;i<static_cast<int>(browser_.entries.size()) && i<first+visible;++i){
-                const float y=342+static_cast<float>(i-first)*49;
-                list.rounded_rect({311,y,1276,45},11,i==browser_selected_?Color::rgb(0x51629F):Color::rgb(0x242E42));
-                translated_text(list,fonts.regular,shorten(browser_.entries[static_cast<std::size_t>(i)].name,65),334,y+30,22,kInk);
+                const float y=342+static_cast<float>(i-first)*69;
+                list.rounded_rect({311,y,1276,61},15,i==browser_selected_?Color::rgb(0x51629F):Color::rgb(0x242E42));
+                translated_text(list,fonts.regular,shorten(browser_.entries[static_cast<std::size_t>(i)].name,65),334,y+40,24,kInk);
             }
         }
         // Folder browser: use the same real DualSense glyphs as Settings.
         const ui::Hint browser_hints[]={
             {ui::Button::cross,hint("Ordner oeffnen")},
-            {ui::Button::square,hint("Hier hinzufuegen")},
+            {ui::Button::square,hint("Diesen Ordner verwenden")},
             {ui::Button::touchpad,hint("Nach oben")}
         };
         ui::HintLayout browser_layout;

@@ -1,4 +1,4 @@
-"""BGH V1.1.31 Fix1: upstream native kit requires exactly one DDS surface mip."""
+"""BGH V1.1.32 Fix1: upstream native kit requires exactly one DDS surface mip."""
 from pathlib import Path
 import struct
 import sys
@@ -29,4 +29,4 @@ def test_encoder_preserves_single_level_profile_and_workflow_covers_it():
     wf=(ROOT/'.github/workflows/ps5-build.yml').read_text()
     assert 'le32(out,W*H);le32(out,0);le32(out,1);' in source
     assert 'tests/test_v1130_fix1_dds_surface.py' in wf
-    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.31-fix2'" in wf
+    assert "test \"$GITHUB_REF_NAME\" = 'bgh-v1.1.32'" in wf

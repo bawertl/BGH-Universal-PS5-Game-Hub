@@ -39,8 +39,8 @@ def test_gpu_failure_never_deletes_emulator_image():
 
 
 def test_visible_build_marker_and_package_name():
-    assert 'BGH V1.1.31' in UI
+    assert 'BGH V1.1.32' in UI
     workflow = (ROOT / '.github/workflows/ps5-build.yml').read_text()
-    assert 'bgh-v1.1.31-fix2' in workflow
-    assert 'V1_1_31_PPSA99079_PS5_TEST.zip' in workflow
-    assert 'V1_1_31_' in (ROOT / 'tooling/build_native_ps5.sh').read_text()
+    assert 'bgh-v1.1.32' in workflow
+    assert 'V1_1_32_PPSA99079_PS5_TEST.zip' in workflow
+    assert 'V1_1_32_' in (ROOT / 'tooling/build_native_ps5.sh').read_text()

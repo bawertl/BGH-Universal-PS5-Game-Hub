@@ -27,4 +27,4 @@ def test_gallery_contains_nine_stable_builtin_backgrounds():
     assert 'gallery_choices_=ulg::bgh_gallery::builtins(ulg::bgh_gallery::Kind::background);' in UI
     assert 'save_gallery();feedback.play(audio::Cue::select);' in UI
     assert 'const auto background=gallery_selection_loaded_after_boot_?' in UI
-    assert 'BGH V1.1.31' in UI
+    assert 'BGH V1.1.32' in UI
